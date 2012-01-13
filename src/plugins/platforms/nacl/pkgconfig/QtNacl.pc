@@ -1,0 +1,18 @@
+prefix=/Users/msorvig/code/qt5-nacl/qtbase/
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include/QtNacl
+qt_config=lex yacc warn_on uic resources qt warn_on release incremental link_prl qpa exceptions no_mocdepend release stl qt_no_framework cross_compile release static qpa nacl pepper largefile stl mmx 3dnow sse sse2 sse3 ssse3 sse4_1 sse4_2 avx dylib create_prl link_prl depend_includepath no_private_qt_headers_warning QTDIR_build module qt_install_headers qt warn_on depend_includepath qmake_cache target_qt create_cmake create_libtool create_pc explicitlib static staticlib static moc thread opengl opengl
+moc_location=${prefix}bin/moc
+uic_location=${prefix}bin/uic
+rcc_location=${prefix}bin/rcc
+lupdate_location=${prefix}bin/lupdate
+lrelease_location=${prefix}bin/lrelease
+
+Name: Qtnacl
+Description: Qtnacl Library
+Version: 5.0.0
+Libs: -L${libdir} -lQtNacl 
+Libs.private: -L/Users/msorvig/code/qt5-nacl/qtbase/lib  -lppapi -lppapi_cpp -lsrpc -limc_syscalls -lplatform -lgio -L/Users/msorvig/code/qt5-nacl/qtbase/lib -lQtPlatformSupport -lQtGui -lppapi_gles2 -lQtCore -lm -lpthread -lppapi_gles2  
+Cflags: -I/Users/msorvig/code/qt5-nacl/qtbase//include -I${includedir}
+
