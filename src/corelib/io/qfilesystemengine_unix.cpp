@@ -50,6 +50,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pwd.h>
+#include <grp.h>
 
 
 #if defined(Q_OS_MAC)

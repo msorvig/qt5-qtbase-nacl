@@ -48,7 +48,12 @@ win32 {
                 QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${LIBPREFIX}$${TARGET}.so.$${TEMP_VERSION}
             }
         } else {
-            QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}
+            nacl {
+                TARGET_EXT = .nexe
+                QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}$${TARGET_EXT}
+            } else {
+                QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}
+            }
         }
     }
 }

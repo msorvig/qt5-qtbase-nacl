@@ -140,6 +140,8 @@ QSupportedWritingSystems QBasicFontDatabase::determineWritingSystemsFromTrueType
     QSupportedWritingSystems writingSystems;
     bool hasScript = false;
 
+// ### bit twiddling triggers validation errors.
+#ifndef Q_OS_NACL
     int i;
     for(i = 0; i < QFontDatabase::WritingSystemsCount; i++) {
         int bit = requiredUnicodeBits[i][0];
@@ -157,6 +159,7 @@ QSupportedWritingSystems QBasicFontDatabase::determineWritingSystemsFromTrueType
             }
         }
     }
+#endif
     if(codePageRange[0] & (1 << SimplifiedChineseCsbBit)) {
         writingSystems.setSupported(QFontDatabase::SimplifiedChinese);
         hasScript = true;
@@ -265,8 +268,9 @@ namespace {
             FaceId faceId;
             faceId.filename = "";
             faceId.index = 0;
+#ifndef Q_OS_NACL
             faceId.uuid = QUuid::createUuid().toByteArray();
-
+#endif
             return init(faceId, true, Format_None, fontData);
         }
     };

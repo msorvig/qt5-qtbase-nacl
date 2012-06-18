@@ -66,6 +66,7 @@
 #   include <qt_windows.h>
 #   include <time.h>
 #endif
+#include <time.h>
 
 QT_BEGIN_NAMESPACE
 

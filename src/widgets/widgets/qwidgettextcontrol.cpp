@@ -2449,6 +2449,7 @@ bool QWidgetTextControl::isWordSelectionEnabled() const
 #ifndef QT_NO_PRINTER
 void QWidgetTextControl::print(QPagedPaintDevice *printer) const
 {
+#ifndef QT_NO_PRINTER
     Q_D(const QWidgetTextControl);
     if (!printer)
         return;
@@ -2470,6 +2471,7 @@ void QWidgetTextControl::print(QPagedPaintDevice *printer) const
     }
     doc->print(printer);
     delete tempDoc;
+#endif
 }
 #endif
 

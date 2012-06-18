@@ -22,6 +22,11 @@ include(access/access.pri)
 include(bearer/bearer.pri)
 include(kernel/kernel.pri)
 include(socket/socket.pri)
-include(ssl/ssl.pri)
+#include(ssl/ssl.pri)
 
 QMAKE_LIBS += $$QMAKE_LIBS_NETWORK
+
+nacl {
+    LIBS += -lppapi_cpp
+}
+

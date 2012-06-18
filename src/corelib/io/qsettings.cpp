@@ -73,6 +73,7 @@
 #endif
 
 #include <stdlib.h>
+#include <sys/file.h>
 
 #ifdef Q_OS_WIN // for homedirpath reading from registry
 #  include <private/qsystemlibrary_p.h>

@@ -57,6 +57,7 @@
 #include "qnetworkaccesscachebackend_p.h"
 #include "qnetworkreplydataimpl_p.h"
 #include "qnetworkreplyfileimpl_p.h"
+#include "qnetworkreplypepperimpl_p.h"
 
 #include "QtCore/qbuffer.h"
 #include "QtCore/qurl.h"
@@ -980,6 +981,7 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
     bool isLocalFile = req.url().isLocalFile();
     QString scheme = req.url().scheme().toLower();
 
+
     // fast path for GET on file:// URLs
     // The QNetworkAccessFileBackend will right now only be used for PUT
     if ((op == QNetworkAccessManager::GetOperation || op == QNetworkAccessManager::HeadOperation)
@@ -989,8 +991,16 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
 
     if ((op == QNetworkAccessManager::GetOperation || op == QNetworkAccessManager::HeadOperation)
             && scheme == QLatin1String("data")) {
+
         return new QNetworkReplyDataImpl(this, req, op);
     }
+
+#ifdef Q_OS_NACL
+    if (op == QNetworkAccessManager::GetOperation) {
+        return new QNetworkReplyPepperImpl(this, req, op);
+    }
+#endif
+
 
     // A request with QNetworkRequest::AlwaysCache does not need any bearer management
     QNetworkRequest::CacheLoadControl mode =

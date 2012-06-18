@@ -60,6 +60,9 @@
 #    include "qfunctions_wince.h"
 #  endif
 #endif
+#ifdef Q_OS_UNIX
+#include <sys/time.h>
+#endif
 
 //#define QDATETIMEPARSER_DEBUG
 #if defined (QDATETIMEPARSER_DEBUG) && !defined(QT_NO_DEBUG_STREAM)

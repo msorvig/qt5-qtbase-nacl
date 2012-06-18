@@ -305,8 +305,12 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv, uint 
 #endif
 
     // note: this call to QThread::currentThread() may end up setting theMainThread!
-    if (QThread::currentThread() != theMainThread)
+    if (QThread::currentThread() != theMainThread) {
+// 
+#ifndef Q_OS_NACL
         qWarning("WARNING: QApplication was not created in the main() thread.");
+#endif
+    }
 }
 
 QCoreApplicationPrivate::~QCoreApplicationPrivate()

@@ -41,8 +41,9 @@
 
 //#define QPROCESS_DEBUG
 #include "qdebug.h"
+#include <qglobal.h>
 
-#ifndef QT_NO_PROCESS
+#if !defined QT_NO_PROCESS && !defined Q_OS_NACL
 
 #if defined QPROCESS_DEBUG
 #include "qstring.h"

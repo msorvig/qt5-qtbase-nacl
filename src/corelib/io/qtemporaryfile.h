@@ -44,6 +44,7 @@
 
 #include <QtCore/qiodevice.h>
 #include <QtCore/qfile.h>
+#include <qglobal.h>
 
 #ifdef open
 #error qtemporaryfile.h must be included before any header file that defines open

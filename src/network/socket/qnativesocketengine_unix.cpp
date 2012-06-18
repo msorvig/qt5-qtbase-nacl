@@ -41,6 +41,127 @@
 
 //#define QNATIVESOCKETENGINE_DEBUG
 #include "qnativesocketengine_p.h"
+
+#ifdef Q_OS_NACL
+
+bool QNativeSocketEnginePrivate::createNewSocket(QAbstractSocket::SocketType socketType,
+                                         QAbstractSocket::NetworkLayerProtocol socketProtocol)
+{
+    return false;
+}
+
+/*
+    Returns the value of the socket option \a opt.
+*/
+int QNativeSocketEnginePrivate::option(QNativeSocketEngine::SocketOption opt) const
+{
+        return -1;
+}
+
+/*
+    Sets the socket option \a opt to \a v.
+*/
+bool QNativeSocketEnginePrivate::setOption(QNativeSocketEngine::SocketOption opt, int v)
+{
+    return false;
+}
+
+bool QNativeSocketEnginePrivate::nativeConnect(const QHostAddress &addr, quint16 port)
+{
+    return false;
+}
+
+bool QNativeSocketEnginePrivate::nativeBind(const QHostAddress &address, quint16 port)
+{
+    return false;
+}
+
+bool QNativeSocketEnginePrivate::nativeListen(int backlog)
+{
+    return false;
+}
+
+int QNativeSocketEnginePrivate::nativeAccept()
+{
+    return 0;
+}
+
+#ifndef QT_NO_NETWORKINTERFACE
+
+bool QNativeSocketEnginePrivate::nativeJoinMulticastGroup(const QHostAddress &groupAddress,
+                                                          const QNetworkInterface &interface)
+{
+    return false;
+}
+
+bool QNativeSocketEnginePrivate::nativeLeaveMulticastGroup(const QHostAddress &groupAddress,
+                                                           const QNetworkInterface &interface)
+{
+    return false;
+}
+
+#endif
+
+qint64 QNativeSocketEnginePrivate::nativeBytesAvailable() const
+{
+    return 0;
+}
+
+bool QNativeSocketEnginePrivate::nativeHasPendingDatagrams() const
+{
+    return false;
+}
+
+qint64 QNativeSocketEnginePrivate::nativePendingDatagramSize() const
+{
+    return 0;
+}
+
+qint64 QNativeSocketEnginePrivate::nativeReceiveDatagram(char *data, qint64 maxSize,
+                                                    QHostAddress *address, quint16 *port)
+{
+    return 0;
+}
+
+qint64 QNativeSocketEnginePrivate::nativeSendDatagram(const char *data, qint64 len,
+                                                   const QHostAddress &host, quint16 port)
+{
+    return len;
+}
+
+bool QNativeSocketEnginePrivate::fetchConnectionParameters()
+{
+    return false;
+}
+
+void QNativeSocketEnginePrivate::nativeClose()
+{
+}
+
+qint64 QNativeSocketEnginePrivate::nativeWrite(const char *data, qint64 len)
+{
+    return len;
+}
+/*
+*/
+qint64 QNativeSocketEnginePrivate::nativeRead(char *data, qint64 maxSize)
+{
+    return 0;
+}
+
+int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool selectForRead) const
+{
+    return 0;
+}
+
+int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool checkRead, bool checkWrite,
+                       bool *selectForRead, bool *selectForWrite) const
+{
+    return 0;
+}
+
+#else
+
 #include "private/qnet_unix_p.h"
 #include "qiodevice.h"
 #include "qhostaddress.h"
@@ -1153,3 +1274,5 @@ int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool checkRead, bool c
 }
 
 QT_END_NAMESPACE
+
+#endif // else (!Q_OS_NACL)

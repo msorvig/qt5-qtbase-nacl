@@ -64,15 +64,15 @@
 
 extern "C" {
 
-void pthread_cleanup_push(void (*)(void *), void *)
-{
+//void pthread_cleanup_push(void (*)(void *), void *)
+//{
+//
+//}
 
-}
-
-void pthread_cleanup_pop(int)
-{
-
-}
+//void pthread_cleanup_pop(int)
+//{
+//
+//}
 
 int pthread_setcancelstate(int, int *)
 {
@@ -148,6 +148,26 @@ off64_t lseek64(int, off_t, int)
     return 0;
 }
 
+char * getenv(const char *)
+{
+    return 0;
+}
+
+int putenv(char *)
+{
+    return 0;
+}
+
+int setenv(const char *name, const char *value, int overwrite)
+{
+    return 0;
+}
+
+int unsetenv(const char *name)
+{
+    return 0;
+}
+    
 } // Extern C
 
 int select(int, fd_set *, fd_set *, fd_set *, struct timeval *)

@@ -44,6 +44,22 @@
 #include "qplatformdefs.h"
 
 #include "qhostinfo_p.h"
+
+#ifdef Q_OS_NACL
+
+QHostInfo QHostInfoAgent::fromName(const QString &hostName)
+{
+    return QHostInfo();
+}
+
+QString QHostInfo::localDomainName()
+{
+    return QLatin1String("nacl");
+}
+
+#else
+
+
 #include "private/qnativesocketengine_p.h"
 #include "qiodevice.h"
 #include <qbytearray.h>
@@ -383,5 +399,7 @@ QString QHostInfo::localDomainName()
     // return the fallen-back-to searched domain
     return domainName;
 }
+
+#endif // else (!Q_OS_NACL)
 
 QT_END_NAMESPACE

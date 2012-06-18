@@ -926,7 +926,14 @@ void QFileDialog::selectFile(const QString &filename)
         d->lineEdit()->setText(file);
 }
 
-#ifdef Q_OS_UNIX
+#ifdef Q_OS_NACL
+Q_AUTOTEST_EXPORT QString qt_tildeExpansion(const QString &path, bool *expanded = 0)
+{
+    return path;
+}
+
+#elif defined(Q_OS_UNIX)
+
 Q_AUTOTEST_EXPORT QString qt_tildeExpansion(const QString &path, bool *expanded = 0)
 {
     if (expanded != 0)

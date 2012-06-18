@@ -54,6 +54,10 @@
 // We mean it.
 //
 
+#include <qglobal.h>
+
+#ifndef QT_NO_HTTP
+
 #include <QObject>
 #include <QThreadStorage>
 #include <QNetworkProxy>
@@ -67,8 +71,6 @@
 #include "qsslconfiguration.h"
 #include "private/qnoncontiguousbytedevice_p.h"
 #include "qnetworkaccessauthenticationmanager_p.h"
-
-#ifndef QT_NO_HTTP
 
 QT_BEGIN_NAMESPACE
 

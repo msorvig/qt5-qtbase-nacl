@@ -588,7 +588,12 @@ public:
 
     inline void handleSoftwareInputPanel(Qt::MouseButton button, bool clickCausedFocus)
     {
+#ifdef Q_OS_NACL
+        Q_UNUSED(button)
+        Q_UNUSED(clickCausedFocus)
+#else
         Q_Q(QWidget);
+
         if (button == Qt::LeftButton && qApp->autoSipEnabled()) {
             QStyle::RequestSoftwareInputPanel behavior = QStyle::RequestSoftwareInputPanel(
                     q->style()->styleHint(QStyle::SH_RequestSoftwareInputPanel));
@@ -596,6 +601,7 @@ public:
                 qApp->inputMethod()->show();
             }
         }
+#endif
     }
 
     void setWSGeometry(bool dontShow=false, const QRect &oldRect = QRect());

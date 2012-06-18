@@ -48,9 +48,9 @@
 
 // pthread
 #include <pthread.h>
-#define PTHREAD_CANCEL_DISABLE 1
-#define PTHREAD_CANCEL_ENABLE 2
-#define PTHREAD_INHERIT_SCHED 3
+//#define PTHREAD_CANCEL_DISABLE 1
+//#define PTHREAD_CANCEL_ENABLE 2
+//#define PTHREAD_INHERIT_SCHED 3
 
 QT_BEGIN_HEADER
 
@@ -59,8 +59,8 @@ QT_BEGIN_NAMESPACE
 
 extern "C" {
 
-void pthread_cleanup_push(void (*handler)(void *), void *arg);
-void pthread_cleanup_pop(int execute);
+//void pthread_cleanup_push(void (*handler)(void *), void *arg);
+//void pthread_cleanup_pop(int execute);
 
 int pthread_setcancelstate(int state, int *oldstate);
 int pthread_setcanceltype(int type, int *oldtype);
@@ -83,9 +83,15 @@ off64_t ftello64(void *stream);
 off64_t lseek64(int fildes, off_t offset, int whence);
 int open64(const char *path, int oflag, ...);
 
+char * getenv(const char *name);
+int putenv(char *string);
+int setenv(const char *name, const char *value, int overwrite);
+int unsetenv(const char *name);
+    
 }
 
 int select(int nfds, fd_set * readfds, fd_set * writefds, fd_set * errorfds, struct timeval * timeout);
+
 
 QT_END_NAMESPACE
 

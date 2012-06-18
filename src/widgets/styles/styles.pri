@@ -47,7 +47,8 @@ contains(QT_CONFIG, gtkstyle) {
 }
 
 contains( styles, mac ) {
-	HEADERS += \
+        message(mac stlye)
+        HEADERS += \
 		styles/qmacstyle_mac.h \
 		styles/qmacstylepixmaps_mac_p.h \
 		styles/qmacstyle_mac_p.h

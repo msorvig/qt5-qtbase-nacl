@@ -41,6 +41,7 @@
 
 #include "qcore_unix_p.h"
 #include "qelapsedtimer.h"
+#include <qdebug.h>
 
 #ifdef Q_OS_NACL
 #elif !defined (Q_OS_VXWORKS)

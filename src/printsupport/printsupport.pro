@@ -12,6 +12,8 @@ QMAKE_DOCS_INDEX = ../../doc
 
 QMAKE_LIBS += $$QMAKE_LIBS_PRINTSUPPORT
 
-include(kernel/kernel.pri)
-include(widgets/widgets.pri)
-include(dialogs/dialogs.pri)
+!nacl {
+    include(kernel/kernel.pri)
+    include(widgets/widgets.pri)
+    include(dialogs/dialogs.pri)
+}

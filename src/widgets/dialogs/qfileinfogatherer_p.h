@@ -85,8 +85,8 @@ public:
        && permissions() == fileInfo.permissions();
     }
 
-#ifndef QT_NO_FSFILEENGINE
     bool isCaseSensitive() const {
+#ifndef QT_NO_FSFILEENGINE
         return QFileSystemEngine::isCaseSensitive();
     }
 #endif

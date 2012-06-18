@@ -267,6 +267,7 @@ namespace QPdf {
     {
         Q_ASSERT(!dev->isSequential());
         qint64 size = dev->size();
+#ifndef Q_OS_NACL
         if (fileBackingEnabled && !fileBackingActive
                 && size > maxMemorySize()) {
             // Switch to file backing.
@@ -282,6 +283,7 @@ namespace QPdf {
             ba.clear();
             fileBackingActive = true;
         }
+#endif
         if (dev->pos() != size) {
             dev->seek(size);
             handleDirty = false;

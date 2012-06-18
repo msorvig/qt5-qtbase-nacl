@@ -95,6 +95,18 @@ template <typename T> struct QAtomicOps: QGenericAtomicOps<QAtomicOps<T> >
         return returnValue;
     }
 };
+/*
+// ### (msorvig): for NaCl - should not really be needed, remove when config is fixed.
+template <typename T>
+Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::testAndSetRelease(T *expectedValue, T *newValue)
+{
+    if (_q_value == expectedValue) {
+        _q_value = newValue;
+        return true;
+    }
+    return false;
+}
+*/
 
 QT_END_NAMESPACE
 

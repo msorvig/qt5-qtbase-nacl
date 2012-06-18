@@ -27,13 +27,13 @@ SOURCES += socket/qabstractsocketengine.cpp \
 SOURCES += socket/qnativesocketengine.cpp
 HEADERS += socket/qnativesocketengine_p.h
 
-unix: {
+unix:!nacl {
     SOURCES += socket/qnativesocketengine_unix.cpp \
                 socket/qlocalsocket_unix.cpp \
                 socket/qlocalserver_unix.cpp
 }
 
-unix:HEADERS += \
+unix:!naclHEADERS += \
                 socket/qnet_unix_p.h
 
 win32:SOURCES += socket/qnativesocketengine_win.cpp \

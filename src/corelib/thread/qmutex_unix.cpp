@@ -47,6 +47,7 @@
 #include "qatomic.h"
 #include "qmutex_p.h"
 #include <errno.h>
+#include <sys/time.h>
 
 #if defined(Q_OS_VXWORKS) && defined(wakeup)
 #undef wakeup

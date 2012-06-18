@@ -95,8 +95,8 @@ struct qt_sockaddr_in6 {
 };
 
 union qt_sockaddr {
-    sockaddr a;
-    sockaddr_in a4;
+    //sockaddr a;
+    //sockaddr_in a4;
     qt_sockaddr_in6 a6;
     qt_sockaddr_storage storage;
 };
@@ -135,7 +135,6 @@ public:
     QNetworkInterface multicastInterface() const;
     bool setMulticastInterface(const QNetworkInterface &iface);
 #endif
-
     qint64 bytesAvailable() const;
 
     qint64 read(char *data, qint64 maxlen);

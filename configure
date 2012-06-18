@@ -2529,7 +2529,6 @@ else
 fi
 
 QMAKE_CONF_COMPILER=`getXQMakeConf QMAKE_CXX`
-
 TEST_COMPILER=$QMAKE_CONF_COMPILER
 if [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ]; then
     if [ -z "$TEST_COMPILER" ]; then
@@ -5312,7 +5311,7 @@ if [ "$CFG_WIDGETS" = "no" ]; then
     QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_WIDGETS"
 fi
 
-if [ "x$BUILD_ON_MAC" = "xyes" ] && [ "$XPLATFORM_MINGW" != "yes" ]; then
+if [ "x$PLATFORM_MAC" = "xyes" ] && [ "$QT_CROSS_COMPILE" = "no" ]; then
     #On Mac we implicitly link against libz, so we
     #never use the 3rdparty stuff.
     [ "$CFG_ZLIB" = "yes" ] && CFG_ZLIB="system"

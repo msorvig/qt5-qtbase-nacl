@@ -42,20 +42,8 @@
 #define QT_FONTS_ARE_RESOURCES
 
 /* Data structures */
-#ifndef QT_NO_QUUID_STRING
-#  define QT_NO_QUUID_STRING
-#endif
-#ifndef QT_NO_TEXTDATE
-#  define QT_NO_TEXTDATE
-#endif
-#ifndef QT_NO_DATESTRING
-#  define QT_NO_DATESTRING
-#endif
 
 /* Dialogs */
-#ifndef QT_NO_FILEDIALOG
-#  define QT_NO_FILEDIALOG
-#endif
 #ifndef QT_NO_PRINTDIALOG
 #  define QT_NO_PRINTDIALOG
 #endif
@@ -65,32 +53,14 @@
 
 
 /* File I/O */
-#ifndef QT_NO_DOM
-#  define QT_NO_DOM
-#endif
-#ifndef QT_NO_FILESYSTEMWATCHER
-#  define QT_NO_FILESYSTEMWATCHER
-#endif
 #ifndef QT_NO_FSFILEENGINE
 #  define QT_NO_FSFILEENGINE
-#endif
-#ifndef QT_NO_FILESYSTEMMODEL
-#  define QT_NO_FILESYSTEMMODEL
-#endif
-#ifndef QT_NO_FILESYSTEMMODEL
-#  define QT_NO_FILESYSTEMMODEL
 #endif
 #ifndef QT_NO_PROCESS
 #  define QT_NO_PROCESS
 #endif
 #ifndef QT_NO_TEMPORARYFILE
 #  define QT_NO_TEMPORARYFILE
-#endif
-#ifndef QT_NO_SETTINGS
-#  define QT_NO_SETTINGS
-#endif
-#ifndef QT_NO_LIBRARY
-#  define QT_NO_LIBRARY
 #endif
 
 /* Fonts */
@@ -122,32 +92,8 @@
 #ifndef QT_NO_CODECS
 #  define QT_NO_CODECS
 #endif
-#ifndef QT_NO_TRANSLATION
-#  define QT_NO_TRANSLATION
-#endif
-#ifndef QT_NO_TRANSLATION_UTF8
-#  define QT_NO_TRANSLATION_UTF8
-#endif
-
-/* ItemViews */
-
-#ifndef QT_NO_DIRMODEL
-#  define QT_NO_DIRMODEL
-#endif
 
 /* Kernel */
-#ifndef QT_NO_CLIPBOARD
-#  define QT_NO_CLIPBOARD
-#endif
-#ifndef QT_NO_CSSPARSER
-#  define QT_NO_CSSPARSER
-#endif
-#ifndef QT_NO_CURSOR
-#  define QT_NO_CURSOR
-#endif
-#ifndef QT_NO_DRAGANDDROP
-#  define QT_NO_DRAGANDDROP
-#endif
 #ifndef QT_NO_EFFECTS
 #  define QT_NO_EFFECTS
 #endif
@@ -166,23 +112,11 @@
 #ifndef QT_NO_SYSTEMSEMAPHORE
 #  define QT_NO_SYSTEMSEMAPHORE
 #endif
-#ifndef QT_NO_TABLETEVENT
-#  define QT_NO_TABLETEVENT
-#endif
 #ifndef QT_NO_CRASHHANDLER
 #  define QT_NO_CRASHHANDLER
 #endif
 #ifndef QT_NO_CONCURRENT
 #  define QT_NO_CONCURRENT
-#endif
-#ifndef QT_NO_XMLSTREAM
-#  define QT_NO_XMLSTREAM
-#endif
-#ifndef QT_NO_XMLSTREAMREADER
-#  define QT_NO_XMLSTREAMREADER
-#endif
-#ifndef QT_NO_XMLSTREAMWRITER
-#  define QT_NO_XMLSTREAMWRITER
 #endif
 
 /* Networking */
@@ -210,11 +144,12 @@
 #ifndef QT_NO_FTP
 #  define QT_NO_FTP
 #endif
+#ifndef QT_NO_NETWORKINTERFACE
+#  define QT_NO_NETWORKINTERFACE
+#endif
+
 
 /* Painting */
-#ifndef QT_NO_COLORNAMES
-#  define QT_NO_COLORNAMES
-#endif
 #ifndef QT_NO_DIRECTPAINTER
 #  define QT_NO_DIRECTPAINTER
 #endif
@@ -274,9 +209,6 @@
 #ifndef QT_NO_QWS_SOUNDSERVER
 #  define QT_NO_QWS_SOUNDSERVER
 #endif
-#ifndef QT_NO_QWS_PROPERTIES
-#  define QT_NO_QWS_PROPERTIES
-#endif
 #ifndef QT_NO_QWS_PROXYSCREEN
 #  define QT_NO_QWS_PROXYSCREEN
 #endif
@@ -296,32 +228,12 @@
 #  define QT_NO_QWS_QPF
 #endif
 
-/* SVG */
-#ifndef QT_NO_SVG
-#  define QT_NO_SVG
-#endif
-#ifndef QT_NO_GRAPHICSSVGITEM
-#  define QT_NO_GRAPHICSSVGITEM
-#endif
-#ifndef QT_NO_SVGGENERATOR
-#  define QT_NO_SVGGENERATOR
-#endif
-#ifndef QT_NO_SVGRENDERER
-#  define QT_NO_SVGRENDERER
-#endif
-#ifndef QT_NO_SVGWIDGET
-#  define QT_NO_SVGWIDGET
-#endif
-
 /* Styles */
 #ifndef QT_NO_STYLE_MOTIF
 #  define QT_NO_STYLE_MOTIF
 #endif
 #ifndef QT_NO_STYLE_CDE
 #  define QT_NO_STYLE_CDE
-#endif
-#ifndef QT_NO_STYLE_STYLESHEET
-#  define QT_NO_STYLE_STYLESHEET
 #endif
 #ifndef QT_NO_STYLE_WINDOWSCE
 #  define QT_NO_STYLE_WINDOWSCE
@@ -337,9 +249,6 @@
 #endif
 
 /* Utilities */
-#ifndef QT_NO_ACCESSIBILITY
-#  define QT_NO_ACCESSIBILITY
-#endif
 #ifndef QT_NO_COMPLETER
 #  define QT_NO_COMPLETER
 #endif

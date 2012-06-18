@@ -45,6 +45,12 @@ breakpad {
     !isEmpty(QMAKE_STRIP):QMAKE_POST_LINK = $$QMAKE_POST_LINK$$escape_expand(\\n\\t)$$quote($$QMAKE_STRIP $$DEBUGFILENAME)
 }
 
+# Add .nexe extention on NaCl
+nacl {
+    load(resolve_target)
+    TARGET=$$QMAKE_RESOLVED_TARGET #resolve_target sets QMAKE_RESOLVED_TARGET, but that seems to have no effect.
+}
+
 QMAKE_INCDIR += $$QMAKE_INCDIR_POST
 QMAKE_LIBDIR += $$QMAKE_LIBDIR_POST
 

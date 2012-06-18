@@ -41,7 +41,10 @@
 #ifndef QPLATFORMDEFS_H
 #define QPLATFORMDEFS_H
 
-#include "../../common/nacl/qplatformdefs.h"
+#define QT_NO_SOCKET_H
+
 #include "../../common/posix/qplatformdefs.h"
+#include "../../common/nacl/qplatformdefs.h"
+
 
 #endif // QPLATFORMDEFS_H

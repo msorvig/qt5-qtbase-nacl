@@ -50,6 +50,7 @@
 #include "qreadwritelock_p.h"
 
 #include <errno.h>
+#include <sys/time.h>
 
 #ifndef QT_NO_THREAD
 
