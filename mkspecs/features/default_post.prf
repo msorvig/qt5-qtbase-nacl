@@ -48,7 +48,6 @@ breakpad {
 # Add .nexe extention on NaCl
 nacl {
     load(resolve_target)
-    TARGET=$$QMAKE_RESOLVED_TARGET #resolve_target sets QMAKE_RESOLVED_TARGET, but that seems to have no effect.
 }
 
 QMAKE_INCDIR += $$QMAKE_INCDIR_POST

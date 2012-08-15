@@ -22,24 +22,16 @@ QtModule::~QtModule()
 {
     // Attempt sane shutdown:
     QtPepperMain *pepperMain = QtPepperMain::get();
-    QMutexLocker lock(&pepperMain->m_mutex);
+    //QMutexLocker lock(&pepperMain->m_mutex);
     pepperMain->m_exitNow = true;
     QTimer::singleShot(0, qApp, SLOT(quit()));
-
-    // The Qt thread may be waiting (or be about to wait). Wake
-    // it until it detects the qApp->quit(), exits the event loop,
-    // returns from main and clears the m_qtRunning flag.
-    while (pepperMain->m_qtRunning) {
-        pepperMain->m_qtWait.wakeOne();
-        pepperMain->m_pepperWait.wait(&pepperMain->m_mutex, 10);
-    }
-    glTerminatePPAPI();
+    //    glTerminatePPAPI();
 }
 
 bool QtModule::Init()
 {
     globalCore = core();
-    bool glOk = glInitializePPAPI(get_browser_interface()) == GL_TRUE;
+//    bool glOk = glInitializePPAPI(get_browser_interface()) == GL_TRUE;
 
     return true;
 }

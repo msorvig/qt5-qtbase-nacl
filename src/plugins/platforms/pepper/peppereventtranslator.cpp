@@ -44,7 +44,7 @@
 #include <ppapi/cpp/point.h>
 #include <ppapi/cpp/var.h>
 
-#include <QWindowSystemInterface>
+#include <qpa/qwindowsysteminterface.h>
 
 #include "3rdparty/keyboard_codes_posix.h"
 #include "qpeppermain.h"
@@ -289,7 +289,7 @@ Qt::Key PepperEventTranslator::translatePepperKey(uint32_t pepperKey, bool *outA
 }
 
 /*
-    Translate supported modifiers (first five pepper modifers).
+    Translate supported modifiers (first five pepper modifiers).
     pepper starts at 0x1, Qt starts at 0x02000000. (same order)
 */
 Qt::KeyboardModifiers PepperEventTranslator::translatePepperKeyModifiers(uint32_t modifier)

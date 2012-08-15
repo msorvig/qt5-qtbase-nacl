@@ -51,6 +51,7 @@ win32 {
             nacl {
                 TARGET_EXT = .nexe
                 QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}$${TARGET_EXT}
+                TARGET=$$QMAKE_RESOLVED_TARGET # setting QMAKE_RESOLVED_TARGET only seems to have no effect.
             } else {
                 QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}
             }

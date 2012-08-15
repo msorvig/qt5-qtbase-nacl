@@ -39,36 +39,37 @@
 **
 ****************************************************************************/
 
-#ifndef QPEPPERPLATFORMWINDOW_H
-#define QPEPPERPLATFORMWINDOW_H
+#ifndef QPEPPERBACKINGSTORE_H
+#define QPEPPERBACKINGSTORE_H
 
-#include <QtGui/QPlatformWindow>
-
-
-#include "qpepperhelpers.h"
-#include "qpeppercompositor.h"
-
+#include "qpepperplatformwindow.h"
+#include <qpa/qplatformbackingstore.h>
 
 QT_BEGIN_NAMESPACE
 
-class QPepperWindowSurface;
-class QPepperGLContext;
-class QPepperPlatformWindow : public QPlatformWindow
+class QPepperBackingStore : public QPlatformBackingStore
 {
 public:
-    QPepperPlatformWindow(QWindow *window, bool isFirstWindow);
-    ~QPepperPlatformWindow();
-    WId winId() const;
-    void setVisible(bool visible);
-    void raise();
-    void lower();
-    void setGeometry(const QRect &rect);
+    QPepperBackingStore(QWindow *window);
+    ~QPepperBackingStore();
 
-    bool m_isVisible;
-    bool m_trackInstanceSize;
-    quint32 m_windowId;
+    QPaintDevice *paintDevice();
+    void beginPaint(const QRegion &);
+    void endPaint();
+    void flush(QWindow *widget, const QRegion &region, const QPoint &offset);
+    void resize (const QSize &size, const QRegion &);
+
+    void createFrameBuffer(QSize size);
+    void setFrameBuffer(QImage *frameBuffer);
+    void setPepperInstance(QPepperInstance *instance);
+
+    bool m_isInPaint;
 private:
+    QSize m_size;
+    QPepperPlatformWindow *m_PepperWindow;
     QPepperCompositor *m_compositor;
+    QImage *m_frameBuffer;
+    bool m_ownsFrameBuffer;
 };
 
 QT_END_NAMESPACE

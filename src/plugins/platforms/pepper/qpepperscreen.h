@@ -39,37 +39,24 @@
 **
 ****************************************************************************/
 
-#ifndef QPEPPERBACKINGSTORE_H
-#define QPEPPERBACKINGSTORE_H
+#ifndef QPEPPERSCREEN_H
+#define QPEPPERSCREEN_H
 
-#include "qpepperplatformwindow.h"
-#include <QPlatformBackingStore>
+#include <qpa/qplatformscreen.h>
 
 QT_BEGIN_NAMESPACE
 
-class QPepperBackingStore : public QPlatformBackingStore
+class QPepperScreen : public QPlatformScreen
 {
 public:
-    QPepperBackingStore(QWindow *window);
-    ~QPepperBackingStore();
+    QPepperScreen();
+    QRect geometry() const;
+    int depth() const { return m_depth; }
+    QImage::Format format() const { return m_format; }
 
-    QPaintDevice *paintDevice();
-    void beginPaint(const QRegion &);
-    void endPaint();
-    void flush(QWindow *widget, const QRegion &region, const QPoint &offset);
-    void resize (const QSize &size, const QRegion &);
-
-    void createFrameBuffer(QSize size);
-    void setFrameBuffer(QImage *frameBuffer);
-    void setPepperInstance(QPepperInstance *instance);
-
-    bool m_isInPaint;
-private:
-    QSize m_size;
-    QPepperPlatformWindow *m_PepperWindow;
-    QPepperCompositor *m_compositor;
-    QImage *m_frameBuffer;
-    bool m_ownsFrameBuffer;
+public:
+    int m_depth;
+    QImage::Format m_format;
 };
 
 QT_END_NAMESPACE

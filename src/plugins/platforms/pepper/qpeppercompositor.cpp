@@ -137,8 +137,8 @@ void QPepperCompositor::waitForFlushed(QPlatformWindow *surface)
 
     QtPepperMain *pepperMain = QtPepperMain::get();
     while (m_pepperInstance->m_inFlush) {
-        QMutexLocker lock(&pepperMain->m_mutex);
-        pepperMain->qtThreadWait_impl();
+        // #####
+
     }
 }
 

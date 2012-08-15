@@ -52,6 +52,7 @@
 #include "ppapi/cpp/graphics_2d.h"
 #include "ppapi/cpp/image_data.h"
 #include <ppapi/cpp/completion_callback.h>
+#include <ppapi/utility/completion_callback_factory.h>
 
 class QPepperIntegration;
 class QPepperInstance : public pp::Instance
@@ -60,7 +61,7 @@ public:
     QPepperInstance(PP_Instance instance);
     virtual ~QPepperInstance();
 
-    // pp::Instance virtuals. Called from the pepper thread.
+    // pp::Instance virtuals:
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]);
     virtual void DidChangeView(const pp::Rect& position, const pp::Rect& clip);
     virtual void DidChangeFocus(bool has_focus);
@@ -68,7 +69,7 @@ public:
     virtual bool HandleDocumentLoad(const pp::URLLoader& url_loader);
     virtual void HandleMessage(const pp::Var& message);
 
-    // Interface for QPepperCompositor. Called from the Qt thread.
+    // Interface for QPepperCompositor:
     void flush();
     void waitForFlushed();
 

@@ -42,8 +42,9 @@
 #ifndef QPLATFORMINTEGRATION_PEPPER_H
 #define QPLATFORMINTEGRATION_PEPPER_H
 
-#include <QtGui/QPlatformIntegration>
-#include <QtGui/QPlatformScreen>
+#include <qpa/qplatformintegrationplugin.h>
+#include <qpa/qplatformintegration.h>
+#include <qpa/qplatformscreen.h>
 #include "qpepperscreen.h"
 
 QT_BEGIN_NAMESPACE

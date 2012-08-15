@@ -39,35 +39,37 @@
 **
 ****************************************************************************/
 
+#ifndef QPEPPERPLATFORMWINDOW_H
+#define QPEPPERPLATFORMWINDOW_H
 
-#include <QtGui/QPlatformIntegrationPlugin>
-#include "qpepperintegration.h"
-#include <qdebug.h>
+#include <qpa/qplatformwindow.h>
+
+#include "qpepperhelpers.h"
+#include "qpeppercompositor.h"
+
 
 QT_BEGIN_NAMESPACE
 
-class QPepperIntegrationPlugin : public QPlatformIntegrationPlugin
+class QPepperWindowSurface;
+class QPepperGLContext;
+class QPepperPlatformWindow : public QPlatformWindow
 {
 public:
-    QStringList keys() const;
-    QPlatformIntegration *create(const QString&, const QStringList&);
+    QPepperPlatformWindow(QWindow *window, bool isFirstWindow);
+    ~QPepperPlatformWindow();
+    WId winId() const;
+    void setVisible(bool visible);
+    void raise();
+    void lower();
+    void setGeometry(const QRect &rect);
+
+    bool m_isVisible;
+    bool m_trackInstanceSize;
+    quint32 m_windowId;
+private:
+    QPepperCompositor *m_compositor;
 };
 
-QStringList QPepperIntegrationPlugin::keys() const
-{
-    QStringList list;
-    list << "Pepper";
-    return list;
-}
-
-QPlatformIntegration* QPepperIntegrationPlugin::create(const QString& system, const QStringList& paramList)
-{
-    Q_UNUSED(paramList);
-    if (system.toLower() == "pepper")
-        return new QPepperIntegration;
-    return 0;
-}
-
-Q_EXPORT_PLUGIN2(pepper, QPepperIntegrationPlugin)
-
 QT_END_NAMESPACE
+
+#endif
