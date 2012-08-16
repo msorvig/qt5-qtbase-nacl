@@ -3849,7 +3849,13 @@ fi
 # detect avx support
 if [ "${CFG_AVX}" = "auto" ]; then
     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/common/avx "avx" $L_FLAGS $I_FLAGS $D_FLAGS $l_FLAGS; then
-       case "$XQMAKESPEC" in
+        echo "testing AVX for " $XQMAKESPEC
+        case "$XQMAKESPEC" in
+           *nacl*)
+               echo "on nacl"
+               # AVX instruction usage causes validation errors on Native CLient (pepper 19 toolchain).
+               CFG_AVX=no
+               ;;
            *g++*|*-clang*)
                # Some clang versions produce internal compiler errors compiling Qt AVX code
                case `$TEST_COMPILER --version` in

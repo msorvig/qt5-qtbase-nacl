@@ -1779,7 +1779,7 @@ QString QCoreApplication::applicationFilePath()
     }
 #  endif
 
-    QString argv0 = QFile::decodeName(arguments().at(0).toLocal8Bit());
+    QString argv0 = arguments().count() > 0 ? QFile::decodeName(arguments().at(0).toLocal8Bit()) : QString();
     QString absPath;
 
     if (!argv0.isEmpty() && argv0.at(0) == QLatin1Char('/')) {
