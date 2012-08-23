@@ -602,7 +602,7 @@ bool QLibraryPrivate::isPlugin()
     }
 #endif
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC) && !defined (Q_OS_NACL)
     if (!pHnd) {
         // use unix shortcut to avoid loading the library
         success = qt_unix_query(fileName, this);

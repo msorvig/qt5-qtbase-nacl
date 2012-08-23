@@ -112,6 +112,8 @@ void QFactoryLoader::update()
 {
 #ifdef QT_SHARED
     Q_D(QFactoryLoader);
+
+#ifndef Q_OS_NACL // Skip all filname variations on NaCl, hardcode "libqtpepper.so"
     QStringList paths = QCoreApplication::libraryPaths();
     for (int i = 0; i < paths.count(); ++i) {
         const QString &pluginDir = paths.at(i);
@@ -133,13 +135,21 @@ void QFactoryLoader::update()
                 qDebug() << "QFactoryLoader::QFactoryLoader() looking at" << fileName;
             }
             library = QLibraryPrivate::findOrCreate(QFileInfo(fileName).canonicalFilePath());
+#else
+        QLibraryPrivate *library = QLibraryPrivate::findOrCreate(QStringLiteral("libqtpepper.so"));
+#endif
+
             if (!library->isPlugin()) {
                 if (qt_debug_component()) {
                     qDebug() << library->errorString;
                     qDebug() << "         not a plugin";
                 }
                 library->release();
+#ifndef Q_OS_NACL
                 continue;
+#else
+                return;
+#endif
             }
 
             QStringList keys;
@@ -162,7 +172,11 @@ void QFactoryLoader::update()
 
             if (!metaDataOk) {
                 library->release();
+#ifndef Q_OS_NACL
                 continue;
+#else
+                return;
+#endif
             }
 
             d->libraryList += library;
@@ -185,8 +199,10 @@ void QFactoryLoader::update()
                     d->keyList += keys.at(k);
                 }
             }
+#ifndef Q_OS_NACL // (for loop end braces)
         }
     }
+#endif
 #else
     Q_D(QFactoryLoader);
     if (qt_debug_component()) {

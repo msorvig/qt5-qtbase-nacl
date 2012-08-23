@@ -669,9 +669,11 @@ static void init_platform(const QString &pluginArgument, const QString &platform
     const QString name = arguments.takeFirst().toLower();
 
    // Create the platform integration.
+    qDebug() << "#### QPlatformIntegrationFactory::create" << name << arguments << platformPluginPath;
     QGuiApplicationPrivate::platform_integration = QPlatformIntegrationFactory::create(name, arguments, platformPluginPath);
     if (QGuiApplicationPrivate::platform_integration) {
         QGuiApplicationPrivate::platform_name = new QString(name);
+        qDebug() << "#### QPlatformIntegrationFactory::createed" << name;
     } else {
         QStringList keys = QPlatformIntegrationFactory::keys(platformPluginPath);
         QString fatalMessage =
@@ -761,6 +763,10 @@ void QGuiApplicationPrivate::createPlatformIntegration()
     if (platformPluginPath.isEmpty() && QDir(bundlePluginPath).exists()) {
         platformPluginPath = bundlePluginPath;
     }
+#endif
+
+#ifdef Q_OS_NACL
+    platformPluginPath = "/platforms/";
 #endif
 
     QByteArray platformName;

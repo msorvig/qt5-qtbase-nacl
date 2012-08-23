@@ -58,18 +58,19 @@ public:
 QStringList QPepperIntegrationPlugin::keys() const
 {
     QStringList list;
-    list << QStringLiteral("Pepper");
+    list << QStringLiteral("pepper");
     return list;
 }
 
 QPlatformIntegration* QPepperIntegrationPlugin::create(const QString& system, const QStringList& paramList)
 {
     Q_UNUSED(paramList);
-    if (system.toLower() == QStringLiteral("Pepper"))
+    //qDebug() << "QPepperIntegrationPlugin::create" << system;
+    if (system.toLower() == QStringLiteral("pepper"))
         return new QPepperIntegration;
     return 0;
 }
 
 QT_END_NAMESPACE
 
-//#include "main.moc"
+#include "pepperpluginmain.moc"

@@ -1958,7 +1958,7 @@ QStringList getBackTrace()
     //save all of the function names onto the QStringList....
     //(note that none of this will work if we have run out of memory)
     QStringList ret;
-    
+#ifndef QT_BOOTSTRAPPED
     for (int i=0; i<nfuncs; i++)
     {
         
@@ -1967,14 +1967,14 @@ QStringList getBackTrace()
         
         if (demangled)
         {
-            ret.append(demangled);
+            ret.append(QString::fromAscii(demangled));
             delete demangled;
         }
         else
             //append the raw symbol
-            ret.append(symbols[i]);
+            ret.append(QString::fromAscii(symbols[i]));
     }
-    
+#endif
     //we now need to release the memory of the symbols array. Since it was allocated using
     //malloc, we must release it using 'free'
     free(symbols);
