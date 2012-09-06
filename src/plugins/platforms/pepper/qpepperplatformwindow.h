@@ -46,7 +46,7 @@
 
 #include "qpepperhelpers.h"
 #include "qpeppercompositor.h"
-
+#include "qpepperintegration.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -55,8 +55,9 @@ class QPepperGLContext;
 class QPepperPlatformWindow : public QPlatformWindow
 {
 public:
-    QPepperPlatformWindow(QWindow *window, bool isFirstWindow);
+    QPepperPlatformWindow(QWindow *window);
     ~QPepperPlatformWindow();
+
     WId winId() const;
     void setVisible(bool visible);
     void raise();
@@ -65,8 +66,9 @@ public:
 
     bool m_isVisible;
     bool m_trackInstanceSize;
-    quint32 m_windowId;
+    bool m_useCompositor;
 private:
+    QPepperIntegration *m_pepperIntegraion;
     QPepperCompositor *m_compositor;
 };
 

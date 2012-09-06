@@ -48,8 +48,9 @@
 
 #include <QtGui>
 
-class PepperEventTranslator
+class PepperEventTranslator : public QObject
 {
+Q_OBJECT
 public:
     PepperEventTranslator();
     bool processEvent(const pp::InputEvent& event);
@@ -63,6 +64,9 @@ public:
     Qt::MouseButtons translatePepperMouseModifiers(uint32_t modifier);
     Qt::Key translatePepperKey(uint32_t pepperKey, bool *outAlphanumretic);
     Qt::KeyboardModifiers translatePepperKeyModifiers(uint32_t modifier);
+Q_SIGNALS:
+    void getWindowAt(const QPoint &point, QWindow **window);
+    void getKeyWindow(QWindow **window);
 private:
     uint32_t currentPepperKey;
     QPoint currentMouseGlobalPos;

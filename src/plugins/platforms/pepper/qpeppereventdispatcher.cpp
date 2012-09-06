@@ -87,6 +87,7 @@ bool QPepperEventDispatcher::unregisterTimers(QObject *object)
     return false;
 }
 
+extern "C" { int PpapiPluginMain(void); }
 bool QPepperEventDispatcher::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
     if (firstProcessEventsCall) {
@@ -94,15 +95,15 @@ bool QPepperEventDispatcher::processEvents(QEventLoop::ProcessEventsFlags flags)
         qDebug() << "QPepperEventDispatcher::processEvents first";
 
         // At this point app.exec() has been called and control
-        // has been passed to Qt. Call startPepper which will
-        // call
-        QtPepperMain::get()->m_eventDispatcher = this;
-        QtPepperMain::execPepper();
+        // has been passed to Qt. Call PpapiPluginMain which will
+        // start and transfer control to pepper.  Pepper will then
+        // call CreateModule() and CreateInstance() in peppermodule.cpp,
+        // and will eventually start calling the event callbacks on
+        // the instance - temporarily passing control back to Qt.
+        PpapiPluginMain();
 
         // At this point the application is shutting down.
-
         qDebug() << "QPepperEventDispatcher::processEvents first done";
-
     }
     return QUnixEventDispatcherQPA::processEvents(flags);
 }

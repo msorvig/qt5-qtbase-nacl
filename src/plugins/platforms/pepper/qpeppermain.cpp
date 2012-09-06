@@ -61,18 +61,10 @@ QtPepperMain *QtPepperMain::get()
 }
 
 QtPepperMain::QtPepperMain()
-:m_mainInstance(0)
+:m_integration(0)
 ,m_exitNow(false) // set when Qt should exit immediately.
 {
 
-}
-
-extern "C" { int PpapiPluginMain(void); }
-
-void QtPepperMain::execPepper()
-{
-    qDebug() << "QtPepperMain::execPepper";
-    PpapiPluginMain();
 }
 
 void QtPepperMain::postJavascriptMessage(const QByteArray &message)
@@ -82,14 +74,6 @@ void QtPepperMain::postJavascriptMessage(const QByteArray &message)
         instance->PostMessage(pp::Var(message.constData()));
     }
     */
-}
-
-void QtPepperMain::setInstance(QPepperInstance *instance)
-{
-    m_mainInstance = instance;
-//    extern pp::Instance *qtPepperInstance; // qglobal.cpp
-//    qtPepperInstance = m_mainInstance;
-    m_compositor.setPepperInstance(instance);
 }
 
 void qtPepperMessageHandlerPrinter(void *msg)

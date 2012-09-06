@@ -57,8 +57,7 @@ QPepperCompositedWindow::QPepperCompositedWindow()
 }
 
 QPepperCompositor::QPepperCompositor()
-    :m_pepperInstance(0)
-    ,m_frameBuffer(0)
+    :m_frameBuffer(0)
     ,m_needComposit(false)
 {
 
@@ -96,12 +95,14 @@ void QPepperCompositor::setVisible(QPlatformWindow *window, bool visible)
     if (compositedWindow.visible == visible)
         return;
 
-        qDebug() << "QPepperCompositor::setVisible " << this << visible;
+    qDebug() << "QPepperCompositor::setVisible " << this << visible;
 
     compositedWindow.visible = visible;
     compositedWindow.flushPending = true;
     compositedWindow.damage = compositedWindow.window->geometry();
+    qDebug() << "QPepperCompositor::setVisible done 1";
     maybeComposit();
+    qDebug() << "QPepperCompositor::setVisible done 2";
 }
 
 void QPepperCompositor::raise(QPlatformWindow *window)
@@ -133,22 +134,9 @@ void QPepperCompositor::flush(QPlatformWindow *window)
 
 void QPepperCompositor::waitForFlushed(QPlatformWindow *surface)
 {
-    if (!m_pepperInstance)
-        return;
-
     if (!m_compositedWindows[surface->window()].flushPending)
         return;
 
-//    QtPepperMain *pepperMain = QtPepperMain::get();
-//    while (m_pepperInstance->m_inFlush) {
-        // #####
-//
-//    }
-}
-
-void QPepperCompositor::setPepperInstance(QPepperInstance *pepperInstance)
-{
-    m_pepperInstance = pepperInstance;
 }
 
 void QPepperCompositor::setRasterFrameBuffer(QImage *frameBuffer)
@@ -194,14 +182,10 @@ QWindow *QPepperCompositor::keyWindow()
 
 void QPepperCompositor::maybeComposit()
 {
-    qDebug() << "QPepperCompositor::maybeComposit" << m_pepperInstance;
-    if (!m_pepperInstance)
-        return;
-
-    if (!m_pepperInstance->m_inFlush)
+//    if (!m_pepperInstance->m_inFlush)
         composit();
-    else
-        m_needComposit = true;
+//    else
+//        m_needComposit = true;
 }
 
 void QPepperCompositor::composit()
@@ -212,12 +196,6 @@ void QPepperCompositor::composit()
         qWarning("QPepperCompositor: No frame buffer set");
         return;
     }
-    if (!m_pepperInstance) {
-        qWarning("QPepperCompositor: No Pepper instance set");
-        return;
-    }
-
-  //  m_pepperInstance->waitForFlushed();
 
     QPainter p(m_frameBuffer);
 
@@ -255,6 +233,6 @@ void QPepperCompositor::composit()
     //QRegion needsClear = damaged - painted;
     //qDebug() << "needsclear" << needsClear;
 
-    m_pepperInstance->flush();
+    emit flush();
 }
 

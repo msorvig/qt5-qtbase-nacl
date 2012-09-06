@@ -57,16 +57,14 @@ QPepperScreen::QPepperScreen()
 
 QRect QPepperScreen::geometry() const
 {
-    // TODO (msorvig) This function is called a lot, optimize!
-    QPepperInstance *instance = QtPepperMain::get()->m_mainInstance;
-    QRect localGeometry = QRect(0,0, 400, 400);
+    QRect localGeometry = QRect(0,0, 400, 400); // startup geometry, use before pepper is initialized
 
-    if (instance) {
+    if (QPepperInstance *instance = QtPepperMain::get()->m_integration->pepperInstance()) {
         QRect globalGeometry = toQRect(instance->m_currentGeometry);
         localGeometry = QRect(QPoint(0, 0), globalGeometry.size());
     }
 
-    qDebug() << "QPepperScreen::geometry()" << localGeometry;
+//    qDebug() << "QPepperScreen::geometry()" << localGeometry;
 
     return localGeometry;
 }

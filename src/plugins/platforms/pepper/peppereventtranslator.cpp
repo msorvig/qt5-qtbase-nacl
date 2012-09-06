@@ -99,7 +99,9 @@ bool PepperEventTranslator::processMouseEvent(const pp::MouseInputEvent &event, 
     Qt::MouseButtons modifiers = translatePepperMouseModifiers(event.GetModifiers());
 
     QPoint localPoint = point;
-    QWindow *window = QtPepperMain::get()->m_compositor.windowAt(point);
+    QWindow *window  = 0;
+    emit getWindowAt(point, &window);
+
     if (window) {
         localPoint = point - window->pos();
 //        qDebug() << window << window->pos() << point << localPoint;
@@ -120,7 +122,8 @@ bool PepperEventTranslator::processMouseEvent(const pp::MouseInputEvent &event, 
 
 bool PepperEventTranslator::processWheelEvent(const pp::WheelInputEvent &event)
 {
-    QWindow *window = QtPepperMain::get()->m_compositor.windowAt(currentMouseGlobalPos);
+    QWindow *window = 0;
+    emit getWindowAt(currentMouseGlobalPos, &window);
 
     if (event.GetTicks().x() != 0) {
         QWindowSystemInterface::handleWheelEvent(window, QPoint(), currentMouseGlobalPos, event.GetTicks().x(), Qt::Horizontal);
@@ -149,7 +152,9 @@ bool PepperEventTranslator::processKeyEvent(const pp::KeyboardInputEvent &event,
     Qt::KeyboardModifiers modifiers = translatePepperKeyModifiers(event.GetModifiers());
     bool alphanumretic;
     Qt::Key key = translatePepperKey(event.GetKeyCode(), &alphanumretic);
-    QWindow *window = QtPepperMain::get()->m_compositor.keyWindow();
+
+    QWindow *window = 0;
+    emit getKeyWindow(&window);
 
     if (eventType == PP_INPUTEVENT_TYPE_KEYDOWN) {
         currentPepperKey = event.GetKeyCode();
@@ -171,7 +176,10 @@ bool PepperEventTranslator::processCharacterEvent(const pp::KeyboardInputEvent &
     QString text = QString::fromUtf8(event.GetCharacterText().AsString().c_str()); // ### wide characters?
     Qt::KeyboardModifiers modifiers = translatePepperKeyModifiers(event.GetModifiers());
     Qt::Key key = translatePepperKey(currentPepperKey, 0);
-    QWindow *window = QtPepperMain::get()->m_compositor.keyWindow();
+
+    QWindow *window = 0;
+    emit getKeyWindow(&window);
+
     QWindowSystemInterface::handleKeyEvent(window, QEvent::KeyPress, key, modifiers, text);
 
     return true;

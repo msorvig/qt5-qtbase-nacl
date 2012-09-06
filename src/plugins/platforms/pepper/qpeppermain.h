@@ -65,19 +65,12 @@ public:
     static QtPepperMain *get();
     QtPepperMain();
 
-    static void execPepper();
-
-    void setInstance(QPepperInstance *instance);
-    QPepperInstance *instance();
 
     void postJavascriptMessage(const QByteArray &message);
 
     void log(const QString &message);
 
-    QPepperInstance *m_mainInstance;
-    QPepperCompositor m_compositor;
-    QPepperScreen *m_screen;
-    QPepperEventDispatcher *m_eventDispatcher;
+    QPepperIntegration *m_integration;
 
     bool m_exitNow;
 };

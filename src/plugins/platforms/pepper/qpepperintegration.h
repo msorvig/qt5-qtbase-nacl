@@ -45,15 +45,21 @@
 #include <qpa/qplatformintegrationplugin.h>
 #include <qpa/qplatformintegration.h>
 #include <qpa/qplatformscreen.h>
+
 #include "qpepperscreen.h"
+#include "qpepperglcontext.h"
+#include "pepperinstance.h"
+#include "qpeppereventdispatcher.h"
 
 QT_BEGIN_NAMESPACE
 
 class QPlatformFontDatabase; 
 class QPepperFontDatabase;
 class QEventDispatcherUNIX;
-class QPepperIntegration : public QPlatformIntegration
+class QPepperCompositor;
+class QPepperIntegration : public QObject, public QPlatformIntegration
 {
+    Q_OBJECT
 public:
     static QPepperIntegration *createPepperIntegration();
     QPepperIntegration();
@@ -62,13 +68,36 @@ public:
 
     QPlatformWindow *createPlatformWindow(QWindow *window) const;
     QPlatformBackingStore *createPlatformBackingStore(QWindow *window) const;
+    QPlatformOpenGLContext *createPlatformOpenGLContext(QOpenGLContext *context) const;
     QAbstractEventDispatcher* guiThreadEventDispatcher() const;
 
     QPlatformFontDatabase *fontDatabase() const;
+
+    void setPepperInstance(QPepperInstance *instance);
+    QPepperInstance *pepperInstance() const;
+    QPepperCompositor *pepperCompositor() const;
+
+    PepperEventTranslator *pepperEventTranslator();
+    void processEvents();
+
+    bool wantsOpenGLGraphics() const;
+    void setRasterFrameBuffer(QImage *m_frameBuffer);
+
+private Q_SLOTS:
+    void getWindowAt(const QPoint & point, QWindow **window);
+    void getKeyWindow(QWindow **window);
+    void flushRasterFrameBuffer();
 private:
+    QPepperScreen *m_screen;
+    QPepperInstance *m_pepperInstance;
+    QPepperCompositor *m_compositor;
+    PepperEventTranslator *m_eventTranslator;
+    QPepperEventDispatcher *m_pepperEventDispatcher;
+
+    mutable bool useOpenglToplevel;
     mutable bool m_firstWindowCreated;
     mutable QPepperFontDatabase *m_fontDatabase;
-    QEventDispatcherUNIX *m_eventDispatcherUnix;
+
 };
 
 QT_END_NAMESPACE

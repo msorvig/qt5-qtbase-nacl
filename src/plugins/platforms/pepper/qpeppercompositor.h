@@ -60,9 +60,9 @@ public:
     QList<QWindow *> childWindows;
 };
 
-class QPepperCompositor //: public QObject
+class QPepperCompositor : public QObject
 {
-//Q_OBJECT
+Q_OBJECT
 public:
     QPepperCompositor();
 // Client API
@@ -78,10 +78,11 @@ public:
     void waitForFlushed(QPlatformWindow *surface);
 
 // Server API
-    void setPepperInstance(QPepperInstance *pepperInstance);
-    void setRasterFrameBuffer(QImage *frameBuffer);
-//public slots:
-    void flushCompleted();
+    void setRasterFrameBuffer(QImage *frameBuffer); // call when the frame buffer geometry changes
+Q_SIGNALS:
+    void flush();                                   // emitted when the server should flush the frame buffer
+public Q_SLOTS:
+    void flushCompleted();                          // call when the frame buffer flush has completed.
 
 // Misc API
     QWindow *windowAt(QPoint p);
@@ -91,7 +92,6 @@ public:
 private:
     QHash<QWindow *, QPepperCompositedWindow> m_compositedWindows;
     QList<QWindow *> m_windowStack;
-    QPepperInstance *m_pepperInstance;
     QImage *m_frameBuffer;
     bool m_needComposit;
 };

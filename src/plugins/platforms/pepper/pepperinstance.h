@@ -77,7 +77,8 @@ public:
     void flushFunction(int32_t);
     void flushCompletedCallback(int32_t);
     void setupTestGraphics(pp::Size newSize);
-    PepperEventTranslator m_eventTranslator;
+
+    QPepperIntegration *m_pepperIntegraton;
 
     pp::Var m_console;
     pp::Rect m_currentGeometry;

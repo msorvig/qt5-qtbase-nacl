@@ -39,23 +39,19 @@
 **
 ****************************************************************************/
 
-#include "qplatformwindowformat_qpa.h"
 #include "qpepperglcontext.h"
 #include "pepperinstance.h"
 
 #include <ppapi/gles2/gl2ext_ppapi.h>
-#include <ppapi/cpp/dev/context_3d_dev.h>
-#include <ppapi/cpp/dev/surface_3d_dev.h>
+#include <ppapi/cpp/graphics_3d.h>
+#include <ppapi/cpp/graphics_3d_client.h>
 #include <qdebug.h>
 
-QPepperGLContext::QPepperGLContext(QPepperInstance *instance)
-    :m_instance(instance)
+QPepperGLContext::QPepperGLContext()
+:m_instance(0)
+,m_context(0)
+,m_pendingFlush(false)
 {
-    QPepperInstance *m_instance;
-    m_instance->pp_instance();
-    m_context = 0;
-    m_surface = 0;
-    m_pendingFlush = false;
 }
 
 QPepperGLContext::~QPepperGLContext()
@@ -63,32 +59,49 @@ QPepperGLContext::~QPepperGLContext()
 
 }
 
-void QPepperGLContext::makeCurrent()
+bool QPepperGLContext::makeCurrent(QPlatformSurface *surface)
 {
-    qDebug() << "QPepperGLContext::makeCurrent";
-    return;
+    return false;
+    /*
 
-    if (!m_context || m_context->is_null()) {
-        m_context = new pp::Context3D_Dev(*m_instance, 0, pp::Context3D_Dev(), NULL);
-        if (m_context->is_null()) {
-            glSetCurrentContextPPAPI(0);
-            return;
-        }
-
-    m_surface = new pp::Surface3D_Dev(*m_instance, 0, NULL);
-    m_context->BindSurfaces(*m_surface, *m_surface);
-        m_instance->BindGraphics(*m_surface);
+    if (m_instance == NULL) {
+        glSetCurrentContextPPAPI(0);
+        return false;
     }
-    glSetCurrentContextPPAPI(m_surface->pp_resource());
+
+    // Lazily create the Pepper context.
+    if (m_context.is_null()) {
+      int32_t attribs[] = {
+          PP_GRAPHICS3DATTRIB_ALPHA_SIZE, 8,
+          PP_GRAPHICS3DATTRIB_DEPTH_SIZE, 24,
+          PP_GRAPHICS3DATTRIB_STENCIL_SIZE, 8,
+          PP_GRAPHICS3DATTRIB_SAMPLES, 0,
+          PP_GRAPHICS3DATTRIB_SAMPLE_BUFFERS, 0,
+          PP_GRAPHICS3DATTRIB_WIDTH, size_.width(),
+          PP_GRAPHICS3DATTRIB_HEIGHT, size_.height(),
+          PP_GRAPHICS3DATTRIB_NONE
+      };
+      context_ = pp::Graphics3D(instance, pp::Graphics3D(), attribs);
+      if (context_.is_null()) {
+        glSetCurrentContextPPAPI(0);
+        return false;
+      }
+      instance->BindGraphics(context_);
+    }
+    glSetCurrentContextPPAPI(context_.pp_resource());
+    return true;
+*/
 }
 
 void QPepperGLContext::doneCurrent()
 {
+/*
     qDebug() << "QPepperGLContext::doneCurrent";
     return;
     m_instance->BindGraphics(pp::Surface3D_Dev());
     m_context->BindSurfaces(pp::Surface3D_Dev(), pp::Surface3D_Dev());
     glSetCurrentContextPPAPI(0);
+*/
 }
 
 namespace {
@@ -98,7 +111,7 @@ namespace {
     }
 }
 
-void QPepperGLContext::swapBuffers()
+void QPepperGLContext::swapBuffers(QPlatformSurface *surface)
 {
     qDebug() << "QPepperGLContext::swapBuffers";
     return;
@@ -114,12 +127,14 @@ void QPepperGLContext::flushCallback()
     m_pendingFlush = false;
 }
 
-void* QPepperGLContext::getProcAddress(const QString& procName)
+//    virtual void (*getProcAddress(const QByteArray&));
+
+QFunctionPointer QPepperGLContext::getProcAddress(const QByteArray& procName)
 {
     qDebug() << "QPepperGLContext::getProcAddress" << procName;
    // const PPB_OpenGLES2_Dev* functionPointers = glGetInterfacePPAPI();
 
-    if (procName == QLatin1String("glIsRenderbufferEXT")) {
+    if (procName == QByteArrayLiteral("glIsRenderbufferEXT")) {
      //   return reinterpret_cast<void *>(functionPointers->IsRenderbuffer);
     }
     // ### ... and so on for all functions.
@@ -127,9 +142,10 @@ void* QPepperGLContext::getProcAddress(const QString& procName)
     return 0;
 }
 
-QPlatformWindowFormat QPepperGLContext::platformWindowFormat() const
+QSurfaceFormat QPepperGLContext::format() const
 {
     qDebug() << "QPepperGLContext::platformWindowFormat";
-    // ## which features?
-    return QPlatformWindowFormat::DoubleBuffer | QPlatformWindowFormat::DepthBuffer;
+    QSurfaceFormat format;
+    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    return format;
 }

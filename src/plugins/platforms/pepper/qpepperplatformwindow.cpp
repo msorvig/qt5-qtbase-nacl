@@ -40,29 +40,34 @@
 ****************************************************************************/
 
 #include "qpepperplatformwindow.h"
-//#include "qpepperglcontext.h"
+#include "qpepperglcontext.h"
 #include "qpeppermain.h"
 #include "peppermodule.h"
 #include "qpeppercompositor.h"
+#include <QtGui/QSurface>
 
 #include <qdebug.h>
 
 QT_BEGIN_NAMESPACE
 
-QPepperPlatformWindow::QPepperPlatformWindow(QWindow *window, bool isFirstWindow)
+QPepperPlatformWindow::QPepperPlatformWindow(QWindow *window)
 :QPlatformWindow(window)
 ,m_isVisible(false)
-//,m_pepperGlContext(0)
-,m_compositor(&QtPepperMain::get()->m_compositor)
 {
-    m_windowId = isFirstWindow ? 0 : quint32(this);
-    m_compositor->addRasterWindow(this);
-    qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow" << m_windowId << isFirstWindow;
+    m_pepperIntegraion = QtPepperMain::get()->m_integration;
+    m_compositor = m_pepperIntegraion->pepperCompositor();
+    m_useCompositor = (window->surfaceType() == QSurface::RasterSurface);
+
+    if (m_useCompositor)
+        m_compositor->addRasterWindow(this);
+
+    qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow";
 }
 
 QPepperPlatformWindow::~QPepperPlatformWindow()
 {
-    m_compositor->removeWindow(this);
+    if (m_useCompositor)
+        m_compositor->removeWindow(this);
 }
 
 WId QPepperPlatformWindow::winId() const
@@ -73,23 +78,27 @@ WId QPepperPlatformWindow::winId() const
 void QPepperPlatformWindow::setVisible(bool visible)
 {
     qDebug() << "QPepperPlatformWindow::setVisible" << visible;
-    m_compositor->setVisible(this, visible);
+    if (m_useCompositor)
+        m_compositor->setVisible(this, visible);
     qDebug() << "QPepperPlatformWindow::setVisible done";
 }
 
 void QPepperPlatformWindow::raise()
 {
-    m_compositor->raise(this);
+    if (m_useCompositor)
+        m_compositor->raise(this);
 }
 
 void QPepperPlatformWindow::lower()
 {
-    m_compositor->lower(this);
+    if (m_useCompositor)
+        m_compositor->lower(this);
 }
 
 void QPepperPlatformWindow::setGeometry(const QRect &rect)
 {
     qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
+    QPlatformWindow::setGeometry(rect);
 }
 
 QT_END_NAMESPACE

@@ -55,7 +55,7 @@ QPepperBackingStore::QPepperBackingStore(QWindow *window)
     qDebug() << "QPepperBackingStore::QPepperBackingStore";
     m_isInPaint = false;
     m_frameBuffer = 0;
-    m_compositor = &QtPepperMain::get()->m_compositor;
+    m_compositor = QtPepperMain::get()->m_integration->pepperCompositor();
     resize(window->size(), QRegion());
 }
 

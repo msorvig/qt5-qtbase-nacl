@@ -46,6 +46,7 @@
 #include "qpeppermain.h"
 #include "qpepperhelpers.h"
 #include "peppermodule.h"
+#include "qpepperintegration.h"
 #include <qpa/qwindowsysteminterface.h>
 #endif
 
@@ -80,8 +81,6 @@ QPepperInstance::~QPepperInstance()
     delete m_context2D;
     delete m_imageData2D;
     delete m_frameBuffer;
-
-    QtPepperMain::get()->setInstance(0);
 }
 
 bool QPepperInstance::Init(uint32_t argc, const char* argn[], const char* argv[])
@@ -103,9 +102,8 @@ bool QPepperInstance::Init(uint32_t argc, const char* argn[], const char* argv[]
     RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE | PP_INPUTEVENT_CLASS_WHEEL | PP_INPUTEVENT_CLASS_KEYBOARD);
 
     QtPepperMain *pepperMain = QtPepperMain::get();
-    pepperMain->setInstance(this); // ### pass arguments?
-    pepperMain->m_compositor.setPepperInstance(this);
-
+    m_pepperIntegraton = pepperMain->m_integration;
+    m_pepperIntegraton->setPepperInstance(this);
     return true;
 }
 
@@ -137,14 +135,8 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
                                geometry.size().width(), geometry.size().height(),
                                m_imageData2D->stride(), QImage::Format_ARGB32_Premultiplied);
 
-    // Set the frame buffer on the compositor
-    pepperMain->m_compositor.setRasterFrameBuffer(m_frameBuffer);
-    pepperMain->m_compositor.composit();
 
-    QWindowSystemInterface::handleScreenGeometryChange(pepperMain->m_screen->screen(), toQRect(m_currentGeometry));
-
-    // Let Qt process events;
-    QtPepperMain::get()->m_eventDispatcher->processEventsContinue();
+    m_pepperIntegraton->setRasterFrameBuffer(m_frameBuffer);
 }
 
 void QPepperInstance::DidChangeFocus(bool has_focus)
@@ -154,13 +146,8 @@ void QPepperInstance::DidChangeFocus(bool has_focus)
 
 bool QPepperInstance::HandleInputEvent(const pp::InputEvent& event)
 {
-    QtPepperMain *pepperMain = QtPepperMain::get();
-
-    // Translate and post event to Qt via the compositor
-    bool ret = m_eventTranslator.processEvent(event);
-
-    // Let Qt process events;
-    QtPepperMain::get()->m_eventDispatcher->processEventsContinue();
+    bool ret = m_pepperIntegraton->pepperEventTranslator()->processEvent(event);
+    m_pepperIntegraton->processEvents();
     return ret;
 }
 

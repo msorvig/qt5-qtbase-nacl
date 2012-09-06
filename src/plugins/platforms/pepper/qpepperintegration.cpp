@@ -49,6 +49,8 @@
 
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QtGui/QPlatformWindow>
+#include <QtGui/QSurface>
+#include <qpa/qwindowsysteminterface.h>
 #include <qdebug.h>
 
 QPepperIntegration * QPepperIntegration::createPepperIntegration()
@@ -59,42 +61,56 @@ QPepperIntegration * QPepperIntegration::createPepperIntegration()
 QPepperIntegration::QPepperIntegration()
     : m_firstWindowCreated(false)
 {
+    QtPepperMain::get()->m_integration = this;
+
+    m_screen = new QPepperScreen();
+    screenAdded(m_screen);
+
+    m_compositor = new QPepperCompositor();
+    m_eventTranslator = new PepperEventTranslator();
+    QObject::connect(m_eventTranslator, SIGNAL(getWindowAt(QPoint,QWindow**)), this, SLOT(getWindowAt(QPoint,QWindow**)));
+    QObject::connect(m_eventTranslator, SIGNAL(getKeyWindow(QWindow**)), this, SLOT(getKeyWindow(QWindow**)));
 
     qDebug() << "QPepperIntegration::QPepperIntegration()";
-    QPepperScreen *screen = new QPepperScreen();
-    QtPepperMain::get()->m_screen = screen;
-    screenAdded(screen);
 
     m_fontDatabase = 0;
-    m_eventDispatcherUnix = new QPepperEventDispatcher;
+    m_pepperEventDispatcher = new QPepperEventDispatcher();
     qDebug() << "QPepperIntegration::QPepperIntegration done()";
 }
 
 QPepperIntegration::~QPepperIntegration()
 {
+    delete m_compositor;
+    delete m_eventTranslator;
     delete m_fontDatabase;
-    delete m_eventDispatcherUnix;
+    delete m_pepperEventDispatcher;
 }
 
 bool QPepperIntegration::hasOpenGL() const
 {
-    qDebug() << "PepperIntegration::hasOpenGL";
-    return false;
+    return true;
 }
 
+QPlatformOpenGLContext *QPepperIntegration::createPlatformOpenGLContext(QOpenGLContext *context) const
+{
+    return new QPepperGLContext();
+}
 
 QPlatformWindow *QPepperIntegration::createPlatformWindow(QWindow *window) const
 {
     //qDebug() << "QPepperIntegration::createPlatformWindow" << window << window->parent()
     //         << window->objectName() << window->geometry() << m_firstWindowCreated;
 
-    QPepperPlatformWindow *platformWindow = new QPepperPlatformWindow(window, !m_firstWindowCreated);
+    QPepperPlatformWindow *platformWindow = new QPepperPlatformWindow(window);
+    useOpenglToplevel = (window->surfaceType() == QSurface::OpenGLSurface);
+/*
     platformWindow->m_trackInstanceSize = true;
     if (!m_firstWindowCreated) {
         window->setWindowState(Qt::WindowFullScreen);
         window->resize(QtPepperMain::get()->m_screen->geometry().size());
     }
     m_firstWindowCreated = true;
+*/
     return platformWindow;
 }
 
@@ -108,7 +124,7 @@ QPlatformBackingStore *QPepperIntegration::createPlatformBackingStore(QWindow *w
 QAbstractEventDispatcher* QPepperIntegration::guiThreadEventDispatcher() const
 {
     qDebug() << "QPepperIntegration::guiThreadEventDispatcher()";
-    return m_eventDispatcherUnix;
+    return m_pepperEventDispatcher;
 }
 
 QPlatformFontDatabase *QPepperIntegration::fontDatabase() const
@@ -118,3 +134,63 @@ QPlatformFontDatabase *QPepperIntegration::fontDatabase() const
 
     return m_fontDatabase;
 }
+
+void QPepperIntegration::setPepperInstance(QPepperInstance *instance)
+{
+    m_pepperInstance = instance;
+    connect(m_compositor,SIGNAL(flush()), this, SLOT(flushRasterFrameBuffer()));
+}
+
+QPepperInstance *QPepperIntegration::pepperInstance() const
+{
+    return m_pepperInstance;
+}
+
+QPepperCompositor *QPepperIntegration::pepperCompositor() const
+{
+    return m_compositor;
+}
+
+PepperEventTranslator *QPepperIntegration::pepperEventTranslator()
+{
+    return m_eventTranslator;
+}
+
+void QPepperIntegration::processEvents()
+{
+    m_pepperEventDispatcher->processEventsContinue();
+}
+
+bool QPepperIntegration::wantsOpenGLGraphics() const
+{
+    return useOpenglToplevel;
+}
+
+void QPepperIntegration::setRasterFrameBuffer(QImage *m_frameBuffer)
+{
+    // Set the frame buffer on the compositor
+    m_compositor->setRasterFrameBuffer(m_frameBuffer);
+    m_compositor->composit();
+
+    QWindowSystemInterface::handleScreenGeometryChange(m_screen->screen(), toQRect(m_pepperInstance->m_currentGeometry));
+
+    // Let Qt process events;
+    m_pepperEventDispatcher->processEventsContinue();
+}
+
+void QPepperIntegration::getWindowAt(const QPoint & point, QWindow **window)
+{
+    *window = m_compositor->windowAt(point);
+}
+
+void QPepperIntegration::getKeyWindow(QWindow **window)
+{
+    *window = m_compositor->keyWindow();
+}
+
+void QPepperIntegration::flushRasterFrameBuffer()
+{
+    m_pepperInstance->flush();
+}
+
+

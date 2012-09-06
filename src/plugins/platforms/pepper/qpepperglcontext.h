@@ -43,31 +43,29 @@
 #ifndef QPLATFORMGLCONTEXT_PEPPER_H
 #define QPLATFORMGLCONTEXT_PEPPER_H
 
-#include <QPlatformGLContext>
+#include <qpa/qplatformopenglcontext.h>
+
+#include <ppapi/cpp/graphics_3d.h>
+#include <ppapi/cpp/graphics_3d_client.h>
+
+
 class QPepperInstance;
-
-namespace pp {
-    class Context3D_Dev;
-    class Surface3D_Dev;
-}
-
-class QPepperGLContext : public QPlatformGLContext
+class QPepperGLContext : public QPlatformOpenGLContext
 {
 public:
-    explicit QPepperGLContext(QPepperInstance *instance);
+    explicit QPepperGLContext();
     virtual ~QPepperGLContext();
 
-    virtual void makeCurrent();
+    virtual bool makeCurrent(QPlatformSurface *);
     virtual void doneCurrent();
-    virtual void swapBuffers();
+    virtual void swapBuffers(QPlatformSurface *);
     void flushCallback();
-    virtual void* getProcAddress(const QString& procName);
+    virtual QFunctionPointer getProcAddress(const QByteArray&);
 
-    virtual QPlatformWindowFormat platformWindowFormat() const;
+    virtual QSurfaceFormat format() const;
 private:
     QPepperInstance *m_instance;
-    pp::Context3D_Dev *m_context;
-    pp::Surface3D_Dev *m_surface;
+    pp::Graphics3D *m_context;
     bool m_pendingFlush;
 };
 
