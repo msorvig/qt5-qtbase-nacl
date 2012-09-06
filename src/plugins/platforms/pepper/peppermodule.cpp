@@ -6,6 +6,7 @@
 
 #include <GLES2/gl2.h>
 #include <ppapi/gles2/gl2ext_ppapi.h>
+#include <ppapi/c/ppp.h>
 
 #ifndef QT_PEPPER_STANDALONE_MODE
 #include "qpeppermain.h"
@@ -48,7 +49,7 @@ pp::Core *QtModule::getCore()
 
 namespace pp {
 
-Module* CreateModule() {
+PP_EXPORT Module* CreateModule() {
     return new QtModule();
 }
 

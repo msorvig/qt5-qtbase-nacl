@@ -98,10 +98,13 @@ bool QPepperInstance::Init(uint32_t argc, const char* argn[], const char* argv[]
         }
     }
 
-    // qDebug() << "PepperInstance::init" << m_windowId;
+    qDebug() << "PepperInstance::init" << m_windowId;
 
     RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE | PP_INPUTEVENT_CLASS_WHEEL | PP_INPUTEVENT_CLASS_KEYBOARD);
-    QtPepperMain::get()->setInstance(this); // ### pass arguments?
+
+    QtPepperMain *pepperMain = QtPepperMain::get();
+    pepperMain->setInstance(this); // ### pass arguments?
+    pepperMain->m_compositor.setPepperInstance(this);
 
     return true;
 }
@@ -116,7 +119,7 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
         return;
     m_currentGeometry = geometry;
 
-   // qDebug() << "QPepperInstance::DidChangeView" << m_windowId << geometry.size().width() << geometry.size().height();
+    qDebug() << "QPepperInstance::DidChangeView" << m_windowId << geometry.size().width() << geometry.size().height();
 
     // Delete the previous framebuffer and graphics context.
     delete m_context2D;
@@ -139,6 +142,9 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
     pepperMain->m_compositor.composit();
 
     QWindowSystemInterface::handleScreenGeometryChange(pepperMain->m_screen->screen(), toQRect(m_currentGeometry));
+
+    // Let Qt process events;
+    QtPepperMain::get()->m_eventDispatcher->processEventsContinue();
 }
 
 void QPepperInstance::DidChangeFocus(bool has_focus)
@@ -150,11 +156,11 @@ bool QPepperInstance::HandleInputEvent(const pp::InputEvent& event)
 {
     QtPepperMain *pepperMain = QtPepperMain::get();
 
-    if (pepperMain->m_qtReadyForEvents == false)
-        return false;
-
     // Translate and post event to Qt via the compositor
     bool ret = m_eventTranslator.processEvent(event);
+
+    // Let Qt process events;
+    QtPepperMain::get()->m_eventDispatcher->processEventsContinue();
     return ret;
 }
 
@@ -214,21 +220,14 @@ void QPepperInstance::waitForFlushed()
     QtPepperMain *pepperMain = QtPepperMain::get();
     if (!m_inFlush)
         return;
-    QMutexLocker lock(&pepperMain->m_mutex);
-    pepperMain->m_qtWait.wait(&pepperMain->m_mutex);
 }
 
 void QPepperInstance::flushCompletedCallback(int32_t)
 {
-    QtPepperMain *pepperMain = QtPepperMain::get();
-    QMutexLocker lock(&pepperMain->m_mutex);
     m_inFlush = false;
 
     //qDebug() << "flushCompleted" << QThread::currentThreadId();
     //QTimer::singleShot(0, pepperMain, SLOT(flushCompleted()));
-
-    if (pepperMain->m_qtWaiting)
-        pepperMain->m_qtWait.wakeOne();
 }
 
 void QPepperInstance::setupTestGraphics(pp::Size newSize)

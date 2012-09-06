@@ -43,6 +43,7 @@
 
 #include <QtGui>
 #include <qplatformwindow_qpa.h>
+#include <qpa/qwindowsysteminterface.h>
 #include "qpeppermain.h"
 
 QPepperCompositedWindow::QPepperCompositedWindow()
@@ -65,7 +66,7 @@ QPepperCompositor::QPepperCompositor()
 
 void QPepperCompositor::addRasterWindow(QPlatformWindow *window, QPlatformWindow *parentWindow)
 {
-    // qDebug() << "QPepperCompositor::addRasterWindow" << window << parentWindow;
+    qDebug() << "QPepperCompositor::addRasterWindow" << window << parentWindow << window->window() << window->window()->objectName();
 
     QPepperCompositedWindow compositedWindow;
     compositedWindow.window = window;
@@ -95,7 +96,7 @@ void QPepperCompositor::setVisible(QPlatformWindow *window, bool visible)
     if (compositedWindow.visible == visible)
         return;
 
-    // qDebug() << "setVisible " << this << visible;
+        qDebug() << "QPepperCompositor::setVisible " << this << visible;
 
     compositedWindow.visible = visible;
     compositedWindow.flushPending = true;
@@ -122,7 +123,7 @@ void QPepperCompositor::setFrameBuffer(QPlatformWindow *window, QImage *frameBuf
 
 void QPepperCompositor::flush(QPlatformWindow *window)
 {
-    // qDebug() << "flush" << surface->window();
+    qDebug() << "QPepperCompositor::flush" << window;
 
     QPepperCompositedWindow &compositedWindow = m_compositedWindows[window->window()];
     compositedWindow.flushPending = true;
@@ -132,14 +133,17 @@ void QPepperCompositor::flush(QPlatformWindow *window)
 
 void QPepperCompositor::waitForFlushed(QPlatformWindow *surface)
 {
+    if (!m_pepperInstance)
+        return;
+
     if (!m_compositedWindows[surface->window()].flushPending)
         return;
 
-    QtPepperMain *pepperMain = QtPepperMain::get();
-    while (m_pepperInstance->m_inFlush) {
+//    QtPepperMain *pepperMain = QtPepperMain::get();
+//    while (m_pepperInstance->m_inFlush) {
         // #####
-
-    }
+//
+//    }
 }
 
 void QPepperCompositor::setPepperInstance(QPepperInstance *pepperInstance)
@@ -152,6 +156,10 @@ void QPepperCompositor::setRasterFrameBuffer(QImage *frameBuffer)
     m_frameBuffer = frameBuffer;
     //m_frameBuffer->fill(Qt::green);
     m_frameBuffer->fill(Qt::transparent);
+
+    foreach (QWindow *window, m_windowStack) {
+        QWindowSystemInterface::handleExposeEvent(window, QRegion(window->geometry()));
+    }
 }
 
 // called from the Qt thread
@@ -186,6 +194,10 @@ QWindow *QPepperCompositor::keyWindow()
 
 void QPepperCompositor::maybeComposit()
 {
+    qDebug() << "QPepperCompositor::maybeComposit" << m_pepperInstance;
+    if (!m_pepperInstance)
+        return;
+
     if (!m_pepperInstance->m_inFlush)
         composit();
     else
@@ -194,6 +206,8 @@ void QPepperCompositor::maybeComposit()
 
 void QPepperCompositor::composit()
 {
+    qDebug() << "QPepperCompositor::composit";
+
     if (!m_frameBuffer) {
         qWarning("QPepperCompositor: No frame buffer set");
         return;
@@ -203,12 +217,13 @@ void QPepperCompositor::composit()
         return;
     }
 
-    m_pepperInstance->waitForFlushed();
+  //  m_pepperInstance->waitForFlushed();
 
     QPainter p(m_frameBuffer);
 
     // ### for now, clear the entire frame.
     p.fillRect(QRect(QPoint(0,0), m_frameBuffer->size()), QBrush(Qt::transparent));
+
 
     QRegion damaged;
     foreach (QWindow *window, m_windowStack) {

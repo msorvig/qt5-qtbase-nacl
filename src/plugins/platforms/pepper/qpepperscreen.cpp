@@ -52,18 +52,21 @@ QT_BEGIN_NAMESPACE
 QPepperScreen::QPepperScreen()
 : m_depth(32), m_format(QImage::Format_ARGB32_Premultiplied)
 {
+    qDebug() << "QPepperScreen::QPepperScreen()";
 }
 
 QRect QPepperScreen::geometry() const
 {
     // TODO (msorvig) This function is called a lot, optimize!
     QPepperInstance *instance = QtPepperMain::get()->m_mainInstance;
-    QRect localGeometry;
+    QRect localGeometry = QRect(0,0, 400, 400);
 
     if (instance) {
         QRect globalGeometry = toQRect(instance->m_currentGeometry);
         localGeometry = QRect(QPoint(0, 0), globalGeometry.size());
     }
+
+    qDebug() << "QPepperScreen::geometry()" << localGeometry;
 
     return localGeometry;
 }

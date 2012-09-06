@@ -57,7 +57,7 @@ QPepperPlatformWindow::QPepperPlatformWindow(QWindow *window, bool isFirstWindow
 {
     m_windowId = isFirstWindow ? 0 : quint32(this);
     m_compositor->addRasterWindow(this);
-    // qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow" << m_windowId << isFirstWindow;
+    qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow" << m_windowId << isFirstWindow;
 }
 
 QPepperPlatformWindow::~QPepperPlatformWindow()
@@ -72,7 +72,9 @@ WId QPepperPlatformWindow::winId() const
 
 void QPepperPlatformWindow::setVisible(bool visible)
 {
+    qDebug() << "QPepperPlatformWindow::setVisible" << visible;
     m_compositor->setVisible(this, visible);
+    qDebug() << "QPepperPlatformWindow::setVisible done";
 }
 
 void QPepperPlatformWindow::raise()
@@ -87,7 +89,7 @@ void QPepperPlatformWindow::lower()
 
 void QPepperPlatformWindow::setGeometry(const QRect &rect)
 {
-    // qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
+    qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
 }
 
 QT_END_NAMESPACE

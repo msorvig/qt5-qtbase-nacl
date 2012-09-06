@@ -39,47 +39,57 @@
 **
 ****************************************************************************/
 
+#ifndef QPEPPEREVENTDISPATCHER_H
+#define QPEPPEREVENTDISPATCHER_H
 
-#ifndef QPEPPER_MAIN_H
-#define QPEPPER_MAIN_H
+#include <QtCore/QHash>
+#include <QtCore/private/qeventdispatcher_unix_p.h>
+#include <QtPlatformSupport/private/qunixeventdispatcher_qpa_p.h>
+#include <ppapi/utility/completion_callback_factory.h>
 
-#include <qglobal.h>
-#include <pthread.h>
+QT_BEGIN_NAMESPACE
 
-#include <ppapi/cpp/graphics_2d.h>
-#include <ppapi/cpp/image_data.h>
-
-#include "pepperinstance.h"
-#include "qpepperintegration.h"
-#include "qpepperhelpers.h"
-#include "qpeppercompositor.h"
-#include "qpeppereventdispatcher.h"
-
-#include <qdebug.h>
-
-class QPepperWindowSurface;
-class QtPepperMain : public QObject
+class QPepperEventDispatcher : public QUnixEventDispatcherQPA
 {
-Q_OBJECT
 public:
-    static QtPepperMain *get();
-    QtPepperMain();
+    explicit QPepperEventDispatcher(QObject *parent = 0);
+    ~QPepperEventDispatcher();
 
-    static void execPepper();
+    void registerTimer(int timerId, int interval, Qt::TimerType timerType, QObject *object);
+    bool unregisterTimer(int timerId);
+    bool unregisterTimers(QObject *object);
 
-    void setInstance(QPepperInstance *instance);
-    QPepperInstance *instance();
+    bool processEvents(QEventLoop::ProcessEventsFlags flags);
+    bool processEventsContinue();
 
-    void postJavascriptMessage(const QByteArray &message);
+    bool hasPendingEvents();
 
-    void log(const QString &message);
+    void flush();
+private:
+    bool firstProcessEventsCall;
+    bool pepperInitialized;
 
-    QPepperInstance *m_mainInstance;
-    QPepperCompositor m_compositor;
-    QPepperScreen *m_screen;
-    QPepperEventDispatcher *m_eventDispatcher;
 
-    bool m_exitNow;
+    struct PepperTimerInfo {
+
+        PepperTimerInfo() {};
+        PepperTimerInfo(int timerId, int interval, Qt::TimerType timerType, QObject *object)
+            :timerId(timerId), interval(interval), timerType(timerType), object(object) { }
+        int timerId;
+        int interval;
+        Qt::TimerType timerType;
+        QObject *object;
+    };
+
+    void startTimer(PepperTimerInfo info);
+    void timerCallback(int32_t result);
+
+    QHash<int, PepperTimerInfo> preTimers; // timers registered before pepper was initializes
+    QHash<int, PepperTimerInfo> timers;
+
+    pp::CompletionCallbackFactory<QPepperEventDispatcher> *completionCallbackFactory;
 };
 
-#endif // QPEPPER_MAIN_H
+QT_END_NAMESPACE
+
+#endif

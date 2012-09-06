@@ -45,11 +45,10 @@
 #include "qpeppermain.h"
 #include "qpepperfontdatabase.h"
 #include "qpepperbackingstore.h"
+#include "qpeppereventdispatcher.h"
 
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QtGui/QPlatformWindow>
-#include <QtCore/private/qeventdispatcher_unix_p.h>
-#include <QtPlatformSupport/private/qunixeventdispatcher_qpa_p.h>
 #include <qdebug.h>
 
 QPepperIntegration * QPepperIntegration::createPepperIntegration()
@@ -67,10 +66,8 @@ QPepperIntegration::QPepperIntegration()
     screenAdded(screen);
 
     m_fontDatabase = 0;
-    m_eventDispatcherUnix = new QUnixEventDispatcherQPA;
+    m_eventDispatcherUnix = new QPepperEventDispatcher;
     qDebug() << "QPepperIntegration::QPepperIntegration done()";
-
-    QtPepperMain::get()->m_qtReadyForEvents = true;
 }
 
 QPepperIntegration::~QPepperIntegration()
@@ -110,6 +107,7 @@ QPlatformBackingStore *QPepperIntegration::createPlatformBackingStore(QWindow *w
 
 QAbstractEventDispatcher* QPepperIntegration::guiThreadEventDispatcher() const
 {
+    qDebug() << "QPepperIntegration::guiThreadEventDispatcher()";
     return m_eventDispatcherUnix;
 }
 

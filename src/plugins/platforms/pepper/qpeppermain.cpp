@@ -45,6 +45,13 @@
 #include <qdebug.h>
 #include <qthread.h>
 #include <qfile.h>
+#include <fstream>
+#include <iostream>
+
+#include "ppapi/c/pp_errors.h"
+#include "ppapi/c/pp_module.h"
+#include "ppapi/c/ppb.h"
+#include "ppapi/c/ppp.h"
 
 Q_GLOBAL_STATIC(QtPepperMain, qtPepperMain);
 
@@ -54,38 +61,27 @@ QtPepperMain *QtPepperMain::get()
 }
 
 QtPepperMain::QtPepperMain()
-:m_mainFunction(0)
-,m_mainInstance(0)
-,m_qtRunning(false) // set when the qt thread is running/has been started
-,m_qtReadyForEvents(false) // set when Qt is ready to handle events
+:m_mainInstance(0)
 ,m_exitNow(false) // set when Qt should exit immediately.
-,m_qtShouldPark(false) // set when the Qt thread should park (wait)
-,m_qtWaiting(false) // set when the Qt thread is waiting
-,m_pepperWaiting(false) // set when the screen has been resized, cleared when the Qt thread has processed the resize
-
-
 {
 
 }
 
-bool QtPepperMain::isQtStarted()
-{
-    return m_qtRunning;
-}
+extern "C" { int PpapiPluginMain(void); }
 
+void QtPepperMain::execPepper()
+{
+    qDebug() << "QtPepperMain::execPepper";
+    PpapiPluginMain();
+}
 
 void QtPepperMain::postJavascriptMessage(const QByteArray &message)
 {
-    QtModule::getCore()->CallOnMainThread(0,
-        m_callbackFactory.NewCallback(&QtPepperMain::postJavascriptMessage_impl, message), 0);
-}
-
-void QtPepperMain::postJavascriptMessage_impl(int32_t, const QByteArray &message)
-{
-    QPepperInstance *instance = QtPepperMain::get()->m_mainInstance;
+   /* QPepperInstance *instance = QtPepperMain::get()->m_mainInstance;
     if (instance) {
         instance->PostMessage(pp::Var(message.constData()));
     }
+    */
 }
 
 void QtPepperMain::setInstance(QPepperInstance *instance)
@@ -94,15 +90,6 @@ void QtPepperMain::setInstance(QPepperInstance *instance)
 //    extern pp::Instance *qtPepperInstance; // qglobal.cpp
 //    qtPepperInstance = m_mainInstance;
     m_compositor.setPepperInstance(instance);
-}
-
-void QtPepperMain::qtShutDown()
-{
-}
-
-void QtPepperMain::flushCompleted()
-{
-    m_compositor.flushCompleted();
 }
 
 void qtPepperMessageHandlerPrinter(void *msg)

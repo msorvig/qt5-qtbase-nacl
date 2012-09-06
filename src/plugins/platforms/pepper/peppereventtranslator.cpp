@@ -92,7 +92,7 @@ bool PepperEventTranslator::processEvent(const pp::InputEvent& event)
 
 bool PepperEventTranslator::processMouseEvent(const pp::MouseInputEvent &event, PP_InputEvent_Type eventType)
 {
-    //qDebug() << "processMouseEvent" << event.GetPosition().x() << event.GetPosition().y() << m_window;
+    qDebug() << "processMouseEvent" << event.GetPosition().x() << event.GetPosition().y();
     QPoint point(event.GetPosition().x(), event.GetPosition().y());
     currentMouseGlobalPos = point;
     //Qt::MouseButton button = translatePepperMouseButton(event.button);

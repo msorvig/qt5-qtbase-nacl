@@ -24,6 +24,7 @@ SOURCES += $$PWD/pepperpluginmain.cpp \
 #           $$PWD/qpepperglcontext.cpp \
            $$PWD/qpepperhelpers.cpp \
            $$PWD/qpeppercompositor.cpp \
+           $$PWD/qpeppereventdispatcher.cpp \
 
 HEADERS += $$PWD/peppereventtranslator.h \
            $$PWD/qpepperintegration.h \
@@ -38,6 +39,8 @@ HEADERS += $$PWD/peppereventtranslator.h \
 #           $$PWD/qpepperglcontext.h \
            $$PWD/qpepperhelpers.h \
            $$PWD/qpeppercompositor.h \
+           $$PWD/qpeppereventdispatcher.h \
+
 
 RESOURCES += $$PWD/../../../../lib/fonts/naclfonts.qrc
 
@@ -46,7 +49,7 @@ OTHER_FILES += $$PWD/../../../../tools/nacldemoserver/check_browser.js \
 
 QT += core-private gui-private platformsupport-private
 
-LIBS += -lppapi -lppapi_cpp -lppapi_gles2 -lsrpc -limc_syscalls -lplatform -lgio
+LIBS += -lppruntime -lppapi -lppapi_gles2 -lsrpc -limc_syscalls -lplatform -lgio -lppapi_cpp
 OBJECTS_DIR = .obj
 MOC_DIR = .moc
 
