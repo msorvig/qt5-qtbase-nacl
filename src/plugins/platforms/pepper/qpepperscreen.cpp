@@ -60,7 +60,7 @@ QPepperScreen::QPepperScreen()
 
 QRect QPepperScreen::geometry() const
 {
-    QRect localGeometry = QRect(0,0, 400, 400); // startup geometry, use before pepper is initialized
+    QRect localGeometry = QRect(0,0, 1024, 768); // startup geometry, use before pepper is initialized
 
     if (QPepperInstance *instance = QPepperIntegration::getPepperIntegration()->pepperInstance()) {
         QRect globalGeometry = toQRect(instance->m_currentGeometry);
