@@ -65,6 +65,9 @@ public:
     void setGeometry(const QRect &rect);
     void setParent(const QPlatformWindow *window);
 
+    bool setKeyboardGrabEnabled(bool grab);
+    bool setMouseGrabEnabled(bool grab);
+
     bool m_isVisible;
     bool m_trackInstanceSize;
     bool m_useCompositor;

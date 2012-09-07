@@ -107,4 +107,15 @@ void QPepperPlatformWindow::setParent(const QPlatformWindow *parent)
         m_compositor->setParent(this, const_cast<QPlatformWindow *>(parent));
 }
 
+bool QPepperPlatformWindow::setKeyboardGrabEnabled(bool grab)
+{
+    Q_UNUSED(grab);
+}
+
+bool QPepperPlatformWindow::setMouseGrabEnabled(bool grab)
+{
+    Q_UNUSED(grab);
+}
+
+
 QT_END_NAMESPACE
