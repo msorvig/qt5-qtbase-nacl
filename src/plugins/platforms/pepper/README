@@ -1,0 +1,13 @@
+
+Qt for Google Native Client
+
+Configure line example:
+
+configure -xplatform unsupported/nacl-g++ -device-option CROSS_COMPILE=/Users/msorvig/code/nacl_sdk/pepper_19/toolchain/mac_x86_glibc/bin/  -nomake tests -developer-build -opensource -confirm-license -no-reduce-relocations
+
+
+Deployment: nacldeployqt (qttools/src/nacldeployqt)
+
+Build using host Qt: /path/to/host/qmake -nocache && make
+Development server: nacldeployqt myapp.nexe -server
+
