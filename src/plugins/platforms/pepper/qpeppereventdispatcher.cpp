@@ -40,9 +40,11 @@
 ****************************************************************************/
 
 #include "qpeppereventdispatcher.h"
-#include "qpeppermain.h"
 #include "peppermodule.h"
+
 #include <qdebug.h>
+#include <QtCore/qcoreapplication.h>
+
 
 QPepperEventDispatcher::QPepperEventDispatcher(QObject *parent)
 :QUnixEventDispatcherQPA(parent)
@@ -50,7 +52,7 @@ QPepperEventDispatcher::QPepperEventDispatcher(QObject *parent)
 ,pepperInitialized(false)
 ,completionCallbackFactory(0) // ppapi not started yet, to early to create.
 {
-    qDebug() << "QPepperEventDispatcher";
+    //qDebug() << "QPepperEventDispatcher";
 }
 
 QPepperEventDispatcher::~QPepperEventDispatcher()
@@ -96,13 +98,14 @@ bool QPepperEventDispatcher::processEvents(QEventLoop::ProcessEventsFlags flags)
 
         // At this point app.exec() has been called and control
         // has been passed to Qt. Call PpapiPluginMain which will
-        // start and transfer control to pepper.  Pepper will then
+        // start and transfer control to pepper. Pepper will then
         // call CreateModule() and CreateInstance() in peppermodule.cpp,
         // and will eventually start calling the event callbacks on
         // the instance - temporarily passing control back to Qt.
         PpapiPluginMain();
 
         // At this point the application is shutting down.
+
         qDebug() << "QPepperEventDispatcher::processEvents first done";
     }
     return QUnixEventDispatcherQPA::processEvents(flags);
@@ -131,13 +134,13 @@ bool QPepperEventDispatcher::processEventsContinue()
 
 bool QPepperEventDispatcher::hasPendingEvents()
 {
-    qDebug() << "QPepperEventDispatcher::hasPendingEvents";
+    //qDebug() << "QPepperEventDispatcher::hasPendingEvents";
     return QUnixEventDispatcherQPA::hasPendingEvents();
 }
 
 void QPepperEventDispatcher::flush()
 {
-    qDebug() << "QPepperEventDispatcher::flush";
+    //qDebug() << "QPepperEventDispatcher::flush";
     QUnixEventDispatcherQPA::flush();
 }
 

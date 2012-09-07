@@ -52,6 +52,8 @@ QPepperGLContext::QPepperGLContext()
 ,m_context(0)
 ,m_pendingFlush(false)
 {
+    qDebug() << "QPepperGLContext::QPepperGLContext()";
+
 }
 
 QPepperGLContext::~QPepperGLContext()
@@ -61,6 +63,7 @@ QPepperGLContext::~QPepperGLContext()
 
 bool QPepperGLContext::makeCurrent(QPlatformSurface *surface)
 {
+    qDebug() << "QPepperGLContext::makeCurrent";
     return false;
     /*
 
@@ -95,7 +98,9 @@ bool QPepperGLContext::makeCurrent(QPlatformSurface *surface)
 
 void QPepperGLContext::doneCurrent()
 {
-/*
+    qDebug() << "QPepperGLContext::doneCurrent";
+
+    /*
     qDebug() << "QPepperGLContext::doneCurrent";
     return;
     m_instance->BindGraphics(pp::Surface3D_Dev());

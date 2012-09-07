@@ -41,7 +41,6 @@
 
 #include "qpepperbackingstore.h"
 #include "qpeppercompositor.h"
-#include "qpeppermain.h"
 
 #include <QtCore/qdebug.h>
 #include <QtGui/QPainter>
@@ -52,10 +51,9 @@ QT_BEGIN_NAMESPACE
 QPepperBackingStore::QPepperBackingStore(QWindow *window)
     : QPlatformBackingStore(window)
 {
-    qDebug() << "QPepperBackingStore::QPepperBackingStore";
     m_isInPaint = false;
     m_frameBuffer = 0;
-    m_compositor = QtPepperMain::get()->m_integration->pepperCompositor();
+    m_compositor = QPepperIntegration::getPepperIntegration()->pepperCompositor();
     resize(window->size(), QRegion());
 }
 
@@ -67,25 +65,24 @@ QPepperBackingStore::~QPepperBackingStore()
 
 QPaintDevice *QPepperBackingStore::paintDevice()
 {
-    qDebug() << "QPepperBackingStore::paintDevice framebuffer" << m_frameBuffer;
+//    qDebug() << "QPepperBackingStore::paintDevice framebuffer" << m_frameBuffer;
     return m_frameBuffer;
 }
 
 void QPepperBackingStore::beginPaint(const QRegion &region)
 {
-     qDebug() << "QPepperBackingStore::beginPaint" << window();
+//    qDebug() << "QPepperBackingStore::beginPaint" << window();
     m_isInPaint = true;
 
     m_compositor->waitForFlushed(window()->handle());
-    qDebug() << "QPepperBackingStore::beginPaint done";
+//    qDebug() << "QPepperBackingStore::beginPaint done";
 }
 
 void QPepperBackingStore::endPaint()
 {
-    qDebug() << "QPepperBackingStore::endPaint";
+//    qDebug() << "QPepperBackingStore::endPaint";
     m_isInPaint = false;
 }
-
 
 void QPepperBackingStore::flush(QWindow *window, const QRegion &region, const QPoint &offset)
 {
@@ -95,14 +92,14 @@ void QPepperBackingStore::flush(QWindow *window, const QRegion &region, const QP
     Q_UNUSED(offset);
 
 
-    qDebug() << "QPepperBackingStore::flush" << this->window();
+//    qDebug() << "QPepperBackingStore::flush" << this->window();
 
     m_compositor->flush(window->handle());
 }
 
 void QPepperBackingStore::resize(const QSize &size, const QRegion &)
 {
-    qDebug() << "QPepperBackingStore::resize" << size;
+  //  qDebug() << "QPepperBackingStore::resize" << size;
   //  if (m_frameBuffer)
   //      qDebug() << "resize" << m_frameBuffer->size();
 
@@ -117,7 +114,7 @@ void QPepperBackingStore::createFrameBuffer(QSize size)
 {
     //if (size.isValid())
     //    return;
-    qDebug() << "QPepperBackingStore::createFrameBuffer" << size;
+    //qDebug() << "QPepperBackingStore::createFrameBuffer" << size;
 
     if (m_ownsFrameBuffer)
         delete m_frameBuffer;

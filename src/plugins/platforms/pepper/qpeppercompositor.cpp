@@ -42,9 +42,8 @@
 #include "qpeppercompositor.h"
 
 #include <QtGui>
-#include <qplatformwindow_qpa.h>
+#include <qpa/qplatformwindow.h>
 #include <qpa/qwindowsysteminterface.h>
-#include "qpeppermain.h"
 
 QPepperCompositedWindow::QPepperCompositedWindow()
     :window(0)
@@ -65,7 +64,7 @@ QPepperCompositor::QPepperCompositor()
 
 void QPepperCompositor::addRasterWindow(QPlatformWindow *window, QPlatformWindow *parentWindow)
 {
-    qDebug() << "QPepperCompositor::addRasterWindow" << window << parentWindow << window->window() << window->window()->objectName();
+//    qDebug() << "QPepperCompositor::addRasterWindow" << window << parentWindow << window->window() << window->window()->objectName();
 
     QPepperCompositedWindow compositedWindow;
     compositedWindow.window = window;
@@ -95,14 +94,12 @@ void QPepperCompositor::setVisible(QPlatformWindow *window, bool visible)
     if (compositedWindow.visible == visible)
         return;
 
-    qDebug() << "QPepperCompositor::setVisible " << this << visible;
+//    qDebug() << "QPepperCompositor::setVisible " << this << visible;
 
     compositedWindow.visible = visible;
     compositedWindow.flushPending = true;
     compositedWindow.damage = compositedWindow.window->geometry();
-    qDebug() << "QPepperCompositor::setVisible done 1";
     maybeComposit();
-    qDebug() << "QPepperCompositor::setVisible done 2";
 }
 
 void QPepperCompositor::raise(QPlatformWindow *window)
@@ -124,7 +121,7 @@ void QPepperCompositor::setFrameBuffer(QPlatformWindow *window, QImage *frameBuf
 
 void QPepperCompositor::flush(QPlatformWindow *window)
 {
-    qDebug() << "QPepperCompositor::flush" << window;
+//    qDebug() << "QPepperCompositor::flush" << window;
 
     QPepperCompositedWindow &compositedWindow = m_compositedWindows[window->window()];
     compositedWindow.flushPending = true;
@@ -190,7 +187,7 @@ void QPepperCompositor::maybeComposit()
 
 void QPepperCompositor::composit()
 {
-    qDebug() << "QPepperCompositor::composit";
+//    qDebug() << "QPepperCompositor::composit";
 
     if (!m_frameBuffer) {
         qWarning("QPepperCompositor: No frame buffer set");

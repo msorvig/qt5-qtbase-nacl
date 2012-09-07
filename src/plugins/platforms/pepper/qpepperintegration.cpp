@@ -42,15 +42,14 @@
 #include "qpepperintegration.h"
 #include "qpepperscreen.h"
 #include "qpepperplatformwindow.h"
-#include "qpeppermain.h"
 #include "qpepperfontdatabase.h"
 #include "qpepperbackingstore.h"
 #include "qpeppereventdispatcher.h"
 
-#include <QtGui/private/qpixmap_raster_p.h>
-#include <QtGui/QPlatformWindow>
-#include <QtGui/QSurface>
+#include <qpa/qplatformwindow.h>
 #include <qpa/qwindowsysteminterface.h>
+
+#include <QtGui/QSurface>
 #include <qdebug.h>
 
 QPepperIntegration * QPepperIntegration::createPepperIntegration()
@@ -58,10 +57,16 @@ QPepperIntegration * QPepperIntegration::createPepperIntegration()
     return new QPepperIntegration();
 }
 
+static QPepperIntegration *globalPepperIntegration;
+QPepperIntegration *QPepperIntegration::getPepperIntegration()
+{
+    return globalPepperIntegration;
+}
+
 QPepperIntegration::QPepperIntegration()
     : m_firstWindowCreated(false)
 {
-    QtPepperMain::get()->m_integration = this;
+    globalPepperIntegration = this;
 
     m_screen = new QPepperScreen();
     screenAdded(m_screen);
@@ -71,15 +76,16 @@ QPepperIntegration::QPepperIntegration()
     QObject::connect(m_eventTranslator, SIGNAL(getWindowAt(QPoint,QWindow**)), this, SLOT(getWindowAt(QPoint,QWindow**)));
     QObject::connect(m_eventTranslator, SIGNAL(getKeyWindow(QWindow**)), this, SLOT(getKeyWindow(QWindow**)));
 
-    qDebug() << "QPepperIntegration::QPepperIntegration()";
+//    qDebug() << "QPepperIntegration::QPepperIntegration()";
 
     m_fontDatabase = 0;
     m_pepperEventDispatcher = new QPepperEventDispatcher();
-    qDebug() << "QPepperIntegration::QPepperIntegration done()";
+//    qDebug() << "QPepperIntegration::QPepperIntegration done()";
 }
 
 QPepperIntegration::~QPepperIntegration()
 {
+    globalPepperIntegration = 0;
     delete m_compositor;
     delete m_eventTranslator;
     delete m_fontDatabase;
@@ -123,7 +129,7 @@ QPlatformBackingStore *QPepperIntegration::createPlatformBackingStore(QWindow *w
 
 QAbstractEventDispatcher* QPepperIntegration::guiThreadEventDispatcher() const
 {
-    qDebug() << "QPepperIntegration::guiThreadEventDispatcher()";
+//    qDebug() << "QPepperIntegration::guiThreadEventDispatcher()";
     return m_pepperEventDispatcher;
 }
 

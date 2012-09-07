@@ -40,8 +40,11 @@
 ****************************************************************************/
 
 #include "qpepperscreen.h"
-#include "qpeppermain.h"
 #include "qpepperhelpers.h"
+#include "qpepperintegration.h"
+#include "pepperinstance.h"
+
+#include <qdebug.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -52,14 +55,14 @@ QT_BEGIN_NAMESPACE
 QPepperScreen::QPepperScreen()
 : m_depth(32), m_format(QImage::Format_ARGB32_Premultiplied)
 {
-    qDebug() << "QPepperScreen::QPepperScreen()";
+//    qDebug() << "QPepperScreen::QPepperScreen()";
 }
 
 QRect QPepperScreen::geometry() const
 {
     QRect localGeometry = QRect(0,0, 400, 400); // startup geometry, use before pepper is initialized
 
-    if (QPepperInstance *instance = QtPepperMain::get()->m_integration->pepperInstance()) {
+    if (QPepperInstance *instance = QPepperIntegration::getPepperIntegration()->pepperInstance()) {
         QRect globalGeometry = toQRect(instance->m_currentGeometry);
         localGeometry = QRect(QPoint(0, 0), globalGeometry.size());
     }

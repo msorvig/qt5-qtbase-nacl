@@ -47,8 +47,6 @@
 #include <qpa/qwindowsysteminterface.h>
 
 #include "3rdparty/keyboard_codes_posix.h"
-#include "qpeppermain.h"
-
 
 #ifndef QT_NO_PEPPER_INTEGRATION
 
@@ -92,7 +90,7 @@ bool PepperEventTranslator::processEvent(const pp::InputEvent& event)
 
 bool PepperEventTranslator::processMouseEvent(const pp::MouseInputEvent &event, PP_InputEvent_Type eventType)
 {
-    qDebug() << "processMouseEvent" << event.GetPosition().x() << event.GetPosition().y();
+    //qDebug() << "processMouseEvent" << event.GetPosition().x() << event.GetPosition().y();
     QPoint point(event.GetPosition().x(), event.GetPosition().y());
     currentMouseGlobalPos = point;
     //Qt::MouseButton button = translatePepperMouseButton(event.button);

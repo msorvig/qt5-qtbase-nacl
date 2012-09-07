@@ -40,7 +40,6 @@
 ****************************************************************************/
 
 #include "qpepperfontengine.h"
-#include "qpeppermain.h"
 
 #ifdef QT_PEPPER_USE_PEPPER_FONT_ENGINE
 

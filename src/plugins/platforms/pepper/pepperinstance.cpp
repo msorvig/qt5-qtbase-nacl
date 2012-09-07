@@ -43,7 +43,6 @@
 #include <stdio.h>
 
 #ifndef QT_PEPPER_STANDALONE_MODE
-#include "qpeppermain.h"
 #include "qpepperhelpers.h"
 #include "peppermodule.h"
 #include "qpepperintegration.h"
@@ -57,11 +56,6 @@
 #include "ppapi/cpp/completion_callback.h"
 
 using namespace pp;
-
-void flush_callback(void *, int32_t)
-{
-
-}
 
 QObject *qtScriptableObject;
 
@@ -97,12 +91,11 @@ bool QPepperInstance::Init(uint32_t argc, const char* argn[], const char* argv[]
         }
     }
 
-    qDebug() << "PepperInstance::init" << m_windowId;
+//    qDebug() << "PepperInstance::init" << m_windowId;
 
     RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE | PP_INPUTEVENT_CLASS_WHEEL | PP_INPUTEVENT_CLASS_KEYBOARD);
 
-    QtPepperMain *pepperMain = QtPepperMain::get();
-    m_pepperIntegraton = pepperMain->m_integration;
+    m_pepperIntegraton = QPepperIntegration::getPepperIntegration();
     m_pepperIntegraton->setPepperInstance(this);
     return true;
 }
@@ -110,33 +103,37 @@ bool QPepperInstance::Init(uint32_t argc, const char* argn[], const char* argv[]
 void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
 {
     Q_UNUSED(clip);
-
-    QtPepperMain *pepperMain = QtPepperMain::get();
-
     if (geometry.size() == m_currentGeometry.size())
         return;
     m_currentGeometry = geometry;
 
-    qDebug() << "QPepperInstance::DidChangeView" << m_windowId << geometry.size().width() << geometry.size().height();
+ //   qDebug() << "QPepperInstance::DidChangeView" << m_windowId
+ //            << geometry.size().width() << geometry.size().height();
 
-    // Delete the previous framebuffer and graphics context.
-    delete m_context2D;
-    delete m_imageData2D;
-    delete m_frameBuffer;
 
-    // Create new graphics context and frame buffer.
-    m_context2D = new Graphics2D(this, geometry.size(), false);
-    if (!BindGraphics(*m_context2D)) {
-        printf("Couldn't bind the device context\n");
-    }
+    if (m_pepperIntegraton->wantsOpenGLGraphics()) {
 
-    m_imageData2D = new ImageData(this, PP_IMAGEDATAFORMAT_BGRA_PREMUL, geometry.size(), true);
-    m_frameBuffer = new QImage(reinterpret_cast<uchar *>(m_imageData2D->data()),
+
+    } else {
+        // Delete the previous framebuffer and graphics context.
+        delete m_context2D;
+        delete m_imageData2D;
+        delete m_frameBuffer;
+
+        // Create new graphics context and frame buffer.
+        m_context2D = new Graphics2D(this, geometry.size(), false);
+        if (!BindGraphics(*m_context2D)) {
+            printf("Couldn't bind the device context\n");
+        }
+
+        m_imageData2D = new ImageData(this, PP_IMAGEDATAFORMAT_BGRA_PREMUL, geometry.size(), true);
+        m_frameBuffer = new QImage(reinterpret_cast<uchar *>(m_imageData2D->data()),
                                geometry.size().width(), geometry.size().height(),
                                m_imageData2D->stride(), QImage::Format_ARGB32_Premultiplied);
 
 
-    m_pepperIntegraton->setRasterFrameBuffer(m_frameBuffer);
+        m_pepperIntegraton->setRasterFrameBuffer(m_frameBuffer);
+    }
 }
 
 void QPepperInstance::DidChangeFocus(bool has_focus)
@@ -203,8 +200,6 @@ void QPepperInstance::flush()
 
 void QPepperInstance::waitForFlushed()
 {
-//    QtPepperMain *pepperMain = QtPepperMain::get();
-    QtPepperMain *pepperMain = QtPepperMain::get();
     if (!m_inFlush)
         return;
 }
@@ -214,7 +209,11 @@ void QPepperInstance::flushCompletedCallback(int32_t)
     m_inFlush = false;
 
     //qDebug() << "flushCompleted" << QThread::currentThreadId();
-    //QTimer::singleShot(0, pepperMain, SLOT(flushCompleted()));
+}
+
+void flush_callback(void *, int32_t)
+{
+
 }
 
 void QPepperInstance::setupTestGraphics(pp::Size newSize)

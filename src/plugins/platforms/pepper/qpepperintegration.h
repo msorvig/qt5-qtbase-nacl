@@ -62,6 +62,7 @@ class QPepperIntegration : public QObject, public QPlatformIntegration
     Q_OBJECT
 public:
     static QPepperIntegration *createPepperIntegration();
+    static QPepperIntegration *getPepperIntegration();
     QPepperIntegration();
     ~QPepperIntegration();
     virtual bool hasOpenGL() const;

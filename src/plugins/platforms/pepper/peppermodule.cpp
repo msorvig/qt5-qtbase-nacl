@@ -8,10 +8,6 @@
 #include <ppapi/gles2/gl2ext_ppapi.h>
 #include <ppapi/c/ppp.h>
 
-#ifndef QT_PEPPER_STANDALONE_MODE
-#include "qpeppermain.h"
-#endif
-
 pp::Core *globalCore;
 
 QtModule::QtModule()
@@ -21,12 +17,7 @@ QtModule::QtModule()
 
 QtModule::~QtModule()
 {
-    // Attempt sane shutdown:
-    QtPepperMain *pepperMain = QtPepperMain::get();
-    //QMutexLocker lock(&pepperMain->m_mutex);
-    pepperMain->m_exitNow = true;
-    QTimer::singleShot(0, qApp, SLOT(quit()));
-    //    glTerminatePPAPI();
+
 }
 
 bool QtModule::Init()

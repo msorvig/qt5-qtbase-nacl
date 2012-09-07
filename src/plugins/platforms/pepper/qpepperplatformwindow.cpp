@@ -41,7 +41,6 @@
 
 #include "qpepperplatformwindow.h"
 #include "qpepperglcontext.h"
-#include "qpeppermain.h"
 #include "peppermodule.h"
 #include "qpeppercompositor.h"
 #include <QtGui/QSurface>
@@ -54,14 +53,14 @@ QPepperPlatformWindow::QPepperPlatformWindow(QWindow *window)
 :QPlatformWindow(window)
 ,m_isVisible(false)
 {
-    m_pepperIntegraion = QtPepperMain::get()->m_integration;
+    m_pepperIntegraion = QPepperIntegration::getPepperIntegration();
     m_compositor = m_pepperIntegraion->pepperCompositor();
     m_useCompositor = (window->surfaceType() == QSurface::RasterSurface);
 
     if (m_useCompositor)
         m_compositor->addRasterWindow(this);
 
-    qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow";
+//    qDebug() << "QPepperPlatformWindow::QPepperPlatformWindow";
 }
 
 QPepperPlatformWindow::~QPepperPlatformWindow()
@@ -77,10 +76,10 @@ WId QPepperPlatformWindow::winId() const
 
 void QPepperPlatformWindow::setVisible(bool visible)
 {
-    qDebug() << "QPepperPlatformWindow::setVisible" << visible;
+//    qDebug() << "QPepperPlatformWindow::setVisible" << visible;
     if (m_useCompositor)
         m_compositor->setVisible(this, visible);
-    qDebug() << "QPepperPlatformWindow::setVisible done";
+//    qDebug() << "QPepperPlatformWindow::setVisible done";
 }
 
 void QPepperPlatformWindow::raise()
@@ -97,7 +96,7 @@ void QPepperPlatformWindow::lower()
 
 void QPepperPlatformWindow::setGeometry(const QRect &rect)
 {
-    qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
+//    qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
     QPlatformWindow::setGeometry(rect);
 }
 
