@@ -39,15 +39,15 @@
 **
 ****************************************************************************/
 
-#include "pepperinstance.h"
-#include <stdio.h>
+#include "qpepperinstance.h"
 
 #ifndef QT_PEPPER_STANDALONE_MODE
 #include "qpepperhelpers.h"
-#include "peppermodule.h"
+#include "qpeppermodule.h"
 #include "qpepperintegration.h"
-#include <qpa/qwindowsysteminterface.h>
 #endif
+
+#include <qpa/qwindowsysteminterface.h>
 
 #include "ppapi/cpp/var.h"
 #include "ppapi/cpp/graphics_2d.h"

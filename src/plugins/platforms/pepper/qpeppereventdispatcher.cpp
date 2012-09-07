@@ -40,7 +40,7 @@
 ****************************************************************************/
 
 #include "qpeppereventdispatcher.h"
-#include "peppermodule.h"
+#include "qpeppermodule.h"
 
 #include <qdebug.h>
 #include <QtCore/qcoreapplication.h>

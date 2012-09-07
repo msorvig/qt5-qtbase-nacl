@@ -48,7 +48,7 @@
 
 #include "qpepperscreen.h"
 #include "qpepperglcontext.h"
-#include "pepperinstance.h"
+#include "qpepperinstance.h"
 #include "qpeppereventdispatcher.h"
 
 QT_BEGIN_NAMESPACE

@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-#include "peppereventtranslator.h"
+#include "qpeppereventtranslator.h"
 
 #include <ppapi/cpp/point.h>
 #include <ppapi/cpp/var.h>

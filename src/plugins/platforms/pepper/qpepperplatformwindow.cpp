@@ -41,7 +41,7 @@
 
 #include "qpepperplatformwindow.h"
 #include "qpepperglcontext.h"
-#include "peppermodule.h"
+#include "qpeppermodule.h"
 #include "qpeppercompositor.h"
 #include <QtGui/QSurface>
 

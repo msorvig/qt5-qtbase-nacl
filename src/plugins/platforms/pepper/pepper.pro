@@ -3,19 +3,15 @@ TARGET = qtpepper
 load(qt_plugin)
 DESTDIR = $$QT.gui.plugins/platforms
 
-#include($$PWD/../../../qbase.pri)
-#include($$PWD/../../qpluginbase.pri)
-#include($$PWD/../fontdatabases/genericunix/genericunix.pri)
-
 INCLUDEPATH += $$PWD
 DEPENDPATH += $$PWD
 
-SOURCES += $$PWD/pepperpluginmain.cpp \
-           $$PWD/pepperinstance.cpp \
-           $$PWD/peppermodule.cpp \
+SOURCES += $$PWD/qpepperpluginmain.cpp \
+           $$PWD/qpeppermodule.cpp \
+           $$PWD/qpepperinstance.cpp \
            $$PWD/qpepperfontdatabase.cpp \
            $$PWD/qpepperscreen.cpp \
-           $$PWD/peppereventtranslator.cpp \
+           $$PWD/qpeppereventtranslator.cpp \
            $$PWD/qpepperintegration.cpp \
            $$PWD/qpepperplatformwindow.cpp \
            $$PWD/qpepperbackingstore.cpp \
@@ -26,12 +22,12 @@ SOURCES += $$PWD/pepperpluginmain.cpp \
            $$PWD/qpeppereventdispatcher.cpp \
 
 HEADERS += $$PWD/qpepperhelpers.h \
-           $$PWD/peppereventtranslator.h \
+           $$PWD/qpeppermodule.h \
+           $$PWD/qpepperinstance.h \
+           $$PWD/qpeppereventtranslator.h \
            $$PWD/qpepperintegration.h \
            $$PWD/qpepperplatformwindow.h \
            $$PWD/qpepperbackingstore.h \
-           $$PWD/pepperinstance.h \
-           $$PWD/peppermodule.h \
            $$PWD/qpepperfontdatabase.h \
            $$PWD/qpepperscreen.h \
            $$PWD/qpepperfontengine.h \

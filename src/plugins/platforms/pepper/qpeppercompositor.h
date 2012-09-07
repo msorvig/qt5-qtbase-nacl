@@ -44,7 +44,7 @@
 
 #include <QtGui>
 #include <QtCore>
-#include "pepperinstance.h"
+#include "qpepperinstance.h"
 
 class QPepperCompositedWindow
 {

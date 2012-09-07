@@ -42,7 +42,7 @@
 #include "qpepperscreen.h"
 #include "qpepperhelpers.h"
 #include "qpepperintegration.h"
-#include "pepperinstance.h"
+#include "qpepperinstance.h"
 
 #include <qdebug.h>
 

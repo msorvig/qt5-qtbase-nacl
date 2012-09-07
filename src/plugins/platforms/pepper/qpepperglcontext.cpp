@@ -40,7 +40,7 @@
 ****************************************************************************/
 
 #include "qpepperglcontext.h"
-#include "pepperinstance.h"
+#include "qpepperinstance.h"
 
 #include <ppapi/gles2/gl2ext_ppapi.h>
 #include <ppapi/cpp/graphics_3d.h>

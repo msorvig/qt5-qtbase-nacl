@@ -1,8 +1,8 @@
 /*
     Licensed under the MIT license.
 */
-#include "peppermodule.h"
-#include "pepperinstance.h"
+#include "qpeppermodule.h"
+#include "qpepperinstance.h"
 
 #include <GLES2/gl2.h>
 #include <ppapi/gles2/gl2ext_ppapi.h>

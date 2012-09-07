@@ -42,7 +42,7 @@
 #ifndef QT_PEPPER_INSTANCE_H
 #define QT_PEPPER_INSTANCE_H
 
-#include "peppereventtranslator.h"
+#include "qpeppereventtranslator.h"
 #include "qpepperhelpers.h"
 
 #include <ppapi/cpp/instance.h>
