@@ -74,6 +74,9 @@ public:
 
     QPlatformFontDatabase *fontDatabase() const;
 
+    QStringList themeNames() const;
+    QPlatformTheme *createPlatformTheme(const QString &name) const;
+
     void setPepperInstance(QPepperInstance *instance);
     QPepperInstance *pepperInstance() const;
     QPepperCompositor *pepperCompositor() const;

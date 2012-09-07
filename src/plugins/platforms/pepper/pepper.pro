@@ -13,6 +13,7 @@ SOURCES += $$PWD/qpepperpluginmain.cpp \
            $$PWD/qpepperscreen.cpp \
            $$PWD/qpeppereventtranslator.cpp \
            $$PWD/qpepperintegration.cpp \
+           $$PWD/qpeppertheme.cpp \
            $$PWD/qpepperplatformwindow.cpp \
            $$PWD/qpepperbackingstore.cpp \
            $$PWD/qpepperfontengine.cpp \
@@ -26,6 +27,7 @@ HEADERS += $$PWD/qpepperhelpers.h \
            $$PWD/qpepperinstance.h \
            $$PWD/qpeppereventtranslator.h \
            $$PWD/qpepperintegration.h \
+           $$PWD/qpeppertheme.h \
            $$PWD/qpepperplatformwindow.h \
            $$PWD/qpepperbackingstore.h \
            $$PWD/qpepperfontdatabase.h \

@@ -45,6 +45,7 @@
 #include "qpepperfontdatabase.h"
 #include "qpepperbackingstore.h"
 #include "qpeppereventdispatcher.h"
+#include "qpeppertheme.h"
 
 #include <qpa/qplatformwindow.h>
 #include <qpa/qwindowsysteminterface.h>
@@ -139,6 +140,19 @@ QPlatformFontDatabase *QPepperIntegration::fontDatabase() const
         m_fontDatabase = new QPepperFontDatabase();
 
     return m_fontDatabase;
+}
+
+QStringList QPepperIntegration::themeNames() const
+{
+    return QStringList() << QStringLiteral("pepper");
+}
+
+QPlatformTheme *QPepperIntegration::createPlatformTheme(const QString &name) const
+{
+    if (name == QStringLiteral("pepper"))
+        return new QPepperTheme;
+
+    return 0;
 }
 
 void QPepperIntegration::setPepperInstance(QPepperInstance *instance)
