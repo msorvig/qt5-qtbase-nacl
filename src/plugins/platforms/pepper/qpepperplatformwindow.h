@@ -63,6 +63,7 @@ public:
     void raise();
     void lower();
     void setGeometry(const QRect &rect);
+    void setParent(const QPlatformWindow *window);
 
     bool m_isVisible;
     bool m_trackInstanceSize;

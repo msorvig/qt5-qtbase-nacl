@@ -72,6 +72,7 @@ public:
     void setVisible(QPlatformWindow *window, bool visible);
     void raise(QPlatformWindow *window);
     void lower(QPlatformWindow *window);
+    void setParent(QPlatformWindow *window, QPlatformWindow *parent);
 
     void setFrameBuffer(QPlatformWindow *window, QImage *frameBuffer);
     void flush(QPlatformWindow *surface);

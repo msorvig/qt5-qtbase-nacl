@@ -80,8 +80,9 @@ void QPepperCompositor::addRasterWindow(QPlatformWindow *window, QPlatformWindow
 
 void QPepperCompositor::removeWindow(QPlatformWindow *window)
 {
-    QWindow *parentWindow = m_compositedWindows[window->window()].parentWindow->window();
-    if (parentWindow) {
+    QPlatformWindow *platformWindow = m_compositedWindows[window->window()].parentWindow;
+    if (platformWindow) {
+        QWindow *parentWindow = platformWindow->window();
         m_compositedWindows[parentWindow].childWindows.removeAll(window->window());
     }
     m_windowStack.removeAll(window->window());
@@ -112,6 +113,11 @@ void QPepperCompositor::lower(QPlatformWindow *window)
 {
     m_windowStack.removeAll(window->window());
     m_windowStack.prepend(window->window());
+}
+
+void QPepperCompositor::setParent(QPlatformWindow *window, QPlatformWindow *parent)
+{
+    m_compositedWindows[window->window()].parentWindow = parent;
 }
 
 void QPepperCompositor::setFrameBuffer(QPlatformWindow *window, QImage *frameBuffer)

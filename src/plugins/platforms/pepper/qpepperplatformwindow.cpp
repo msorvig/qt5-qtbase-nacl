@@ -100,4 +100,11 @@ void QPepperPlatformWindow::setGeometry(const QRect &rect)
     QPlatformWindow::setGeometry(rect);
 }
 
+void QPepperPlatformWindow::setParent(const QPlatformWindow *parent)
+{
+    qDebug() << "QPepperPlatformWindow::setParent" << parent;
+    if (m_useCompositor)
+        m_compositor->setParent(this, const_cast<QPlatformWindow *>(parent));
+}
+
 QT_END_NAMESPACE
