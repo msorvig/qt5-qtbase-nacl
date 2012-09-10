@@ -99,7 +99,7 @@ public:
     QWaitCondition dataReady;
     QMutex mutex;
 
-    pp::URLLoader loader;
+// ###    pp::URLLoader loader;
 
     Q_DECLARE_PUBLIC(QNetworkReplyPepperImpl)
 };

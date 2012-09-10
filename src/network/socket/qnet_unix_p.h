@@ -168,6 +168,8 @@ static inline int qt_safe_ioctl(int sockfd, int request, T arg)
 {
 #ifdef Q_OS_VXWORKS
     return ::ioctl(sockfd, request, (int) arg);
+#elif defined Q_OS_NACL
+    return 0;
 #else
     return ::ioctl(sockfd, request, arg);
 #endif

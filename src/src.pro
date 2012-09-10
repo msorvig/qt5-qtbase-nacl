@@ -86,4 +86,4 @@ contains(QT_CONFIG, concurrent):SUBDIRS += src_concurrent
 }
 SUBDIRS += src_plugins
 
-nacl: SUBDIRS -= src_network src_testlib
+nacl: SUBDIRS -=  src_testlib
