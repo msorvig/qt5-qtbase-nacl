@@ -73,4 +73,4 @@ QPlatformIntegration* QPepperIntegrationPlugin::create(const QString& system, co
 
 QT_END_NAMESPACE
 
-#include "pepperpluginmain.moc"
+#include "qpepperpluginmain.moc"
