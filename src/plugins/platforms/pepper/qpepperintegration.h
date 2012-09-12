@@ -57,6 +57,7 @@ class QPlatformFontDatabase;
 class QPepperFontDatabase;
 class QEventDispatcherUNIX;
 class QPepperCompositor;
+class QPepperJavascriptBridge;
 class QPepperIntegration : public QObject, public QPlatformIntegration
 {
     Q_OBJECT
@@ -97,6 +98,7 @@ private:
     QPepperCompositor *m_compositor;
     PepperEventTranslator *m_eventTranslator;
     QPepperEventDispatcher *m_pepperEventDispatcher;
+    QPepperJavascriptBridge *m_javascriptBridge;
 
     mutable bool useOpenglToplevel;
     mutable bool m_firstWindowCreated;

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/qpepperplatformplugin">
+        <file>qpepperfileaccess.js</file>
+    </qresource>
+</RCC>

@@ -21,6 +21,7 @@ SOURCES += $$PWD/qpepperpluginmain.cpp \
            $$PWD/qpepperhelpers.cpp \
            $$PWD/qpeppercompositor.cpp \
            $$PWD/qpeppereventdispatcher.cpp \
+           $$PWD/qpepperjavascriptbridge.cpp \
 
 HEADERS += $$PWD/qpepperhelpers.h \
            $$PWD/qpeppermodule.h \
@@ -37,12 +38,15 @@ HEADERS += $$PWD/qpepperhelpers.h \
            $$PWD/qpepperhelpers.h \
            $$PWD/qpeppercompositor.h \
            $$PWD/qpeppereventdispatcher.h \
+           $$PWD/qpepperjavascriptbridge.h \
 
 
-RESOURCES += $$PWD/../../../../lib/fonts/naclfonts.qrc
+RESOURCES += $$PWD/../../../../lib/fonts/naclfonts.qrc \
+             $$PWD/pepper.qrc
 
 OTHER_FILES += $$PWD/../../../../tools/nacldemoserver/check_browser.js \
-               $$PWD/../../../../tools/nacldemoserver/qtnaclloader.js
+               $$PWD/../../../../tools/nacldemoserver/qtnaclloader.js \
+               $$PWD/qpepperfileaccess.js \
 
 QT += core-private gui-private platformsupport-private
 

@@ -46,6 +46,7 @@
 #include "qpepperbackingstore.h"
 #include "qpeppereventdispatcher.h"
 #include "qpeppertheme.h"
+#include "qpepperjavascriptbridge.h"
 
 #include <qpa/qplatformwindow.h>
 #include <qpa/qwindowsysteminterface.h>
@@ -81,6 +82,7 @@ QPepperIntegration::QPepperIntegration()
 
     m_fontDatabase = 0;
     m_pepperEventDispatcher = new QPepperEventDispatcher();
+    m_javascriptBridge = 0;
 //    qDebug() << "QPepperIntegration::QPepperIntegration done()";
 }
 
@@ -91,6 +93,7 @@ QPepperIntegration::~QPepperIntegration()
     delete m_eventTranslator;
     delete m_fontDatabase;
     delete m_pepperEventDispatcher;
+    delete m_javascriptBridge;
 }
 
 bool QPepperIntegration::hasOpenGL() const
@@ -159,6 +162,9 @@ void QPepperIntegration::setPepperInstance(QPepperInstance *instance)
 {
     m_pepperInstance = instance;
     connect(m_compositor,SIGNAL(flush()), this, SLOT(flushRasterFrameBuffer()));
+
+    m_javascriptBridge = new QPepperJavascriptBridge(m_pepperInstance);
+    m_javascriptBridge->evalFile(":/qpepperplatformplugin/qpepperfileaccess.js");
 }
 
 QPepperInstance *QPepperIntegration::pepperInstance() const
