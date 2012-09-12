@@ -77,6 +77,10 @@ WId QPepperPlatformWindow::winId() const
 void QPepperPlatformWindow::setVisible(bool visible)
 {
 //    qDebug() << "QPepperPlatformWindow::setVisible" << visible;
+    QWindowSystemInterface::handleSynchronousExposeEvent(window(), QRegion(window()->geometry()));
+    if (visible)
+        QWindowSystemInterface::handleSynchronousExposeEvent(window(), QRegion(window()->geometry()));
+
     if (m_useCompositor)
         m_compositor->setVisible(this, visible);
 //    qDebug() << "QPepperPlatformWindow::setVisible done";
