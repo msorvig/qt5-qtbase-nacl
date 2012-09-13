@@ -114,11 +114,13 @@ void QPepperPlatformWindow::setParent(const QPlatformWindow *parent)
 bool QPepperPlatformWindow::setKeyboardGrabEnabled(bool grab)
 {
     Q_UNUSED(grab);
+    return false;
 }
 
 bool QPepperPlatformWindow::setMouseGrabEnabled(bool grab)
 {
     Q_UNUSED(grab);
+    return false;
 }
 
 
