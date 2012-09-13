@@ -44,7 +44,7 @@
 #include "qpeppermodule.h"
 #include "qpeppercompositor.h"
 #include <QtGui/QSurface>
-
+#include <qpa/qwindowsysteminterface.h>
 #include <qdebug.h>
 
 QT_BEGIN_NAMESPACE
