@@ -326,10 +326,16 @@ QLibraryInfo::rawLocation(LibraryLocation loc, PathGroup group)
     } else {
         QString key;
         QString defaultValue;
+
+// Work around x86_64-nacl-g++ ICE
+#ifndef Q_OS_NACL
         if (loc >= 0 && loc < sizeof(qtConfEntries)/sizeof(qtConfEntries[0])) {
             key = QLatin1String(qtConfEntries[loc].key);
             defaultValue = QLatin1String(qtConfEntries[loc].value);
         }
+#else
+        if (0) {}
+#endif
 #ifndef Q_OS_WIN // On Windows we use the registry
         else if (loc == SettingsPath)
             key = QLatin1String("Settings");

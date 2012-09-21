@@ -159,6 +159,10 @@ QString QLocalePrivate::languageCode() const
 
     const unsigned char *c = language_code_list + 3*(uint(m_data->m_language_id));
 
+// Work around x86_64-nacl-g++ ICE
+#ifdef Q_OS_NACL
+    return QLatin1String("C");
+#else
     QString code(c[2] == 0 ? 2 : 3, Qt::Uninitialized);
 
     code[0] = ushort(c[0]);
@@ -167,6 +171,7 @@ QString QLocalePrivate::languageCode() const
         code[2] = ushort(c[2]);
 
     return code;
+#endif
 }
 
 QString QLocalePrivate::scriptCode() const
@@ -184,6 +189,10 @@ QString QLocalePrivate::countryCode() const
 
     const unsigned char *c = country_code_list + 3*(uint(m_data->m_country_id));
 
+// Work around x86_64-nacl-g++ ICE
+#ifdef Q_OS_NACL
+    return QLatin1String("C");
+#else
     QString code(c[2] == 0 ? 2 : 3, Qt::Uninitialized);
 
     code[0] = ushort(c[0]);
@@ -192,6 +201,7 @@ QString QLocalePrivate::countryCode() const
         code[2] = ushort(c[2]);
 
     return code;
+#endif
 }
 
 QString QLocalePrivate::bcp47Name() const
@@ -200,6 +210,9 @@ QString QLocalePrivate::bcp47Name() const
         return QString();
     if (m_data->m_language_id == QLocale::C)
         return QStringLiteral("C");
+#ifdef Q_OS_NACL
+    return QLatin1String("C");
+#else
     const unsigned char *lang = language_code_list + 3*(uint(m_data->m_language_id));
     const unsigned char *script =
             (m_data->m_script_id != QLocale::AnyScript ? script_code_list + 4*(uint(m_data->m_script_id)) : 0);
@@ -227,6 +240,7 @@ QString QLocalePrivate::bcp47Name() const
             *uc++ = ushort(country[2]);
     }
     return name;
+#endif
 }
 
 const QLocaleData *QLocaleData::findLocaleData(QLocale::Language language, QLocale::Script script, QLocale::Country country)
