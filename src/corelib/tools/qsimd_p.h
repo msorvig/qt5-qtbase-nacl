@@ -42,6 +42,14 @@
 #ifndef QSIMD_P_H
 #define QSIMD_P_H
 
+// x86_64-nacl-g++ always sefines __SSE2__, but Qt cpu feature detecton
+// is not implemented on nacl. Undef __SSE2__ here.
+#ifdef Q_OS_NACL
+#if defined (__SSE2__) && !defined (QT_COMPILER_SUPPORTS_SSE2)
+#undef __SSE2__
+#endif
+#endif
+
 #include <qglobal.h>
 #include <qatomic.h>
 
