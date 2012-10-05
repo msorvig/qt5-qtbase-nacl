@@ -14,6 +14,10 @@ qnx {
     SUBDIRS += qnx
 }
 
+nacl {
+    SUBDIRS += pepper
+}
+
 contains(QT_CONFIG, eglfs) {
     SUBDIRS += eglfs
     SUBDIRS += minimalegl
