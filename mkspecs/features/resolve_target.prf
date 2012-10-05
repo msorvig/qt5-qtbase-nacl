@@ -49,10 +49,13 @@ win32 {
             }
         } else {
             nacl {
-                TARGET_EXT = .nexe
-                QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}$${TARGET_EXT}
-            #  ### fix .nexe addition
-            #    TARGET=$$QMAKE_RESOLVED_TARGET # setting QMAKE_RESOLVED_TARGET only seems to have no effect.
+                # Add .nexe extenson to app targes.
+                # Except don't do it for the configure tests. Empiric testing shows that QT_CONFIG
+                # does not contain "qpa" at this stage, so use that as a completely arbitray condition.
+                contains(QT_CONFIG, "qpa") {
+                    TARGET_EXT = .nexe
+                    TARGET=$${TARGET}$${TARGET_EXT}
+                }
             } else {
                 QMAKE_RESOLVED_TARGET = $${QMAKE_RESOLVED_TARGET}$${TARGET}
             }
