@@ -110,7 +110,6 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
  //   qDebug() << "QPepperInstance::DidChangeView" << m_windowId
  //            << geometry.size().width() << geometry.size().height();
 
-
     if (m_pepperIntegraton->wantsOpenGLGraphics()) {
 
 
@@ -195,7 +194,6 @@ void QPepperInstance::flush()
     m_context2D->Flush(m_callbackFactory.NewCallback(&QPepperInstance::flushCompletedCallback));
 
     m_inFlush = true;
-
 }
 
 void QPepperInstance::waitForFlushed()
@@ -207,6 +205,7 @@ void QPepperInstance::waitForFlushed()
 void QPepperInstance::flushCompletedCallback(int32_t)
 {
     m_inFlush = false;
+    m_pepperIntegraton->flushCompleted();
 
     //qDebug() << "flushCompleted" << QThread::currentThreadId();
 }

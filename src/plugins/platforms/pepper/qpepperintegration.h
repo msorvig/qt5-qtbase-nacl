@@ -87,6 +87,7 @@ public:
 
     bool wantsOpenGLGraphics() const;
     void setRasterFrameBuffer(QImage *m_frameBuffer);
+    void flushCompleted();
 
 private Q_SLOTS:
     void getWindowAt(const QPoint & point, QWindow **window);

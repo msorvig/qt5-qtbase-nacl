@@ -95,6 +95,7 @@ private:
     QList<QWindow *> m_windowStack;
     QImage *m_frameBuffer;
     bool m_needComposit;
+    bool m_inFlush;
 };
 
 #endif

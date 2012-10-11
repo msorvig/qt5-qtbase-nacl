@@ -86,8 +86,7 @@ void QPepperBackingStore::endPaint()
 
 void QPepperBackingStore::flush(QWindow *window, const QRegion &region, const QPoint &offset)
 {
-    Q_UNUSED(window); // ### TODO: complications if widget
-                      // is a child widget. (see QWindowSurface::flush)
+    Q_UNUSED(window);
     Q_UNUSED(region);
     Q_UNUSED(offset);
 

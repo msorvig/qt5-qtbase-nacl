@@ -204,6 +204,11 @@ void QPepperIntegration::setRasterFrameBuffer(QImage *m_frameBuffer)
     m_pepperEventDispatcher->processEventsContinue();
 }
 
+void QPepperIntegration::flushCompleted()
+{
+    m_compositor->flushCompleted();
+}
+
 void QPepperIntegration::getWindowAt(const QPoint & point, QWindow **window)
 {
     *window = m_compositor->windowAt(point);

@@ -58,6 +58,7 @@ QPepperCompositedWindow::QPepperCompositedWindow()
 QPepperCompositor::QPepperCompositor()
     :m_frameBuffer(0)
     ,m_needComposit(false)
+    ,m_inFlush(false)
 {
 
 }
@@ -139,7 +140,6 @@ void QPepperCompositor::waitForFlushed(QPlatformWindow *surface)
 {
     if (!m_compositedWindows[surface->window()].flushPending)
         return;
-
 }
 
 void QPepperCompositor::setRasterFrameBuffer(QImage *frameBuffer)
@@ -153,9 +153,9 @@ void QPepperCompositor::setRasterFrameBuffer(QImage *frameBuffer)
     }
 }
 
-// called from the Qt thread
 void QPepperCompositor::flushCompleted()
 {
+    m_inFlush = false;
     if (m_needComposit) {
         composit();
         m_needComposit = false;
@@ -185,10 +185,10 @@ QWindow *QPepperCompositor::keyWindow()
 
 void QPepperCompositor::maybeComposit()
 {
-//    if (!m_pepperInstance->m_inFlush)
+    if (!m_inFlush)
         composit();
-//    else
-//        m_needComposit = true;
+    else
+        m_needComposit = true;
 }
 
 void QPepperCompositor::composit()
@@ -204,7 +204,6 @@ void QPepperCompositor::composit()
 
     // ### for now, clear the entire frame.
     p.fillRect(QRect(QPoint(0,0), m_frameBuffer->size()), QBrush(Qt::transparent));
-
 
     QRegion damaged;
     foreach (QWindow *window, m_windowStack) {
@@ -236,6 +235,7 @@ void QPepperCompositor::composit()
     //QRegion needsClear = damaged - painted;
     //qDebug() << "needsclear" << needsClear;
 
+    m_inFlush = true;
     emit flush();
 }
 
