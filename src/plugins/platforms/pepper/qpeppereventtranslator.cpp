@@ -123,12 +123,14 @@ bool PepperEventTranslator::processWheelEvent(const pp::WheelInputEvent &event)
     QWindow *window = 0;
     emit getWindowAt(currentMouseGlobalPos, &window);
 
-    if (event.GetTicks().x() != 0) {
-        QWindowSystemInterface::handleWheelEvent(window, QPoint(), currentMouseGlobalPos, event.GetTicks().x(), Qt::Horizontal);
-    }
-    if (event.GetTicks().y()!= 0) {
-        QWindowSystemInterface::handleWheelEvent(window,  QPoint(), currentMouseGlobalPos, event.GetTicks().y(), Qt::Vertical);
-    }
+    QPoint localPoint = window ? currentMouseGlobalPos - window->pos() : currentMouseGlobalPos;
+
+    QPoint pixelDelta(event.GetTicks().x(), event.GetTicks().y());
+    // ### scaling factor of 30 determined by testing on a MacBook. We should do something
+    // smarter here, like accumulating pixel deltas and then send a large angle delta.
+    QPoint angleDelta = pixelDelta * 30;
+
+    QWindowSystemInterface::handleWheelEvent(window, localPoint, currentMouseGlobalPos, pixelDelta, angleDelta);
     return true;
 }
 
