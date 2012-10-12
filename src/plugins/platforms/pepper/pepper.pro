@@ -50,7 +50,7 @@ OTHER_FILES += $$PWD/../../../../tools/nacldemoserver/check_browser.js \
 
 QT += core-private gui-private platformsupport-private
 
-LIBS += -lppruntime -lppapi -lppapi_gles2 -lsrpc -limc_syscalls -lplatform -lgio -lppapi_cpp
+LIBS_PRIVATE += -lppruntime -lppapi -lppapi_gles2 -lsrpc -limc_syscalls -lplatform -lgio -lppapi_cpp
 OBJECTS_DIR = .obj
 MOC_DIR = .moc
 

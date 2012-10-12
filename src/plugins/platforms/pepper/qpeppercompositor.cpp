@@ -225,7 +225,7 @@ void QPepperCompositor::composit()
 
         if (compositedWindow.visible) {
             p.drawImage(compositedWindow.window->geometry().topLeft(), *compositedWindow.frameBuffer);
-            painted.unite(compositedWindow.damage);
+            painted += compositedWindow.damage;
         }
 
         compositedWindow.flushPending = false;
