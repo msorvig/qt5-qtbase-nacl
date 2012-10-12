@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -325,6 +325,7 @@ public:
 
 /*!
     \class QTranslator
+    \inmodule QtCore
 
     \brief The QTranslator class provides internationalization support for text
     output.
@@ -337,7 +338,7 @@ public:
     Translation files are created using \l{Qt Linguist}.
 
     The most common use of QTranslator is to: load a translation
-    file, install it using QApplication::installTranslator(), and use
+    file, install it using QCoreApplication::installTranslator(), and use
     it via QObject::tr(). Here's the \c main() function from the
     \l{linguist/hellotr}{Hello tr()} example:
 
@@ -353,7 +354,7 @@ public:
     \section1 Looking up Translations
 
     It is possible to look up a translation using translate() (as tr()
-    and QApplication::translate() do). The translate() function takes
+    and QCoreApplication::translate() do). The translate() function takes
     up to three parameters:
 
     \list
@@ -391,12 +392,12 @@ public:
     This mechanism makes it possible for a specific translation to be
     "selected" or given priority over the others; simply uninstall the
     translator from the application by passing it to the
-    QApplication::removeTranslator() function and reinstall it with
-    QApplication::installTranslator(). It will then be the first
+    QCoreApplication::removeTranslator() function and reinstall it with
+    QCoreApplication::installTranslator(). It will then be the first
     translation to be searched for matching strings.
 
-    \sa QApplication::installTranslator(), QApplication::removeTranslator(),
-        QObject::tr(), QApplication::translate(), {I18N Example},
+    \sa QCoreApplication::installTranslator(), QCoreApplication::removeTranslator(),
+        QObject::tr(), QCoreApplication::translate(), {I18N Example},
         {Hello tr() Example}, {Arrow Pad Example}, {Troll Print Example}
 */
 
@@ -431,7 +432,7 @@ QTranslator::~QTranslator()
 
     If \a directory is not specified, the directory of the
     application's executable is used (i.e., as
-    \l{QCoreApplication::}{applicationDirPath()}). 
+    \l{QCoreApplication::}{applicationDirPath()}).
 
     The previous contents of this translator object are discarded.
 
@@ -472,8 +473,8 @@ bool QTranslator::load(const QString & filename, const QString & directory,
     QString prefix;
     if (QFileInfo(filename).isRelative()) {
         prefix = directory;
-	if (prefix.length() && !prefix.endsWith(QLatin1Char('/')))
-	    prefix += QLatin1Char('/');
+        if (prefix.length() && !prefix.endsWith(QLatin1Char('/')))
+            prefix += QLatin1Char('/');
     }
 
     QString fname = filename;
@@ -731,7 +732,6 @@ bool QTranslator::load(const QLocale & locale,
 
 /*!
   \overload load()
-  \fn bool QTranslator::load(const uchar *data, int len)
 
   Loads the QM file data \a data of length \a len into the
   translator.
@@ -782,7 +782,7 @@ bool QTranslatorPrivate::do_load(const uchar *data, int len, const QString &dire
         data += 4;
         if (!tag || !blockLen)
             break;
-        if (end - data < blockLen) {
+        if (quint32(end - data) < blockLen) {
             ok = false;
             break;
         }

@@ -1,40 +1,40 @@
 
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Giuseppe D'Angelo <dangelog@gmail.com>.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -93,7 +93,7 @@ QT_BEGIN_NAMESPACE
     (for instance, gcc 4.4 does that even at -O0).
 */
 
-static inline uint hash(const uchar *p, int len, uint seed)
+static inline uint hash(const uchar *p, int len, uint seed) Q_DECL_NOTHROW
 {
     uint h = seed;
 
@@ -103,7 +103,7 @@ static inline uint hash(const uchar *p, int len, uint seed)
     return h;
 }
 
-static inline uint hash(const QChar *p, int len, uint seed)
+static inline uint hash(const QChar *p, int len, uint seed) Q_DECL_NOTHROW
 {
     uint h = seed;
 
@@ -113,22 +113,22 @@ static inline uint hash(const QChar *p, int len, uint seed)
     return h;
 }
 
-uint qHash(const QByteArray &key, uint seed)
+uint qHash(const QByteArray &key, uint seed) Q_DECL_NOTHROW
 {
     return hash(reinterpret_cast<const uchar *>(key.constData()), key.size(), seed);
 }
 
-uint qHash(const QString &key, uint seed)
+uint qHash(const QString &key, uint seed) Q_DECL_NOTHROW
 {
     return hash(key.unicode(), key.size(), seed);
 }
 
-uint qHash(const QStringRef &key, uint seed)
+uint qHash(const QStringRef &key, uint seed) Q_DECL_NOTHROW
 {
     return hash(key.unicode(), key.size(), seed);
 }
 
-uint qHash(const QBitArray &bitArray, uint seed)
+uint qHash(const QBitArray &bitArray, uint seed) Q_DECL_NOTHROW
 {
     int m = bitArray.d.size() - 1;
     uint result = hash(reinterpret_cast<const uchar *>(bitArray.d.constData()), qMax(0, m), seed);
@@ -141,7 +141,7 @@ uint qHash(const QBitArray &bitArray, uint seed)
     return result;
 }
 
-uint qHash(QLatin1String key, uint seed)
+uint qHash(QLatin1String key, uint seed) Q_DECL_NOTHROW
 {
     return hash(reinterpret_cast<const uchar *>(key.data()), key.size(), seed);
 }
@@ -242,7 +242,7 @@ static void qt_initialize_qhash_seed()
 
     This function must *never* change its results.
 */
-uint qt_hash(const QString &key)
+uint qt_hash(const QString &key) Q_DECL_NOTHROW
 {
     const QChar *p = key.unicode();
     int n = key.size();
@@ -708,6 +708,7 @@ void QHashData::checkSanity()
 
 /*!
     \class QHash
+    \inmodule QtCore
     \brief The QHash class is a template class that provides a hash-table-based dictionary.
 
     \ingroup tools
@@ -1482,6 +1483,7 @@ void QHashData::checkSanity()
 */
 
 /*! \class QHash::iterator
+    \inmodule QtCore
     \brief The QHash::iterator class provides an STL-style non-const iterator for QHash and QMultiHash.
 
     QHash features both \l{STL-style iterators} and \l{Java-style
@@ -1707,6 +1709,7 @@ void QHashData::checkSanity()
 */
 
 /*! \class QHash::const_iterator
+    \inmodule QtCore
     \brief The QHash::const_iterator class provides an STL-style const iterator for QHash and QMultiHash.
 
     QHash features both \l{STL-style iterators} and \l{Java-style
@@ -1918,6 +1921,7 @@ void QHashData::checkSanity()
 */
 
 /*! \class QMultiHash
+    \inmodule QtCore
     \brief The QMultiHash class is a convenience QHash subclass that provides multi-valued hashes.
 
     \ingroup tools

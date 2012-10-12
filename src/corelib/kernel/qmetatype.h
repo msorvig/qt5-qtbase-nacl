@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -77,7 +77,7 @@ QT_BEGIN_NAMESPACE
     F(UShort, 36, ushort) \
     F(UChar, 37, uchar) \
     F(Float, 38, float) \
-    F(SChar, 49, signed char) \
+    F(SChar, 40, signed char) \
 
 #define QT_FOR_EACH_STATIC_PRIMITIVE_POINTER(F)\
     F(VoidStar, 31, void*) \
@@ -113,8 +113,7 @@ QT_BEGIN_NAMESPACE
     F(QJsonDocument, 48, QJsonDocument) \
 
 #define QT_FOR_EACH_STATIC_CORE_POINTER(F)\
-    F(QObjectStar, 39, QObject*) \
-    F(QWidgetStar, 40, QWidget*) \
+    F(QObjectStar, 39, QObject*)
 
 #define QT_FOR_EACH_STATIC_CORE_TEMPLATE(F)\
     F(QVariantMap, 8, QVariantMap) \
@@ -206,7 +205,7 @@ public:
         QT_FOR_EACH_STATIC_TYPE(QT_DEFINE_METATYPE_ID)
 
         FirstCoreType = Bool,
-        LastCoreType = SChar,
+        LastCoreType = QJsonDocument,
         FirstGuiType = QFont,
         LastGuiType = QPolygonF,
         FirstWidgetsType = QSizePolicy,
@@ -232,8 +231,7 @@ public:
         QEasingCurve = 29, QUuid = 30, QVariant = 41, QModelIndex = 42,
         QRegularExpression = 44,
         QJsonValue = 45, QJsonObject = 46, QJsonArray = 47, QJsonDocument = 48,
-        SChar = 49,
-        QObjectStar = 39, QWidgetStar = 40,
+        QObjectStar = 39, SChar = 40,
         Void = 43,
         QVariantMap = 8, QVariantList = 9, QVariantHash = 28,
         QFont = 64, QPixmap = 65, QBrush = 66, QColor = 67, QPalette = 68,
@@ -242,7 +240,7 @@ public:
         QMatrix = 79, QTransform = 80, QMatrix4x4 = 81, QVector2D = 82,
         QVector3D = 83, QVector4D = 84, QQuaternion = 85, QPolygonF = 86,
         QSizePolicy = 121,
-        User = 256
+        User = 1024
     };
 #endif
 
@@ -340,7 +338,7 @@ private:
     QMetaType &operator =(const QMetaType &);
     inline bool isExtended(const ExtensionFlag flag) const { return m_extensionFlags & flag; }
 
-    // Methods used for future binary compatibile extensions
+    // Methods used for future binary compatible extensions
     void ctor(const QMetaTypeInterface *info);
     void dtor();
     uint sizeExtended() const;
@@ -369,59 +367,62 @@ private:
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(QMetaType::TypeFlags)
 
-template <typename T>
-void qMetaTypeDeleteHelper(void *t)
-{
-    delete static_cast<T*>(t);
-}
-template <> inline void qMetaTypeDeleteHelper<void>(void *) {}
+namespace QtMetaTypePrivate {
+template <typename T, bool Accepted = true>
+struct QMetaTypeFunctionHelper {
+    static void Delete(void *t)
+    {
+        delete static_cast<T*>(t);
+    }
 
-template <typename T>
-void *qMetaTypeCreateHelper(const void *t)
-{
-    if (t)
-        return new T(*static_cast<const T*>(t));
-    return new T();
-}
+    static void *Create(const void *t)
+    {
+        if (t)
+            return new T(*static_cast<const T*>(t));
+        return new T();
+    }
 
-template <> inline void *qMetaTypeCreateHelper<void>(const void *) { return 0; }
+    static void Destruct(void *t)
+    {
+        Q_UNUSED(t) // Silence MSVC that warns for POD types.
+        static_cast<T*>(t)->~T();
+    }
 
-template <typename T>
-void qMetaTypeDestructHelper(void *t)
-{
-    Q_UNUSED(t) // Silence MSVC that warns for POD types.
-    static_cast<T*>(t)->~T();
-}
-
-template <> inline void qMetaTypeDestructHelper<void>(void *) {}
-
-template <typename T>
-void *qMetaTypeConstructHelper(void *where, const void *t)
-{
-    if (t)
-        return new (where) T(*static_cast<const T*>(t));
-    return new (where) T;
-}
-
-template <> inline void *qMetaTypeConstructHelper<void>(void *, const void *) { return 0; }
-
+    static void *Construct(void *where, const void *t)
+    {
+        if (t)
+            return new (where) T(*static_cast<const T*>(t));
+        return new (where) T;
+    }
 #ifndef QT_NO_DATASTREAM
-template <typename T>
-void qMetaTypeSaveHelper(QDataStream &stream, const void *t)
-{
-    stream << *static_cast<const T*>(t);
-}
+    static void Save(QDataStream &stream, const void *t)
+    {
+        stream << *static_cast<const T*>(t);
+    }
 
-template <> inline void qMetaTypeSaveHelper<void>(QDataStream &, const void *) {}
-
-template <typename T>
-void qMetaTypeLoadHelper(QDataStream &stream, void *t)
-{
-    stream >> *static_cast<T*>(t);
-}
-
-template <> inline void qMetaTypeLoadHelper<void>(QDataStream &, void *) {}
+    static void Load(QDataStream &stream, void *t)
+    {
+        stream >> *static_cast<T*>(t);
+    }
 #endif // QT_NO_DATASTREAM
+};
+
+template <typename T>
+struct QMetaTypeFunctionHelper<T, /* Accepted */ false> {
+    static void Delete(void *) {}
+    static void *Create(const void *) { return 0; }
+    static void Destruct(void *) {}
+    static void *Construct(void *, const void *) { return 0; }
+#ifndef QT_NO_DATASTREAM
+    static void Save(QDataStream &, const void *) {}
+    static void Load(QDataStream &, void *) {}
+#endif // QT_NO_DATASTREAM
+};
+template <>
+struct QMetaTypeFunctionHelper<void, /* Accepted */ true>
+        : public QMetaTypeFunctionHelper<void, /* Accepted */ false>
+{};
+}
 
 class QObject;
 class QWidget;
@@ -445,11 +446,6 @@ namespace QtPrivate
     };
     template<>
     struct IsPointerToTypeDerivedFromQObject<QObject*>
-    {
-        enum { Value = true };
-    };
-    template<>
-    struct IsPointerToTypeDerivedFromQObject<QWidget*>
     {
         enum { Value = true };
     };
@@ -478,14 +474,6 @@ namespace QtPrivate
     struct MetaObjectForType<T*, /* isPointerToTypeDerivedFromQObject = */ true>
     {
         static inline const QMetaObject *value() { return &T::staticMetaObject; }
-    };
-
-    Q_CORE_EXPORT const QMetaObject *metaObjectForQWidget();
-
-    template<>
-    struct MetaObjectForType<QWidget*, /* isPointerToTypeDerivedFromQObject = */ true>
-    {
-        static const QMetaObject *value() { return metaObjectForQWidget(); }
     };
 
     template<typename T>
@@ -590,10 +578,11 @@ int qRegisterNormalizedMetaType(const QT_PREPEND_NAMESPACE(QByteArray) &normaliz
         return QMetaType::registerNormalizedTypedef(normalizedTypeName, typedefOf);
 
     QMetaType::TypeFlags flags(QtPrivate::QMetaTypeTypeFlags<T>::Flags);
-    return QMetaType::registerNormalizedType(normalizedTypeName, qMetaTypeDeleteHelper<T>,
-                                   qMetaTypeCreateHelper<T>,
-                                   qMetaTypeDestructHelper<T>,
-                                   qMetaTypeConstructHelper<T>,
+    return QMetaType::registerNormalizedType(normalizedTypeName,
+                                   QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Delete,
+                                   QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Create,
+                                   QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Destruct,
+                                   QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Construct,
                                    sizeof(T),
                                    flags,
                                    QtPrivate::MetaObjectForType<T>::value());
@@ -623,7 +612,8 @@ void qRegisterMetaTypeStreamOperators(const char *typeName
 )
 {
     qRegisterMetaType<T>(typeName);
-    QMetaType::registerStreamOperators(typeName, qMetaTypeSaveHelper<T>, qMetaTypeLoadHelper<T>);
+    QMetaType::registerStreamOperators(typeName, QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Save,
+                                                 QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Load);
 }
 #endif // QT_NO_DATASTREAM
 
@@ -662,16 +652,17 @@ struct QMetaTypeIdQObject<T*, /* isPointerToTypeDerivedFromQObject */ true>
     static int qt_metatype_id()
     {
         static QBasicAtomicInt metatype_id = Q_BASIC_ATOMIC_INITIALIZER(0);
-        if (!metatype_id.load()) {
-            const int len = int(strlen(T::staticMetaObject.className()));
-            QVarLengthArray<char, 16> classNameStar;
-            classNameStar.append(T::staticMetaObject.className(), len);
-            classNameStar.append('*');
-            metatype_id.storeRelease(qRegisterNormalizedMetaType<T*>( \
+        if (const int id = metatype_id.loadAcquire())
+            return id;
+        const int len = int(strlen(T::staticMetaObject.className()));
+        QVarLengthArray<char, 16> classNameStar;
+        classNameStar.append(T::staticMetaObject.className(), len);
+        classNameStar.append('*');
+        const int newId = qRegisterNormalizedMetaType<T*>(       \
                         QByteArray(classNameStar.constData(), classNameStar.size()),
-                        reinterpret_cast<T**>(quintptr(-1))));
-        }
-        return metatype_id.loadAcquire();
+                        reinterpret_cast<T**>(quintptr(-1)));
+        metatype_id.storeRelease(newId);
+        return newId;
     }
 };
 
@@ -680,7 +671,8 @@ template <typename T>
 inline int qRegisterMetaTypeStreamOperators()
 {
     register int id = qMetaTypeId<T>();
-    QMetaType::registerStreamOperators(id, qMetaTypeSaveHelper<T>, qMetaTypeLoadHelper<T>);
+    QMetaType::registerStreamOperators(id, QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Save,
+                                           QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Load);
     return id;
 }
 #endif
@@ -704,10 +696,12 @@ inline int qRegisterMetaTypeStreamOperators()
         static int qt_metatype_id()                                     \
             {                                                           \
                 static QBasicAtomicInt metatype_id = Q_BASIC_ATOMIC_INITIALIZER(0); \
-                if (!metatype_id.load())                                \
-                    metatype_id.storeRelease(qRegisterMetaType< TYPE >(#TYPE, \
-                               reinterpret_cast< TYPE *>(quintptr(-1)))); \
-                return metatype_id.loadAcquire();                       \
+                if (const int id = metatype_id.loadAcquire())           \
+                    return id;                                          \
+                const int newId = qRegisterMetaType< TYPE >(#TYPE,      \
+                              reinterpret_cast< TYPE *>(quintptr(-1))); \
+                metatype_id.storeRelease(newId);                        \
+                return newId;                                           \
             }                                                           \
     };                                                                  \
     QT_END_NAMESPACE
@@ -731,15 +725,6 @@ QT_FOR_EACH_STATIC_WIDGETS_CLASS(QT_FORWARD_DECLARE_STATIC_TYPES_ITER)
 
 #undef QT_FORWARD_DECLARE_STATIC_TYPES_ITER
 
-template <class T> class QList;
-template <class T> class QLinkedList;
-template <class T> class QVector;
-template <class T> class QQueue;
-template <class T> class QStack;
-template <class T> class QSet;
-template <class T1, class T2> class QMap;
-template <class T1, class T2> class QHash;
-template <class T1, class T2> struct QPair;
 typedef QList<QVariant> QVariantList;
 typedef QMap<QString, QVariant> QVariantMap;
 typedef QHash<QString, QVariant> QVariantHash;
@@ -754,22 +739,22 @@ struct QMetaTypeId< SINGLE_ARG_TEMPLATE<T> > \
     static int qt_metatype_id() \
     { \
         static QBasicAtomicInt metatype_id = Q_BASIC_ATOMIC_INITIALIZER(0); \
-        if (!metatype_id.load()) { \
-            QVarLengthArray<char, 24> name; \
-            name.append(#SINGLE_ARG_TEMPLATE, int(sizeof(#SINGLE_ARG_TEMPLATE)) - 1); \
-            name.append('<'); \
-            const char *tName = QMetaType::typeName(qMetaTypeId<T>()); \
-            Q_ASSERT(tName); \
-            name.append(tName, int(strlen(tName))); \
-            if (name.last() == '>') \
-                name.append(' '); \
-            name.append('>'); \
-            metatype_id.storeRelease( \
-                    qRegisterNormalizedMetaType< SINGLE_ARG_TEMPLATE<T> >( \
+        if (const int id = metatype_id.load()) \
+            return id; \
+        QVarLengthArray<char, 24> name; \
+        name.append(#SINGLE_ARG_TEMPLATE, int(sizeof(#SINGLE_ARG_TEMPLATE)) - 1); \
+        name.append('<'); \
+        const char *tName = QMetaType::typeName(qMetaTypeId<T>()); \
+        Q_ASSERT(tName); \
+        name.append(tName, int(strlen(tName))); \
+        if (name.last() == '>') \
+            name.append(' '); \
+        name.append('>'); \
+        const int newId = qRegisterNormalizedMetaType< SINGLE_ARG_TEMPLATE<T> >(     \
                         QByteArray(name.constData(), name.size()), \
-                        reinterpret_cast< SINGLE_ARG_TEMPLATE<T> *>(quintptr(-1)))); \
-        } \
-        return metatype_id.loadAcquire(); \
+                        reinterpret_cast< SINGLE_ARG_TEMPLATE<T> *>(quintptr(-1))); \
+        metatype_id.storeRelease(newId); \
+        return newId; \
     } \
 };
 
@@ -783,40 +768,28 @@ struct QMetaTypeId< DOUBLE_ARG_TEMPLATE<T, U> > \
     static int qt_metatype_id() \
     { \
         static QBasicAtomicInt metatype_id = Q_BASIC_ATOMIC_INITIALIZER(0); \
-        if (!metatype_id.load()) {\
-            QVarLengthArray<char, 24> name; \
-            name.append(#DOUBLE_ARG_TEMPLATE, sizeof(#DOUBLE_ARG_TEMPLATE) - 1); \
-            name.append('<'); \
-            const char *tName = QMetaType::typeName(qMetaTypeId<T>()); \
-            Q_ASSERT(tName); \
-            name.append(tName, int(strlen(tName))); \
-            name.append(','); \
-            const char *uName = QMetaType::typeName(qMetaTypeId<U>()); \
-            Q_ASSERT(uName); \
-            name.append(uName, int(strlen(uName))); \
-            if (name.last() == '>') \
-                name.append(' '); \
-            name.append('>'); \
-            metatype_id.storeRelease(\
-                    qRegisterNormalizedMetaType< DOUBLE_ARG_TEMPLATE<T, U> >(\
+        if (const int id = metatype_id.loadAcquire()) \
+            return id; \
+        QVarLengthArray<char, 24> name; \
+        name.append(#DOUBLE_ARG_TEMPLATE, sizeof(#DOUBLE_ARG_TEMPLATE) - 1); \
+        name.append('<'); \
+        const char *tName = QMetaType::typeName(qMetaTypeId<T>()); \
+        Q_ASSERT(tName); \
+        name.append(tName, int(strlen(tName))); \
+        name.append(','); \
+        const char *uName = QMetaType::typeName(qMetaTypeId<U>()); \
+        Q_ASSERT(uName); \
+        name.append(uName, int(strlen(uName))); \
+        if (name.last() == '>') \
+            name.append(' '); \
+        name.append('>'); \
+        const int newId = qRegisterNormalizedMetaType< DOUBLE_ARG_TEMPLATE<T, U> >(\
                         QByteArray(name.constData(), name.size()), \
-                        reinterpret_cast< DOUBLE_ARG_TEMPLATE<T, U> *>(quintptr(-1)))); \
-        }\
-        return metatype_id.loadAcquire(); \
+                        reinterpret_cast< DOUBLE_ARG_TEMPLATE<T, U> *>(quintptr(-1))); \
+        metatype_id.storeRelease(newId); \
+        return newId; \
     } \
 };
-
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QList)
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QVector)
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QQueue)
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QStack)
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QSet)
-Q_DECLARE_METATYPE_TEMPLATE_1ARG(QLinkedList)
-
-Q_DECLARE_METATYPE_TEMPLATE_2ARG(QHash)
-Q_DECLARE_METATYPE_TEMPLATE_2ARG(QMap)
-Q_DECLARE_METATYPE_TEMPLATE_2ARG(QPair)
-
 
 #define Q_DECLARE_SMART_POINTER_METATYPE(SMART_POINTER) \
 template <typename T, bool = QtPrivate::IsPointerToTypeDerivedFromQObject<T*>::Value> \
@@ -836,11 +809,12 @@ struct QMetaTypeId_ ## SMART_POINTER ## _QObjectStar<T, true> \
     static int qt_metatype_id() \
     { \
         static QBasicAtomicInt metatype_id = Q_BASIC_ATOMIC_INITIALIZER(0); \
-        if (!metatype_id.load()) { \
-            metatype_id.storeRelease(qRegisterNormalizedMetaType< SMART_POINTER<T> >( #SMART_POINTER "<" + QByteArray(T::staticMetaObject.className()) + ">", \
-                        reinterpret_cast< SMART_POINTER<T> *>(quintptr(-1)))); \
-        } \
-        return metatype_id.loadAcquire(); \
+        if (const int id = metatype_id.loadAcquire()) \
+            return id; \
+        const int newId = qRegisterNormalizedMetaType< SMART_POINTER<T> >( #SMART_POINTER "<" + QByteArray(T::staticMetaObject.className()) + ">", \
+                        reinterpret_cast< SMART_POINTER<T> *>(quintptr(-1))); \
+        metatype_id.storeRelease(newId); \
+        return newId; \
     } \
 }; \
 \
@@ -849,9 +823,46 @@ struct QMetaTypeId< SMART_POINTER<T> > : public QMetaTypeId_ ## SMART_POINTER ##
 { \
 };
 
-Q_DECLARE_SMART_POINTER_METATYPE(QSharedPointer)
-Q_DECLARE_SMART_POINTER_METATYPE(QWeakPointer)
-Q_DECLARE_SMART_POINTER_METATYPE(QPointer)
+#define QT_FOR_EACH_AUTOMATIC_TEMPLATE_1ARG(F) \
+    F(QList) \
+    F(QVector) \
+    F(QQueue) \
+    F(QStack) \
+    F(QSet) \
+    F(QLinkedList)
+
+#define QT_FOR_EACH_AUTOMATIC_TEMPLATE_2ARG(F) \
+    F(QHash, class) \
+    F(QMap, class) \
+    F(QPair, struct)
+
+#define QT_FOR_EACH_AUTOMATIC_TEMPLATE_SMART_POINTER(F) \
+    F(QSharedPointer) \
+    F(QWeakPointer) \
+    F(QPointer)
+
+#define Q_DECLARE_METATYPE_TEMPLATE_1ARG_ITER(TEMPLATENAME) \
+    template <class T> class TEMPLATENAME; \
+    Q_DECLARE_METATYPE_TEMPLATE_1ARG(TEMPLATENAME)
+
+QT_FOR_EACH_AUTOMATIC_TEMPLATE_1ARG(Q_DECLARE_METATYPE_TEMPLATE_1ARG_ITER)
+
+#undef Q_DECLARE_METATYPE_TEMPLATE_1ARG_ITER
+
+#define Q_DECLARE_METATYPE_TEMPLATE_2ARG_ITER(TEMPLATENAME, CPPTYPE) \
+    template <class T1, class T2> CPPTYPE TEMPLATENAME; \
+    Q_DECLARE_METATYPE_TEMPLATE_2ARG(TEMPLATENAME)
+
+QT_FOR_EACH_AUTOMATIC_TEMPLATE_2ARG(Q_DECLARE_METATYPE_TEMPLATE_2ARG_ITER)
+
+#undef Q_DECLARE_METATYPE_TEMPLATE_2ARG_ITER
+
+#define Q_DECLARE_METATYPE_TEMPLATE_SMART_POINTER_ITER(TEMPLATENAME) \
+    Q_DECLARE_SMART_POINTER_METATYPE(TEMPLATENAME)
+
+QT_FOR_EACH_AUTOMATIC_TEMPLATE_SMART_POINTER(Q_DECLARE_METATYPE_TEMPLATE_SMART_POINTER_ITER)
+
+#undef Q_DECLARE_METATYPE_TEMPLATE_SMART_POINTER_ITER
 
 inline QMetaType::QMetaType(const ExtensionFlag extensionFlags, const QMetaTypeInterface *info,
                             Creator creator,

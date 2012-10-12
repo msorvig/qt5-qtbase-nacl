@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -79,6 +79,8 @@ private slots:
     void operator_gt();
     void operator_lt_eq();
     void operator_gt_eq();
+    void operator_insert_extract_data();
+    void operator_insert_extract();
     void fromStringDateFormat_data();
     void fromStringDateFormat();
     void fromStringFormat_data();
@@ -838,6 +840,65 @@ void tst_QDate::operator_gt_eq()
     d1 = QDate(2001,12,6);
     d2 = QDate(2001,12,5);
     QVERIFY( d1 >= d2 );
+}
+
+Q_DECLARE_METATYPE(QDataStream::Version)
+
+void tst_QDate::operator_insert_extract_data()
+{
+    QTest::addColumn<QDate>("date");
+    QTest::addColumn<QDataStream::Version>("dataStreamVersion");
+
+    QMap<QDataStream::Version, QString> versionsToTest;
+    versionsToTest.insert(QDataStream::Qt_1_0, QString::fromLatin1("Qt_1_0"));
+    versionsToTest.insert(QDataStream::Qt_2_0, QString::fromLatin1("Qt_2_0"));
+    versionsToTest.insert(QDataStream::Qt_2_1, QString::fromLatin1("Qt_2_1"));
+    versionsToTest.insert(QDataStream::Qt_3_0, QString::fromLatin1("Qt_3_0"));
+    versionsToTest.insert(QDataStream::Qt_3_1, QString::fromLatin1("Qt_3_1"));
+    versionsToTest.insert(QDataStream::Qt_3_3, QString::fromLatin1("Qt_3_3"));
+    versionsToTest.insert(QDataStream::Qt_4_0, QString::fromLatin1("Qt_4_0"));
+    versionsToTest.insert(QDataStream::Qt_4_1, QString::fromLatin1("Qt_4_1"));
+    versionsToTest.insert(QDataStream::Qt_4_2, QString::fromLatin1("Qt_4_2"));
+    versionsToTest.insert(QDataStream::Qt_4_3, QString::fromLatin1("Qt_4_3"));
+    versionsToTest.insert(QDataStream::Qt_4_4, QString::fromLatin1("Qt_4_4"));
+    versionsToTest.insert(QDataStream::Qt_4_5, QString::fromLatin1("Qt_4_5"));
+    versionsToTest.insert(QDataStream::Qt_4_6, QString::fromLatin1("Qt_4_6"));
+    versionsToTest.insert(QDataStream::Qt_4_7, QString::fromLatin1("Qt_4_7"));
+    versionsToTest.insert(QDataStream::Qt_4_8, QString::fromLatin1("Qt_4_8"));
+    versionsToTest.insert(QDataStream::Qt_4_9, QString::fromLatin1("Qt_4_9"));
+    versionsToTest.insert(QDataStream::Qt_5_0, QString::fromLatin1("Qt_5_0"));
+
+    for (QMap<QDataStream::Version, QString>::ConstIterator it = versionsToTest.constBegin();
+            it != versionsToTest.constEnd(); ++it) {
+        const QString &version(it.value());
+        QTest::newRow(("(invalid) " + version).toLocal8Bit().constData()) << invalidDate() << it.key();
+        QTest::newRow(("(1, 1, 1) " + version).toLocal8Bit().constData()) << QDate(1, 1, 1) << it.key();
+        QTest::newRow(("(-1, 1, 1) " + version).toLocal8Bit().constData()) << QDate(-1, 1, 1) << it.key();
+        QTest::newRow(("(1995, 5, 20) " + version).toLocal8Bit().constData()) << QDate(1995, 5, 20) << it.key();
+
+        // Test minimums for quint32/qint64.
+        if (it.key() >= QDataStream::Qt_5_0)
+            QTest::newRow(("(-4714, 11, 24) " + version).toLocal8Bit().constData()) << QDate(-4714, 11, 24) << it.key();
+        else
+            QTest::newRow(("(-4713, 1, 2) " + version).toLocal8Bit().constData()) << QDate(-4713, 1, 2) << it.key();
+    }
+}
+
+void tst_QDate::operator_insert_extract()
+{
+    QFETCH(QDate, date);
+    QFETCH(QDataStream::Version, dataStreamVersion);
+
+    QByteArray byteArray;
+    QDataStream dataStream(&byteArray, QIODevice::ReadWrite);
+    dataStream.setVersion(dataStreamVersion);
+    dataStream << date;
+    dataStream.device()->reset();
+    QDate deserialised;
+    dataStream >> deserialised;
+    QCOMPARE(dataStream.status(), QDataStream::Ok);
+
+    QCOMPARE(deserialised, date);
 }
 
 void tst_QDate::fromStringDateFormat_data()

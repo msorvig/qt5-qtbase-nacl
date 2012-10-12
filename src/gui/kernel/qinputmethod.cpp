@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -53,8 +53,6 @@ QT_BEGIN_NAMESPACE
 QInputMethod::QInputMethod()
     : QObject(*new QInputMethodPrivate)
 {
-    // might be instantiated before QGuiApplication is fully done, need to connect later
-    QTimer::singleShot(0, this, SLOT(q_connectFocusObject()));
 }
 
 /*!
@@ -78,40 +76,6 @@ QInputMethod::~QInputMethod()
 */
 
 /*!
-    \property QInputMethod::inputItem
-    \brief Focused item that accepts text input
-    \obsolete
-
-    Input item is set and unset by the focused window. In QML Scene Graph this is done by
-    QQuickCanvas and the input item is either TextInput or TextEdit element. Any QObject can
-    behave as an input item as long as it responds to QInputMethodQueryEvent and QInputMethodEvent
-    events sent by the input methods.
-
-    \sa inputItemTransform, inputWindow, QInputMethodQueryEvent, QInputMethodEvent
-*/
-QObject *QInputMethod::inputItem() const
-{
-    Q_D(const QInputMethod);
-    return d->inputItem.data();
-}
-
-void QInputMethod::setInputItem(QObject *inputItem)
-{
-    Q_D(QInputMethod);
-    d->setInputItem(inputItem);
-}
-
-/*!
-    Returns the currently focused window containing the input item.
-
-    \obsolete
-*/
-QWindow *QInputMethod::inputWindow() const
-{
-    return qApp->focusWindow();
-}
-
-/*!
     Returns the transformation from input item coordinates to the window coordinates.
 */
 QTransform QInputMethod::inputItemTransform() const
@@ -121,7 +85,7 @@ QTransform QInputMethod::inputItemTransform() const
 }
 
 /*!
-    Sets the transformation from input item coordinates to the window coordinates.
+    Sets the transformation from input item coordinates to window coordinates to be \a transform.
     Item transform needs to be updated by the focused window like QQuickCanvas whenever
     item is moved inside the scene.
 */
@@ -146,11 +110,12 @@ QRectF QInputMethod::cursorRectangle() const
 {
     Q_D(const QInputMethod);
 
-    if (!d->inputItem)
+    QObject *focusObject = qGuiApp->focusObject();
+    if (!focusObject)
         return QRectF();
 
     QInputMethodQueryEvent query(Qt::ImCursorRectangle);
-    QGuiApplication::sendEvent(d->inputItem.data(), &query);
+    QGuiApplication::sendEvent(focusObject, &query);
     QRectF r = query.value(Qt::ImCursorRectangle).toRectF();
     if (!r.isValid())
         return QRectF();
@@ -223,7 +188,8 @@ bool QInputMethod::isVisible() const
 
 /*!
     Controls the keyboard visibility. Equivalent
-    to calling show() and hide() functions.
+    to calling show() (if \a visible is \c true)
+    or hide() (if \a visible is \c false).
 
     \sa show(), hide()
 */
@@ -295,7 +261,6 @@ void QInputMethod::update(Qt::InputMethodQueries queries)
     if (queries & Qt::ImEnabled) {
         QObject *focus = qApp->focusObject();
         bool enabled = d->objectAcceptsInputMethod(focus);
-        d->setInputItem(enabled ? focus : 0);
         QPlatformInputContextPrivate::setInputMethodAccepted(enabled);
     }
 
@@ -338,9 +303,20 @@ void QInputMethod::commit()
 }
 
 /*!
+    \enum QInputMethod::Action
+
+    Indicates the kind of action performed by the user.
+
+    \value Click        A normal click/tap
+    \value ContextMenu  A context menu click/tap (e.g. right-button or tap-and-hold)
+
+    \sa invokeAction()
+*/
+
+/*!
     Called by the input item when the word currently being composed is tapped by
-    the user. Input methods often use this information to offer more word
-    suggestions to the user.
+    the user, as indicated by the action \a a and the given \a cursorPosition.
+    Input methods often use this information to offer more word suggestions to the user.
 */
 void QInputMethod::invokeAction(Action a, int cursorPosition)
 {
@@ -348,21 +324,6 @@ void QInputMethod::invokeAction(Action a, int cursorPosition)
     QPlatformInputContext *ic = d->platformInputContext();
     if (ic)
         ic->invokeAction(a, cursorPosition);
-}
-
-// temporary handlers for updating focus item based on application focus
-void QInputMethodPrivate::q_connectFocusObject()
-{
-    Q_Q(QInputMethod);
-    QObject::connect(qApp, SIGNAL(focusObjectChanged(QObject*)),
-                     q, SLOT(q_checkFocusObject(QObject*)));
-    q_checkFocusObject(qApp->focusObject());
-}
-
-void QInputMethodPrivate::q_checkFocusObject(QObject *object)
-{
-    bool enabled = objectAcceptsInputMethod(object);
-    setInputItem(enabled ? object : 0);
 }
 
 bool QInputMethodPrivate::objectAcceptsInputMethod(QObject *object)

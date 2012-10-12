@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -47,6 +47,7 @@
 #include "qvarlengtharray.h"
 #include "private/qfunctions_p.h"
 
+#include <algorithm>
 #include <stdlib.h>
 
 QT_BEGIN_NAMESPACE
@@ -407,7 +408,7 @@ void QTextTablePrivate::fragmentAdded(QChar type, uint fragment)
         Q_ASSERT(cells.indexOf(fragment) == -1);
         const uint pos = pieceTable->fragmentMap().position(fragment);
         QFragmentFindHelper helper(pos, pieceTable->fragmentMap());
-        QList<int>::Iterator it = qLowerBound(cells.begin(), cells.end(), helper);
+        QList<int>::Iterator it = std::lower_bound(cells.begin(), cells.end(), helper);
         cells.insert(it, fragment);
         if (!fragment_start || pos < pieceTable->fragmentMap().position(fragment_start))
             fragment_start = fragment;
@@ -617,7 +618,7 @@ QTextTableCell QTextTable::cellAt(int position) const
         return QTextTableCell();
 
     QFragmentFindHelper helper(position, map);
-    QList<int>::ConstIterator it = qLowerBound(d->cells.begin(), d->cells.end(), helper);
+    QList<int>::ConstIterator it = std::lower_bound(d->cells.begin(), d->cells.end(), helper);
     if (it != d->cells.begin())
         --it;
 
@@ -1211,7 +1212,7 @@ void QTextTable::splitCell(int row, int column, int numRows, int numCols)
     for (int r = row + 1; r < row + rowSpan; ++r) {
         // find the cell before which to insert the new cell markers
         int gridIndex = r * d->nCols + column;
-        QVector<int>::iterator it = qUpperBound(d->cellIndices.begin(), d->cellIndices.end(), gridIndex);
+        QVector<int>::iterator it = std::upper_bound(d->cellIndices.begin(), d->cellIndices.end(), gridIndex);
         int cellIndex = it - d->cellIndices.begin();
         int fragment = d->cells.value(cellIndex, d->fragment_end);
         rowPositions[r - row] = p->fragmentMap().position(fragment);

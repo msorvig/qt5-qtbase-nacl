@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2011 Thiago Macieira <thiago@kde.org>
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -118,6 +118,10 @@ QT_END_HEADER
 
 // New atomics
 
+#if defined(Q_COMPILER_CONSTEXPR) && defined(Q_COMPILER_DEFAULT_MEMBERS) && defined(Q_COMPILER_DELETE_MEMBERS)
+# define QT_BASIC_ATOMIC_HAS_CONSTRUCTORS
+#endif
+
 template <typename T>
 class QBasicAtomicInteger
 {
@@ -137,14 +141,14 @@ public:
     T loadAcquire() const Q_DECL_NOTHROW { return Ops::loadAcquire(_q_value); }
     void storeRelease(T newValue) Q_DECL_NOTHROW { Ops::storeRelease(_q_value, newValue); }
 
-    static bool isReferenceCountingNative() Q_DECL_NOTHROW { return Ops::isReferenceCountingNative(); }
-    static bool isReferenceCountingWaitFree() Q_DECL_NOTHROW { return Ops::isReferenceCountingWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isReferenceCountingNative() Q_DECL_NOTHROW { return Ops::isReferenceCountingNative(); }
+    static Q_DECL_CONSTEXPR bool isReferenceCountingWaitFree() Q_DECL_NOTHROW { return Ops::isReferenceCountingWaitFree(); }
 
     bool ref() Q_DECL_NOTHROW { return Ops::ref(_q_value); }
     bool deref() Q_DECL_NOTHROW { return Ops::deref(_q_value); }
 
-    static bool isTestAndSetNative() Q_DECL_NOTHROW { return Ops::isTestAndSetNative(); }
-    static bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return Ops::isTestAndSetWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isTestAndSetNative() Q_DECL_NOTHROW { return Ops::isTestAndSetNative(); }
+    static Q_DECL_CONSTEXPR bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return Ops::isTestAndSetWaitFree(); }
 
     bool testAndSetRelaxed(T expectedValue, T newValue) Q_DECL_NOTHROW
     { return Ops::testAndSetRelaxed(_q_value, expectedValue, newValue); }
@@ -155,8 +159,8 @@ public:
     bool testAndSetOrdered(T expectedValue, T newValue) Q_DECL_NOTHROW
     { return Ops::testAndSetOrdered(_q_value, expectedValue, newValue); }
 
-    static bool isFetchAndStoreNative() Q_DECL_NOTHROW { return Ops::isFetchAndStoreNative(); }
-    static bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndStoreWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndStoreNative() Q_DECL_NOTHROW { return Ops::isFetchAndStoreNative(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndStoreWaitFree(); }
 
     T fetchAndStoreRelaxed(T newValue) Q_DECL_NOTHROW
     { return Ops::fetchAndStoreRelaxed(_q_value, newValue); }
@@ -167,8 +171,8 @@ public:
     T fetchAndStoreOrdered(T newValue) Q_DECL_NOTHROW
     { return Ops::fetchAndStoreOrdered(_q_value, newValue); }
 
-    static bool isFetchAndAddNative() Q_DECL_NOTHROW { return Ops::isFetchAndAddNative(); }
-    static bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndAddWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndAddNative() Q_DECL_NOTHROW { return Ops::isFetchAndAddNative(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndAddWaitFree(); }
 
     T fetchAndAddRelaxed(T valueToAdd) Q_DECL_NOTHROW
     { return Ops::fetchAndAddRelaxed(_q_value, valueToAdd); }
@@ -179,7 +183,7 @@ public:
     T fetchAndAddOrdered(T valueToAdd) Q_DECL_NOTHROW
     { return Ops::fetchAndAddOrdered(_q_value, valueToAdd); }
 
-#if defined(Q_COMPILER_CONSTEXPR) && defined(Q_COMPILER_DEFAULT_MEMBERS) && defined(Q_COMPILER_DELETE_MEMBERS)
+#ifdef QT_BASIC_ATOMIC_HAS_CONSTRUCTORS
     QBasicAtomicInteger() = default;
     constexpr QBasicAtomicInteger(T value) Q_DECL_NOTHROW : _q_value(value) {}
     QBasicAtomicInteger(const QBasicAtomicInteger &) = delete;
@@ -207,8 +211,8 @@ public:
     Type loadAcquire() const Q_DECL_NOTHROW { return Ops::loadAcquire(_q_value); }
     void storeRelease(Type newValue) Q_DECL_NOTHROW { Ops::storeRelease(_q_value, newValue); }
 
-    static bool isTestAndSetNative() Q_DECL_NOTHROW { return Ops::isTestAndSetNative(); }
-    static bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return Ops::isTestAndSetWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isTestAndSetNative() Q_DECL_NOTHROW { return Ops::isTestAndSetNative(); }
+    static Q_DECL_CONSTEXPR bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return Ops::isTestAndSetWaitFree(); }
 
     bool testAndSetRelaxed(Type expectedValue, Type newValue) Q_DECL_NOTHROW
     { return Ops::testAndSetRelaxed(_q_value, expectedValue, newValue); }
@@ -219,8 +223,8 @@ public:
     bool testAndSetOrdered(Type expectedValue, Type newValue) Q_DECL_NOTHROW
     { return Ops::testAndSetOrdered(_q_value, expectedValue, newValue); }
 
-    static bool isFetchAndStoreNative() Q_DECL_NOTHROW { return Ops::isFetchAndStoreNative(); }
-    static bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndStoreWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndStoreNative() Q_DECL_NOTHROW { return Ops::isFetchAndStoreNative(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndStoreWaitFree(); }
 
     Type fetchAndStoreRelaxed(Type newValue) Q_DECL_NOTHROW
     { return Ops::fetchAndStoreRelaxed(_q_value, newValue); }
@@ -231,8 +235,8 @@ public:
     Type fetchAndStoreOrdered(Type newValue) Q_DECL_NOTHROW
     { return Ops::fetchAndStoreOrdered(_q_value, newValue); }
 
-    static bool isFetchAndAddNative() Q_DECL_NOTHROW { return Ops::isFetchAndAddNative(); }
-    static bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndAddWaitFree(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndAddNative() Q_DECL_NOTHROW { return Ops::isFetchAndAddNative(); }
+    static Q_DECL_CONSTEXPR bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return Ops::isFetchAndAddWaitFree(); }
 
     Type fetchAndAddRelaxed(qptrdiff valueToAdd) Q_DECL_NOTHROW
     { return Ops::fetchAndAddRelaxed(_q_value, valueToAdd); }
@@ -243,7 +247,7 @@ public:
     Type fetchAndAddOrdered(qptrdiff valueToAdd) Q_DECL_NOTHROW
     { return Ops::fetchAndAddOrdered(_q_value, valueToAdd); }
 
-#if defined(Q_COMPILER_CONSTEXPR) && defined(Q_COMPILER_DEFAULT_MEMBERS) && defined(Q_COMPILER_DELETE_MEMBERS)
+#ifdef QT_BASIC_ATOMIC_HAS_CONSTRUCTORS
     QBasicAtomicPointer() = default;
     constexpr QBasicAtomicPointer(Type value) Q_DECL_NOTHROW : _q_value(value) {}
     QBasicAtomicPointer(const QBasicAtomicPointer &) = delete;

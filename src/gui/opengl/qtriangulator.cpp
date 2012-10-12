@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -64,128 +64,6 @@ QT_BEGIN_NAMESPACE
 //#define Q_TRIANGULATOR_DEBUG
 
 #define Q_FIXED_POINT_SCALE 32
-
-// Quick sort.
-template <class T, class LessThan>
-#ifdef Q_CC_RVCT // RVCT 2.2 doesn't see recursive _static_ template function
-void sort(T *array, int count, LessThan lessThan)
-#else
-static void sort(T *array, int count, LessThan lessThan)
-#endif
-{
-    // If the number of elements fall below some threshold, use insertion sort.
-    const int INSERTION_SORT_LIMIT = 7; // About 7 is fastest on my computer...
-    if (count <= INSERTION_SORT_LIMIT) {
-        for (int i = 1; i < count; ++i) {
-            T temp = array[i];
-            int j = i;
-            while (j > 0 && lessThan(temp, array[j - 1])) {
-                array[j] = array[j - 1];
-                --j;
-            }
-            array[j] = temp;
-        }
-        return;
-    }
-
-    int high = count - 1;
-    int low = 0;
-    int mid = high / 2;
-    if (lessThan(array[mid], array[low]))
-        qSwap(array[mid], array[low]);
-    if (lessThan(array[high], array[mid]))
-        qSwap(array[high], array[mid]);
-    if (lessThan(array[mid], array[low]))
-        qSwap(array[mid], array[low]);
-
-    --high;
-    ++low;
-    qSwap(array[mid], array[high]);
-    int pivot = high;
-    --high;
-
-    while (low <= high) {
-        while (!lessThan(array[pivot], array[low])) {
-            ++low;
-            if (low > high)
-                goto sort_loop_end;
-        }
-        while (!lessThan(array[high], array[pivot])) {
-            --high;
-            if (low > high)
-                goto sort_loop_end;
-        }
-        qSwap(array[low], array[high]);
-        ++low;
-        --high;
-    }
-sort_loop_end:
-    if (low != pivot)
-        qSwap(array[pivot], array[low]);
-    sort(array, low, lessThan);
-    sort(array + low + 1, count - low - 1, lessThan);
-}
-
-// Quick sort.
-template <class T>
-#ifdef Q_CC_RVCT
-void sort(T *array, int count) // RVCT 2.2 doesn't see recursive _static_ template function
-#else
-static void sort(T *array, int count)
-#endif
-{
-    // If the number of elements fall below some threshold, use insertion sort.
-    const int INSERTION_SORT_LIMIT = 25; // About 25 is fastest on my computer...
-    if (count <= INSERTION_SORT_LIMIT) {
-        for (int i = 1; i < count; ++i) {
-            T temp = array[i];
-            int j = i;
-            while (j > 0 && (temp < array[j - 1])) {
-                array[j] = array[j - 1];
-                --j;
-            }
-            array[j] = temp;
-        }
-        return;
-    }
-
-    int high = count - 1;
-    int low = 0;
-    int mid = high / 2;
-    if ((array[mid] < array[low]))
-        qSwap(array[mid], array[low]);
-    if ((array[high] < array[mid]))
-        qSwap(array[high], array[mid]);
-    if ((array[mid] < array[low]))
-        qSwap(array[mid], array[low]);
-
-    --high;
-    ++low;
-    qSwap(array[mid], array[high]);
-    int pivot = high;
-    --high;
-
-    while (low <= high) {
-        while (!(array[pivot] < array[low])) {
-            ++low;
-            if (low > high)
-                goto sort_loop_end;
-        }
-        while (!(array[high] < array[pivot])) {
-            --high;
-            if (low > high)
-                goto sort_loop_end;
-        }
-        qSwap(array[low], array[high]);
-        ++low;
-        --high;
-    }
-sort_loop_end:
-    if (low != pivot)
-        qSwap(array[pivot], array[low]);
-    sort(array, low);
-    sort(array + low + 1, count - low - 1);
-}
 
 template<typename T>
 struct QVertexSet
@@ -1461,8 +1339,8 @@ void QTriangulator<T>::ComplexToSimple::fillPriorityQueue()
             m_events.add(lowerEvent);
         }
     }
-    //qSort(m_events.data(), m_events.data() + m_events.size());
-    sort(m_events.data(), m_events.size());
+
+    std::sort(m_events.data(), m_events.data() + m_events.size());
 }
 
 template <typename T>
@@ -2024,8 +1902,7 @@ void QTriangulator<T>::SimpleToMonotone::fillPriorityQueue()
     for (int i = 0; i < m_edges.size(); ++i)
         m_upperVertex.add(i);
     CompareVertices cmp(this);
-    //qSort(m_upperVertex.data(), m_upperVertex.data() + m_upperVertex.size(), cmp);
-    sort(m_upperVertex.data(), m_upperVertex.size(), cmp);
+    std::sort(m_upperVertex.data(), m_upperVertex.data() + m_upperVertex.size(), cmp);
     //for (int i = 1; i < m_upperVertex.size(); ++i) {
     //    Q_ASSERT(!cmp(m_upperVertex.at(i), m_upperVertex.at(i - 1)));
     //}

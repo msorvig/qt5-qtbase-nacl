@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -223,7 +223,7 @@ static void setWindowOpacity(HWND hwnd, Qt::WindowFlags flags, qreal level)
         if ((wl & WS_EX_LAYERED) == 0)
             SetWindowLong(hwnd, GWL_EXSTYLE, wl | WS_EX_LAYERED);
         if (flags & Qt::FramelessWindowHint) {
-            BLENDFUNCTION blend = {AC_SRC_OVER, 0, (int)(255.0 * level), AC_SRC_ALPHA};
+            BLENDFUNCTION blend = {AC_SRC_OVER, 0, (BYTE)(255.0 * level), AC_SRC_ALPHA};
             QWindowsContext::user32dll.updateLayeredWindow(hwnd, NULL, NULL, NULL, NULL, NULL, 0, &blend, ULW_ALPHA);
         } else {
             QWindowsContext::user32dll.setLayeredWindowAttributes(hwnd, 0, (int)(level * 255), LWA_ALPHA);
@@ -424,6 +424,7 @@ QWindowsWindow::WindowData
     if (desktop) {                        // desktop widget. No frame, hopefully?
         result.hwnd = GetDesktopWindow();
         result.geometry = frameGeometry(result.hwnd, true);
+        result.embedded = false;
         if (QWindowsContext::verboseWindows)
             qDebug().nospace() << "Created desktop window " << w << result.hwnd;
         return result;
@@ -695,7 +696,6 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const WindowData &data) :
     m_hdc(0),
     m_windowState(Qt::WindowNoState),
     m_opacity(1.0),
-    m_mouseGrab(false),
     m_cursor(QWindowsScreen::screenOf(aWindow)->windowsCursor()->standardWindowCursor()),
     m_dropTarget(0),
     m_savedStyle(0),
@@ -737,8 +737,10 @@ void QWindowsWindow::destroyWindow()
     if (QWindowsContext::verboseIntegration || QWindowsContext::verboseWindows)
         qDebug() << __FUNCTION__ << this << window() << m_data.hwnd;
     if (m_data.hwnd) { // Stop event dispatching before Window is destroyed.
+        setFlag(WithinDestroy);
+        if (hasMouseCapture())
+            setMouseGrabEnabled(false);
         unregisterDropSite();
-        QWindowsContext::instance()->removeWindow(m_data.hwnd);
 #ifdef QT_OPENGL_ES_2
         if (m_eglSurface) {
             if (QWindowsContext::verboseGL)
@@ -758,6 +760,7 @@ void QWindowsWindow::destroyWindow()
 #endif
         if (m_data.hwnd != GetDesktopWindow())
             DestroyWindow(m_data.hwnd);
+        QWindowsContext::instance()->removeWindow(m_data.hwnd);
         m_data.hwnd = 0;
     }
 }
@@ -781,10 +784,26 @@ void QWindowsWindow::unregisterDropSite()
     }
 }
 
+// Returns topmost QWindowsWindow ancestor even if there are embedded windows in the chain.
+// Returns this window if it is the topmost ancestor.
 QWindow *QWindowsWindow::topLevelOf(QWindow *w)
 {
     while (QWindow *parent = w->parent())
         w = parent;
+
+    const QWindowsWindow *ww = static_cast<const QWindowsWindow *>(w->handle());
+
+    // In case the topmost parent is embedded, find next ancestor using native methods
+    if (ww->isEmbedded(0)) {
+        HWND parentHWND = GetAncestor(ww->handle(), GA_PARENT);
+        const HWND desktopHwnd = GetDesktopWindow();
+        const QWindowsContext *ctx = QWindowsContext::instance();
+        while (parentHWND && parentHWND != desktopHwnd) {
+            if (QWindowsWindow *ancestor = ctx->findPlatformWindow(parentHWND))
+                return topLevelOf(ancestor->window());
+            parentHWND = GetAncestor(parentHWND, GA_PARENT);
+        }
+    }
     return w;
 }
 
@@ -810,6 +829,8 @@ void QWindowsWindow::setVisible(bool visible)
             QWindowSystemInterface::handleExposeEvent(window(),
                                                       QRect(QPoint(), geometry().size()));
         } else {
+            if (hasMouseCapture())
+                setMouseGrabEnabled(false);
             hide_sys();
             QWindowSystemInterface::handleExposeEvent(window(), QRegion());
         }
@@ -828,6 +849,37 @@ bool QWindowsWindow::isActive() const
         if (m_data.hwnd == activeHwnd || IsChild(activeHwnd, m_data.hwnd))
             return true;
     return false;
+}
+
+bool QWindowsWindow::isEmbedded(const QPlatformWindow *parentWindow) const
+{
+    if (parentWindow) {
+        const QWindowsWindow *ww = static_cast<const QWindowsWindow *>(parentWindow);
+        const HWND hwnd = ww->handle();
+        if (!IsChild(hwnd, m_data.hwnd))
+            return false;
+    }
+
+    if (!m_data.embedded && parent())
+        return parent()->isEmbedded(0);
+
+    return m_data.embedded;
+}
+
+QPoint QWindowsWindow::mapToGlobal(const QPoint &pos) const
+{
+    if (m_data.hwnd)
+        return QWindowsGeometryHint::mapToGlobal(m_data.hwnd, pos);
+    else
+        return pos;
+}
+
+QPoint QWindowsWindow::mapFromGlobal(const QPoint &pos) const
+{
+    if (m_data.hwnd)
+        return QWindowsGeometryHint::mapFromGlobal(m_data.hwnd, pos);
+    else
+        return pos;
 }
 
 // partially from QWidgetPrivate::show_sys()
@@ -903,8 +955,15 @@ void QWindowsWindow::setParent_sys(const QPlatformWindow *parent) const
 
     }
 
+    // NULL handle means desktop window, which also has its proper handle -> disambiguate
+    HWND desktopHwnd = GetDesktopWindow();
+    if (oldParentHWND == desktopHwnd)
+        oldParentHWND = 0;
+    if (newParentHWND == desktopHwnd)
+        newParentHWND = 0;
+
     if (newParentHWND != oldParentHWND) {
-        const bool wasTopLevel = window()->isTopLevel();
+        const bool wasTopLevel = oldParentHWND == 0;
         const bool isTopLevel = newParentHWND == 0;
 
         setFlag(WithinSetParent);
@@ -1012,10 +1071,9 @@ void QWindowsWindow::handleGeometryChange()
         return;
     m_data.geometry = geometry_sys();
     QPlatformWindow::setGeometry(m_data.geometry);
+    QWindowSystemInterface::handleGeometryChange(window(), m_data.geometry);
     if (testFlag(SynchronousGeometryChangeEvent))
-        QWindowSystemInterface::handleSynchronousGeometryChange(window(), m_data.geometry);
-    else
-        QWindowSystemInterface::handleGeometryChange(window(), m_data.geometry);
+        QWindowSystemInterface::flushWindowSystemEvents();
 
     if (QWindowsContext::verboseEvents || QWindowsContext::verboseWindows)
         qDebug() << __FUNCTION__ << this << window() << m_data.geometry;
@@ -1074,7 +1132,7 @@ HDC QWindowsWindow::getDC()
 
 void QWindowsWindow::releaseDC()
 {
-    if (m_hdc && !testFlag(DCFromBeginPaint)) {
+    if (m_hdc) {
         ReleaseDC(handle(), m_hdc);
         m_hdc = 0;
     }
@@ -1094,26 +1152,19 @@ bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,
         if (testFlag(OpenGLDoubleBuffered))
             InvalidateRect(hwnd, 0, false);
         BeginPaint(hwnd, &ps);
-        QWindowSystemInterface::handleSynchronousExposeEvent(window(),
-                                                             QRegion(qrectFromRECT(ps.rcPaint)));
+        QWindowSystemInterface::handleExposeEvent(window(), QRegion(qrectFromRECT(ps.rcPaint)));
+        QWindowSystemInterface::flushWindowSystemEvents();
+
         EndPaint(hwnd, &ps);
     } else {
-        const HDC dc = BeginPaint(hwnd, &ps);
+        BeginPaint(hwnd, &ps);
         const QRect updateRect = qrectFromRECT(ps.rcPaint);
-        if (updateRect.size() == m_data.geometry.size()) {
-            // Store DC for access by the backing store if it has the full size.
-            releaseDC();
-            setFlag(DCFromBeginPaint);
-            m_hdc = dc;
-        }
+
         if (QWindowsContext::verboseIntegration)
             qDebug() << __FUNCTION__ << this << window() << updateRect;
 
-        QWindowSystemInterface::handleSynchronousExposeEvent(window(), QRegion(updateRect));
-        if (testFlag(DCFromBeginPaint)) {
-            clearFlag(DCFromBeginPaint);
-            m_hdc = 0;
-        }
+        QWindowSystemInterface::handleExposeEvent(window(), QRegion(updateRect));
+        QWindowSystemInterface::flushWindowSystemEvents();
         EndPaint(hwnd, &ps);
     }
     return true;
@@ -1274,7 +1325,8 @@ void QWindowsWindow::setWindowState_sys(Qt::WindowState newState)
             SetWindowPos(m_data.hwnd, HWND_TOP, r.left(), r.top(), r.width(), r.height(), swpf);
             if (!wasSync)
                 clearFlag(SynchronousGeometryChangeEvent);
-            QWindowSystemInterface::handleSynchronousGeometryChange(window(), r);
+            QWindowSystemInterface::handleGeometryChange(window(), r);
+            QWindowSystemInterface::flushWindowSystemEvents();
         } else if (newState != Qt::WindowMinimized) {
             // Restore saved state.
             unsigned newStyle = m_savedStyle ? m_savedStyle : style();
@@ -1399,7 +1451,7 @@ static inline void addRectToWinRegion(const QRect &rect, HRGN *winRegion)
     if (const HRGN rectRegion = createRectRegion(rect)) {
         HRGN result = CreateRectRgn(0, 0, 0, 0);
         if (CombineRgn(result, *winRegion, rectRegion, RGN_OR)) {
-            DeleteObject(winRegion);
+            DeleteObject(*winRegion);
             *winRegion = result;
         }
         DeleteObject(rectRegion);
@@ -1472,29 +1524,27 @@ bool QWindowsWindow::setKeyboardGrabEnabled(bool grab)
 
 bool QWindowsWindow::setMouseGrabEnabled(bool grab)
 {
-    bool result = false;
-    if (!m_data.hwnd) {
-        qWarning("%s: No handle", __FUNCTION__);
-        return result;
-    }
     if (QWindowsContext::verboseWindows)
         qDebug() << __FUNCTION__ << window() << grab;
-
-    if (m_mouseGrab != grab) {
-        m_mouseGrab = grab;
-        if (isVisible())
-            setMouseGrabEnabled_sys(grab);
+    if (!m_data.hwnd) {
+        qWarning("%s: No handle", __FUNCTION__);
+        return false;
+    }
+    if (!isVisible() && grab) {
+        qWarning("%s: Not setting mouse grab for invisible window %s",
+                 __FUNCTION__, qPrintable(window()->objectName()));
+        return false;
+    }
+    // release grab or an explicit grab overriding autocapture: Clear flag.
+    clearFlag(QWindowsWindow::AutoMouseCapture);
+    if (hasMouseCapture() != grab) {
+        if (grab) {
+            SetCapture(m_data.hwnd);
+        } else {
+            ReleaseCapture();
+        }
     }
     return grab;
-}
-
-void QWindowsWindow::setMouseGrabEnabled_sys(bool grab)
-{
-    if (grab) {
-        SetCapture(m_data.hwnd);
-    } else {
-        ReleaseCapture();
-    }
 }
 
 static inline DWORD cornerToWinOrientation(Qt::Corner corner)

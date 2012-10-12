@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -730,15 +730,13 @@ Qt::Alignment QTextEdit::alignment() const
 }
 
 /*!
-    Makes \a document the new document of the text editor.
+    \property QTextEdit::document
+    \brief the underlying document of the text editor.
 
     \note The editor \e{does not take ownership of the document} unless it
     is the document's parent object. The parent object of the provided document
-    remains the owner of the object.
-
-    The editor does not delete the current document, even if it is a child of the editor.
-
-    \sa document()
+    remains the owner of the object. The editor does not delete any previously
+    assigned document, even if it is a child of the editor.
 */
 void QTextEdit::setDocument(QTextDocument *document)
 {
@@ -748,11 +746,6 @@ void QTextEdit::setDocument(QTextDocument *document)
     d->relayoutDocument();
 }
 
-/*!
-    Returns a pointer to the underlying document.
-
-    \sa setDocument()
-*/
 QTextDocument *QTextEdit::document() const
 {
     Q_D(const QTextEdit);
@@ -763,6 +756,17 @@ QTextDocument *QTextEdit::document() const
     Sets the visible \a cursor.
 */
 void QTextEdit::setTextCursor(const QTextCursor &cursor)
+{
+    doSetTextCursor(cursor);
+}
+
+/*!
+    \internal
+
+     This provides a hook for subclasses to intercept cursor changes.
+*/
+
+void QTextEdit::doSetTextCursor(const QTextCursor &cursor)
 {
     Q_D(QTextEdit);
     d->control->setTextCursor(cursor);
@@ -907,14 +911,6 @@ void QTextEdit::redo()
     Q_D(QTextEdit);
     d->control->redo();
 }
-
-/*!
-    \fn void QTextEdit::undo() const
-    \fn void QTextEdit::redo() const
-    \overload
-
-    Use the non-const overload instead.
-*/
 
 /*!
     \fn void QTextEdit::redo()
@@ -2499,121 +2495,6 @@ void QTextEdit::ensureCursorVisible()
 }
 
 /*!
-    \fn bool QTextEdit::find(const QString &exp, bool cs, bool wo)
-
-    Use the find() overload that takes a QTextDocument::FindFlags
-    argument.
-*/
-
-/*!
-    \fn void QTextEdit::sync()
-
-    Does nothing.
-*/
-
-/*!
-    \fn void QTextEdit::setBold(bool b)
-
-    Use setFontWeight() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setUnderline(bool b)
-
-    Use setFontUnderline() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setItalic(bool i)
-
-    Use setFontItalic() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setFamily(const QString &family)
-
-    Use setFontFamily() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setPointSize(int size)
-
-    Use setFontPointSize() instead.
-*/
-
-/*!
-    \fn bool QTextEdit::italic() const
-
-    Use fontItalic() instead.
-*/
-
-/*!
-    \fn bool QTextEdit::bold() const
-
-    Use fontWeight() >= QFont::Bold instead.
-*/
-
-/*!
-    \fn bool QTextEdit::underline() const
-
-    Use fontUnderline() instead.
-*/
-
-/*!
-    \fn QString QTextEdit::family() const
-
-    Use fontFamily() instead.
-*/
-
-/*!
-    \fn int QTextEdit::pointSize() const
-
-    Use int(fontPointSize()+0.5) instead.
-*/
-
-/*!
-    \fn bool QTextEdit::hasSelectedText() const
-
-    Use textCursor().hasSelection() instead.
-*/
-
-/*!
-    \fn QString QTextEdit::selectedText() const
-
-    Use textCursor().selectedText() instead.
-*/
-
-/*!
-    \fn bool QTextEdit::isUndoAvailable() const
-
-    Use document()->isUndoAvailable() instead.
-*/
-
-/*!
-    \fn bool QTextEdit::isRedoAvailable() const
-
-    Use document()->isRedoAvailable() instead.
-*/
-
-/*!
-    \fn void QTextEdit::insert(const QString &text)
-
-    Use insertPlainText() instead.
-*/
-
-/*!
-    \fn bool QTextEdit::isModified() const
-
-    Use document()->isModified() instead.
-*/
-
-/*!
-    \fn QColor QTextEdit::color() const
-
-    Use textColor() instead.
-*/
-
-/*!
     \fn void QTextEdit::textChanged()
 
     This signal is emitted whenever the document's content changes; for
@@ -2634,29 +2515,6 @@ void QTextEdit::ensureCursorVisible()
     (\a available is true) or unavailable (\a available is false).
 */
 
-/*!
-    \fn void QTextEdit::currentFontChanged(const QFont &font)
-
-    Use currentCharFormatChanged() instead.
-*/
-
-/*!
-    \fn void QTextEdit::currentColorChanged(const QColor &color)
-
-    Use currentCharFormatChanged() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setModified(bool m)
-
-    Use document->setModified() instead.
-*/
-
-/*!
-    \fn void QTextEdit::setColor(const QColor &color)
-
-    Use setTextColor() instead.
-*/
 #endif // QT_NO_TEXTEDIT
 
 QT_END_NAMESPACE

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -80,10 +80,12 @@ void tst_QMutex::tryLock()
             {
                 testsTurn.release();
 
+                // TEST 1: thread can't acquire lock
                 threadsTurn.acquire();
                 QVERIFY(!normalMutex.tryLock());
                 testsTurn.release();
 
+                // TEST 2: thread can acquire lock
                 threadsTurn.acquire();
                 QVERIFY(normalMutex.tryLock());
                 QVERIFY(lockCount.testAndSetRelaxed(0, 1));
@@ -92,6 +94,7 @@ void tst_QMutex::tryLock()
                 normalMutex.unlock();
                 testsTurn.release();
 
+                // TEST 3: thread can't acquire lock, timeout = waitTime
                 threadsTurn.acquire();
                 QTime timer;
                 timer.start();
@@ -99,22 +102,26 @@ void tst_QMutex::tryLock()
                 QVERIFY(timer.elapsed() >= waitTime);
                 testsTurn.release();
 
+                // TEST 4: thread can acquire lock, timeout = waitTime
                 threadsTurn.acquire();
                 timer.start();
                 QVERIFY(normalMutex.tryLock(waitTime));
                 QVERIFY(timer.elapsed() <= waitTime);
                 QVERIFY(lockCount.testAndSetRelaxed(0, 1));
                 timer.start();
+                // it's non-recursive, so the following lock needs to fail
                 QVERIFY(!normalMutex.tryLock(waitTime));
                 QVERIFY(timer.elapsed() >= waitTime);
                 QVERIFY(lockCount.testAndSetRelaxed(1, 0));
                 normalMutex.unlock();
                 testsTurn.release();
 
+                // TEST 5: thread can't acquire lock, timeout = 0
                 threadsTurn.acquire();
                 QVERIFY(!normalMutex.tryLock(0));
                 testsTurn.release();
 
+                // TEST 6: thread can acquire lock, timeout = 0
                 threadsTurn.acquire();
                 timer.start();
                 QVERIFY(normalMutex.tryLock(0));
@@ -132,37 +139,37 @@ void tst_QMutex::tryLock()
         Thread thread;
         thread.start();
 
-        // thread can't acquire lock
+        // TEST 1: thread can't acquire lock
         testsTurn.acquire();
         normalMutex.lock();
         QVERIFY(lockCount.testAndSetRelaxed(0, 1));
         threadsTurn.release();
 
-        // thread can acquire lock
+        // TEST 2: thread can acquire lock
         testsTurn.acquire();
         QVERIFY(lockCount.testAndSetRelaxed(1, 0));
         normalMutex.unlock();
         threadsTurn.release();
 
-        // thread can't acquire lock, timeout = waitTime
+        // TEST 3: thread can't acquire lock, timeout = waitTime
         testsTurn.acquire();
         normalMutex.lock();
         QVERIFY(lockCount.testAndSetRelaxed(0, 1));
         threadsTurn.release();
 
-        // thread can acquire lock, timeout = waitTime
+        // TEST 4: thread can acquire lock, timeout = waitTime
         testsTurn.acquire();
         QVERIFY(lockCount.testAndSetRelaxed(1, 0));
         normalMutex.unlock();
         threadsTurn.release();
 
-        // thread can't acquire lock, timeout = 0
+        // TEST 5: thread can't acquire lock, timeout = 0
         testsTurn.acquire();
         normalMutex.lock();
         QVERIFY(lockCount.testAndSetRelaxed(0, 1));
         threadsTurn.release();
 
-        // thread can acquire lock, timeout = 0
+        // TEST 6: thread can acquire lock, timeout = 0
         testsTurn.acquire();
         QVERIFY(lockCount.testAndSetRelaxed(1, 0));
         normalMutex.unlock();

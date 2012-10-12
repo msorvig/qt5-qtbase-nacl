@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -47,6 +47,8 @@
 #include "qvector.h"
 #include "qcoreapplication.h"
 #include <private/qkeymapper_p.h>
+
+#include <algorithm>
 
 #ifndef QT_NO_SHORTCUT
 
@@ -160,7 +162,7 @@ int QShortcutMap::addShortcut(QObject *owner, const QKeySequence &key, Qt::Short
     Q_D(QShortcutMap);
 
     QShortcutEntry newEntry(owner, key, context, --(d->currentId), true, matcher);
-    QList<QShortcutEntry>::iterator it = qUpperBound(d->sequences.begin(), d->sequences.end(), newEntry);
+    QList<QShortcutEntry>::iterator it = std::upper_bound(d->sequences.begin(), d->sequences.end(), newEntry);
     d->sequences.insert(it, newEntry); // Insert sorted
 #if defined(DEBUG_QSHORTCUTMAP)
     qDebug().nospace()
@@ -381,6 +383,12 @@ QKeySequence::SequenceMatch QShortcutMap::nextState(QKeyEvent *e)
     d->identicals.resize(0);
 
     result = find(e);
+    if (result == QKeySequence::NoMatch && (e->modifiers() & Qt::KeypadModifier)) {
+        // Try to find a match without keypad modifier
+        QKeyEvent event = *e;
+        event.setModifiers(e->modifiers() & ~Qt::KeypadModifier);
+        result = find(&event);
+    }
     if (result == QKeySequence::NoMatch && e->modifiers() & Qt::ShiftModifier) {
         // If Shift + Key_Backtab, also try Shift + Qt::Key_Tab
         if (e->key() == Qt::Key_Backtab) {
@@ -413,7 +421,7 @@ bool QShortcutMap::hasShortcutForKeySequence(const QKeySequence &seq) const
     Q_D(const QShortcutMap);
     QShortcutEntry entry(seq); // needed for searching
     QList<QShortcutEntry>::ConstIterator itEnd = d->sequences.constEnd();
-    QList<QShortcutEntry>::ConstIterator it = qLowerBound(d->sequences.constBegin(), itEnd, entry);
+    QList<QShortcutEntry>::ConstIterator it = std::lower_bound(d->sequences.constBegin(), itEnd, entry);
 
     for (;it != itEnd; ++it) {
         if (matches(entry.keyseq, (*it).keyseq) == QKeySequence::ExactMatch && (*it).correctContext() && (*it).enabled) {
@@ -461,7 +469,7 @@ QKeySequence::SequenceMatch QShortcutMap::find(QKeyEvent *e)
         QShortcutEntry entry(d->newEntries.at(i)); // needed for searching
         QList<QShortcutEntry>::ConstIterator itEnd = d->sequences.constEnd();
         QList<QShortcutEntry>::ConstIterator it =
-             qLowerBound(d->sequences.constBegin(), itEnd, entry);
+             std::lower_bound(d->sequences.constBegin(), itEnd, entry);
 
         int oneKSResult = QKeySequence::NoMatch;
         int tempRes = QKeySequence::NoMatch;
@@ -570,8 +578,7 @@ void QShortcutMap::createNewSequences(QKeyEvent *e, QVector<QKeySequence> &ksl)
                 curKsl.setKey(0, 2);
                 curKsl.setKey(0, 3);
             }
-            // Filtering keycode here with 0xdfffffff to ignore the Keypad modifier
-            curKsl.setKey(possibleKeys.at(pkNum) & 0xdfffffff, index);
+            curKsl.setKey(possibleKeys.at(pkNum), index);
         }
     }
 }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -43,6 +43,7 @@
     \class QGLPixelBuffer
     \brief The QGLPixelBuffer class encapsulates an OpenGL pbuffer.
     \since 4.1
+    \obsolete
 
     \ingroup painting-3D
 
@@ -76,6 +77,8 @@
 
     \endlist
 
+    \note This class has been deprecated, use QOpenGLFramebufferObject
+    for offscreen rendering.
 
     \section1 Threading
 
@@ -89,7 +92,10 @@
     \sa {opengl/pbuffers}{Pbuffers Example}
 */
 
+#include <private/qopenglextensions_p.h>
+
 #include <QtCore/qglobal.h>
+#include <QtGui/qopenglframebufferobject.h>
 
 #include "gl2paintengineex/qpaintengineex_opengl2_p.h"
 
@@ -126,16 +132,7 @@ void QGLPixelBufferPrivate::common_init(const QSize &size, const QGLFormat &form
         req_format = format;
         req_shareWidget = shareWidget;
         invalid = false;
-        qctx = new QGLContext(format);
-        qctx->d_func()->sharing = (shareWidget != 0);
-        if (shareWidget != 0 && shareWidget->d_func()->glcx) {
-            QGLContextGroup::addShare(qctx, shareWidget->d_func()->glcx);
-            shareWidget->d_func()->glcx->d_func()->sharing = true;
-        }
-
         glDevice.setPBuffer(q);
-        qctx->d_func()->paintDevice = q;
-        qctx->d_func()->valid = true;
     }
 }
 
@@ -195,7 +192,6 @@ QGLPixelBuffer::~QGLPixelBuffer()
     if (current != d->qctx)
         makeCurrent();
     d->cleanup();
-    delete d->qctx;
     if (current && current != d->qctx)
         current->makeCurrent();
 }
@@ -214,6 +210,17 @@ bool QGLPixelBuffer::makeCurrent()
     if (d->invalid)
         return false;
     d->qctx->makeCurrent();
+    if (!d->fbo) {
+        QOpenGLFramebufferObjectFormat format;
+        if (d->req_format.stencil())
+            format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+        else if (d->req_format.depth())
+            format.setAttachment(QOpenGLFramebufferObject::Depth);
+        if (d->req_format.sampleBuffers())
+            format.setSamples(d->req_format.samples());
+        d->fbo = new QOpenGLFramebufferObject(d->req_size, format);
+        d->fbo->bind();
+    }
     return true;
 }
 
@@ -303,14 +310,39 @@ bool QGLPixelBuffer::doneCurrent()
 void QGLPixelBuffer::updateDynamicTexture(GLuint texture_id) const
 {
     Q_D(const QGLPixelBuffer);
-    if (d->invalid)
+    if (d->invalid || !d->fbo)
         return;
+
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
+    if (!ctx)
+        return;
+
+#undef glBindFramebuffer
+
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
+#endif
+
+    QOpenGLExtensions extensions(ctx);
+
+    if (d->blit_fbo) {
+        QOpenGLFramebufferObject::blitFramebuffer(d->blit_fbo, d->fbo);
+        extensions.glBindFramebuffer(GL_READ_FRAMEBUFFER, d->blit_fbo->handle());
+    }
+
     glBindTexture(GL_TEXTURE_2D, texture_id);
 #ifndef QT_OPENGL_ES
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 0, 0, d->req_size.width(), d->req_size.height(), 0);
 #else
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, d->req_size.width(), d->req_size.height(), 0);
 #endif
+
+    if (d->blit_fbo)
+        extensions.glBindFramebuffer(GL_READ_FRAMEBUFFER, ctx->d_func()->current_fbo);
 }
 
 /*!
@@ -517,5 +549,71 @@ QGLFormat QGLPixelBuffer::format() const
 /*! \fn int QGLPixelBuffer::devType() const
     \internal
 */
+
+bool QGLPixelBufferPrivate::init(const QSize &, const QGLFormat &f, QGLWidget *shareWidget)
+{
+    widget = new QGLWidget(f, 0, shareWidget);
+    widget->resize(1, 1);
+    qctx = const_cast<QGLContext *>(widget->context());
+    return widget->isValid();
+}
+
+bool QGLPixelBufferPrivate::cleanup()
+{
+    delete fbo;
+    fbo = 0;
+    delete blit_fbo;
+    blit_fbo = 0;
+    delete widget;
+    widget = 0;
+    return true;
+}
+
+bool QGLPixelBuffer::bindToDynamicTexture(GLuint texture_id)
+{
+    Q_UNUSED(texture_id);
+    return false;
+}
+
+void QGLPixelBuffer::releaseFromDynamicTexture()
+{
+}
+
+GLuint QGLPixelBuffer::generateDynamicTexture() const
+{
+    Q_D(const QGLPixelBuffer);
+    if (!d->fbo)
+        return 0;
+
+    if (d->fbo->format().samples() > 0
+        && QOpenGLExtensions(QOpenGLContext::currentContext())
+           .hasOpenGLExtension(QOpenGLExtensions::FramebufferBlit))
+    {
+        if (!d->blit_fbo)
+            const_cast<QOpenGLFramebufferObject *&>(d->blit_fbo) = new QOpenGLFramebufferObject(d->req_size);
+    } else {
+        return d->fbo->texture();
+    }
+
+    GLuint texture;
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, d->req_size.width(), d->req_size.height(), 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+    return texture;
+}
+
+bool QGLPixelBuffer::hasOpenGLPbuffers()
+{
+    return QOpenGLFramebufferObject::hasOpenGLFramebufferObjects();
+}
 
 QT_END_NAMESPACE

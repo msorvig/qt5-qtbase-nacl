@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -489,7 +489,7 @@ QFontEngineData::~QFontEngineData()
     Information on encodings can be found from
     \l{Roman Czyborra's} page.
 
-    \sa QFontComboBox, QFontMetrics, QFontInfo, QFontDatabase, {Character Map Example}
+    \sa QFontMetrics, QFontInfo, QFontDatabase, {Character Map Example}
 */
 
 /*!
@@ -531,18 +531,6 @@ QFontEngineData::~QFontEngineData()
                         for the purpose of representing italicized text.
 
     \sa Weight
-*/
-
-/*!
-    \fn FT_Face QFont::freetypeFace() const
-
-    Returns the handle to the primary FreeType face of the font. If font merging is not disabled a
-    QFont can contain several physical fonts.
-
-    Returns 0 if the font does not contain a FreeType face.
-
-    \note This function is only available on platforms that provide the FreeType library;
-    i.e., X11 and some Embedded Linux platforms.
 */
 
 /*!
@@ -798,8 +786,8 @@ QString QFont::styleName() const
 /*!
     \since 4.8
 
-    Sets the style name of the font. When set, other style properties
-    like \a style() and \a weight() will be ignored for font matching.
+    Sets the style name of the font to \a styleName. When set, other style properties
+    like \l style() and \l weight() will be ignored for font matching.
 
     \sa styleName()
 */

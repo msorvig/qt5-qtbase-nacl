@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -49,12 +49,12 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QItemSelectionRange
+    \inmodule QtCore
 
     \brief The QItemSelectionRange class manages information about a
     range of selected items in a model.
 
     \ingroup model-view
-    \inmodule QtCore
 
     A QItemSelectionRange contains information about a range of
     selected items in a model. A range of items is a contiguous array
@@ -266,6 +266,18 @@ QItemSelectionRange QItemSelectionRange::intersected(const QItemSelectionRange &
 */
 
 /*!
+    \fn bool QItemSelectionRange::operator<(const QItemSelectionRange &other) const
+
+    Returns true if the selection range is less than the \a other
+    range given; otherwise returns false.
+
+    The less than calculation is not directly useful to developers - the way that ranges
+    with different parents compare is not defined. This operator only exists so that the
+    class can be used with QMap.
+
+*/
+
+/*!
     \fn bool QItemSelectionRange::isValid() const
 
     Returns true if the selection range is valid; otherwise returns false.
@@ -279,15 +291,20 @@ QItemSelectionRange QItemSelectionRange::intersected(const QItemSelectionRange &
   it avoid concatenating list and works on one
  */
 
-static void indexesFromRange(const QItemSelectionRange &range, QModelIndexList &result)
+template<typename ModelIndexContainer>
+static void indexesFromRange(const QItemSelectionRange &range, ModelIndexContainer &result)
 {
     if (range.isValid() && range.model()) {
-        for (int column = range.left(); column <= range.right(); ++column) {
-            for (int row = range.top(); row <= range.bottom(); ++row) {
-                QModelIndex index = range.model()->index(row, column, range.parent());
+        const QModelIndex topLeft = range.topLeft();
+        const int bottom = range.bottom();
+        const int right = range.right();
+        for (int row = topLeft.row(); row <= bottom; ++row) {
+            const QModelIndex columnLeader = topLeft.sibling(row, topLeft.column());
+            for (int column = topLeft.column(); column <= right; ++column) {
+                QModelIndex index = columnLeader.sibling(row, column);
                 Qt::ItemFlags flags = range.model()->flags(index);
                 if ((flags & Qt::ItemIsSelectable) && (flags & Qt::ItemIsEnabled))
-                    result.append(index);
+                    result.push_back(index);
             }
         }
     }
@@ -327,11 +344,11 @@ QModelIndexList QItemSelectionRange::indexes() const
 
 /*!
     \class QItemSelection
+    \inmodule QtCore
 
     \brief The QItemSelection class manages information about selected items in a model.
 
     \ingroup model-view
-    \inmodule QtCore
 
     A QItemSelection describes the items in a model that have been
     selected by the user. A QItemSelection is basically a list of
@@ -438,6 +455,15 @@ QModelIndexList QItemSelection::indexes() const
     QModelIndexList result;
     QList<QItemSelectionRange>::const_iterator it = begin();
     for (; it != end(); ++it)
+        indexesFromRange(*it, result);
+    return result;
+}
+
+static QVector<QPersistentModelIndex> qSelectionPersistentindexes(const QItemSelection &sel)
+{
+    QVector<QPersistentModelIndex> result;
+    QList<QItemSelectionRange>::const_iterator it = sel.constBegin();
+    for (; it != sel.constEnd(); ++it)
         indexesFromRange(*it, result);
     return result;
 }
@@ -810,13 +836,8 @@ void QItemSelectionModelPrivate::_q_layoutAboutToBeChanged()
     }
     tableSelected = false;
 
-    QModelIndexList indexes = ranges.indexes();
-    QModelIndexList::const_iterator it;
-    for (it = indexes.constBegin(); it != indexes.constEnd(); ++it)
-        savedPersistentIndexes.append(QPersistentModelIndex(*it));
-    indexes = currentSelection.indexes();
-    for (it = indexes.constBegin(); it != indexes.constEnd(); ++it)
-        savedPersistentCurrentIndexes.append(QPersistentModelIndex(*it));
+    savedPersistentIndexes = qSelectionPersistentindexes(ranges);
+    savedPersistentCurrentIndexes = qSelectionPersistentindexes(currentSelection);
 }
 
 /*!
@@ -825,22 +846,32 @@ void QItemSelectionModelPrivate::_q_layoutAboutToBeChanged()
     Merges \a indexes into an item selection made up of ranges.
     Assumes that the indexes are sorted.
 */
-static QItemSelection mergeIndexes(const QList<QPersistentModelIndex> &indexes)
+static QItemSelection mergeIndexes(const QVector<QPersistentModelIndex> &indexes)
 {
     QItemSelection colSpans;
     // merge columns
     int i = 0;
     while (i < indexes.count()) {
-        QModelIndex tl = indexes.at(i);
-        QModelIndex br = tl;
+        const QPersistentModelIndex &tl = indexes.at(i);
+        QPersistentModelIndex br = tl;
+        QModelIndex brParent = br.parent();
+        int brRow = br.row();
+        int brColumn = br.column();
         while (++i < indexes.count()) {
-            QModelIndex next = indexes.at(i);
-            if ((next.parent() == br.parent())
-                 && (next.row() == br.row())
-                 && (next.column() == br.column() + 1))
+            const QPersistentModelIndex &next = indexes.at(i);
+            const QModelIndex nextParent = next.parent();
+            const int nextRow = next.row();
+            const int nextColumn = next.column();
+            if ((nextParent == brParent)
+                 && (nextRow == brRow)
+                 && (nextColumn == brColumn + 1)) {
                 br = next;
-            else
+                brParent = nextParent;
+                brRow = nextRow;
+                brColumn = nextColumn;
+            } else {
                 break;
+            }
         }
         colSpans.append(QItemSelectionRange(tl, br));
     }
@@ -917,11 +948,11 @@ void QItemSelectionModelPrivate::_q_layoutChanged()
 
 /*!
     \class QItemSelectionModel
+    \inmodule QtCore
 
     \brief The QItemSelectionModel class keeps track of a view's selected items.
 
     \ingroup model-view
-    \inmodule QtCore
 
     A QItemSelectionModel keeps track of the selected items in a view, or
     in several views onto the same model. It also keeps track of the
@@ -1379,10 +1410,13 @@ bool QItemSelectionModel::rowIntersectsSelection(int row, const QModelIndex &par
     QItemSelection sel = d->ranges;
     sel.merge(d->currentSelection, d->currentCommand);
     for (int i = 0; i < sel.count(); ++i) {
-        int top = sel.at(i).top();
-        int bottom = sel.at(i).bottom();
-        int left = sel.at(i).left();
-        int right = sel.at(i).right();
+        QItemSelectionRange range = sel.at(i);
+        if (range.parent() != parent)
+          return false;
+        int top = range.top();
+        int bottom = range.bottom();
+        int left = range.left();
+        int right = range.right();
         if (top <= row && bottom >= row) {
             for (int j = left; j <= right; j++) {
                 const Qt::ItemFlags flags = d->model->index(row, j, parent).flags();

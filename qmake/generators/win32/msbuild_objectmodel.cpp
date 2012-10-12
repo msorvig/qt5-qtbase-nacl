@@ -1,46 +1,47 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-#include "msvc_objectmodel.h"
 #include "msbuild_objectmodel.h"
+
+#include "msvc_objectmodel.h"
 #include "msvc_vcproj.h"
 #include "msvc_vcxproj.h"
 #include <qstringlist.h>
@@ -323,6 +324,22 @@ static QString vcxCommandSeparator()
     return cmdSep;
 }
 
+static QString unquote(const QString &value)
+{
+    QString result = value;
+    result.replace(QStringLiteral("\\\""), QStringLiteral("\""));
+    return result;
+}
+
+static QStringList unquote(const QStringList &values)
+{
+    QStringList result;
+    result.reserve(values.size());
+    for (int i = values.count(); --i >= 0;)
+        result << unquote(values.at(i));
+    return result;
+}
+
 // Tree file generation ---------------------------------------------
 void XTreeNode::generateXML(XmlOutput &xml, XmlOutput &xmlFilter, const QString &tagName, VCProject &tool, const QString &filter) {
 
@@ -449,6 +466,10 @@ void VCXProjectWriter::write(XmlOutput &xml, VCProjectSingleConfig &tool)
         xml<< tag("IntDir")
             << attrTag("Condition", condition)
             << valueTag(tool.Configuration.IntermediateDirectory);
+    }
+    if (tool.Configuration.CompilerVersion >= NET2012) {
+        xml << tagValue("PlatformToolSet",
+                        platformToolSetVersion(tool.Configuration.CompilerVersion));
     }
     if ( !tool.Configuration.PrimaryOutput.isEmpty() ) {
         xml<< tag("TargetName")
@@ -650,6 +671,10 @@ void VCXProjectWriter::write(XmlOutput &xml, VCProject &tool)
             xml << tag("IntDir")
                 << attrTag("Condition", condition)
                 << valueTag(config.IntermediateDirectory);
+        }
+        if (config.CompilerVersion >= NET2012) {
+            xml << tagValue("PlatformToolSet",
+                            platformToolSetVersion(config.CompilerVersion));
         }
         if (!config.PrimaryOutput.isEmpty()) {
             xml << tag("TargetName")
@@ -1382,7 +1407,7 @@ void VCXProjectWriter::write(XmlOutput &xml, const VCCLCompilerTool &tool)
             << attrTagS(_PrecompiledHeaderFile, tool.PrecompiledHeaderThrough)
             << attrTagS(_PrecompiledHeaderOutputFile, tool.PrecompiledHeaderFile)
             << attrTagT(_PreprocessKeepComments, tool.KeepComments)
-            << attrTagX(_PreprocessorDefinitions, tool.PreprocessorDefinitions, ";")
+            << attrTagX(_PreprocessorDefinitions, unquote(tool.PreprocessorDefinitions), ";")
             << attrTagS(_PreprocessOutputPath, tool.PreprocessOutputPath)
             << attrTagT(_PreprocessSuppressLineNumbers, tool.PreprocessSuppressLineNumbers)
             << attrTagT(_PreprocessToFile, toTriState(tool.GeneratePreprocessedFile))
@@ -1517,7 +1542,7 @@ void VCXProjectWriter::write(XmlOutput &xml, const VCMIDLTool &tool)
             << attrTagL(_LocaleID, tool.LocaleID, /*ifNot*/ -1)
             << attrTagT(_MkTypLibCompatible, tool.MkTypLibCompatible)
             << attrTagS(_OutputDirectory, tool.OutputDirectory)
-            << attrTagX(_PreprocessorDefinitions, tool.PreprocessorDefinitions, ";")
+            << attrTagX(_PreprocessorDefinitions, unquote(tool.PreprocessorDefinitions), ";")
             << attrTagS(_ProxyFileName, tool.ProxyFileName)
             << attrTagS(_RedirectOutputAndErrors, tool.RedirectOutputAndErrors)
             << attrTagS(_ServerStubFile, tool.ServerStubFile)
@@ -1602,7 +1627,7 @@ void VCXProjectWriter::write(XmlOutput &xml, const VCResourceCompilerTool &tool)
             << attrTagS(_Culture, toString(tool.Culture))
             << attrTagT(_IgnoreStandardIncludePath, tool.IgnoreStandardIncludePath)
 //unused    << attrTagT(_NullTerminateStrings, tool.NullTerminateStrings)
-            << attrTagX(_PreprocessorDefinitions, tool.PreprocessorDefinitions, ";")
+            << attrTagX(_PreprocessorDefinitions, unquote(tool.PreprocessorDefinitions), ";")
             << attrTagS(_ResourceOutputFileName, tool.ResourceOutputFileName)
             << attrTagT(_ShowProgress, toTriState(tool.ShowProgress))
             << attrTagT(_SuppressStartupBanner, tool.SuppressStartupBanner)
@@ -2031,6 +2056,17 @@ bool VCXProjectWriter::outputFileConfig(VCFilter &filter, XmlOutput &xml, XmlOut
 QString VCXProjectWriter::generateCondition(const VCConfiguration &config)
 {
     return QStringLiteral("'$(Configuration)|$(Platform)'=='") + config.Name + QLatin1Char('\'');
+}
+
+QString VCXProjectWriter::platformToolSetVersion(const DotNET version)
+{
+    switch (version)
+    {
+    case NET2012:
+        return "v110";
+    }
+    Q_ASSERT(!"This MSVC version does not support the PlatformToolSet tag!");
+    return QString();
 }
 
 QT_END_NAMESPACE

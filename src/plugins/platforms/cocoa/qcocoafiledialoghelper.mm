@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -60,6 +60,7 @@
 #include <qvarlengtharray.h>
 #include <stdlib.h>
 #include <qabstracteventdispatcher.h>
+#include "qcocoaautoreleasepool.h"
 
 #include <qpa/qplatformnativeinterface.h>
 
@@ -135,7 +136,8 @@ typedef QSharedPointer<QFileDialogOptions> SharedPointerFileDialogOptions;
         mOpenPanel = 0;
     }
 
-    [mSavePanel setLevel:NSModalPanelWindowLevel];
+    if ([mSavePanel respondsToSelector:@selector(setLevel:)])
+        [mSavePanel setLevel:NSModalPanelWindowLevel];
     [mSavePanel setDelegate:self];
     mReturnCode = -1;
     mHelper = helper;
@@ -179,7 +181,8 @@ typedef QSharedPointer<QFileDialogOptions> SharedPointerFileDialogOptions;
     delete mSelectedNameFilter;
     delete mCurrentSelection;
 
-    [mSavePanel orderOut:mSavePanel];
+    if ([mSavePanel respondsToSelector:@selector(orderOut:)])
+        [mSavePanel orderOut:mSavePanel];
     [mSavePanel setAccessoryView:nil];
     [mPopUpButton release];
     [mTextField release];
@@ -212,38 +215,40 @@ static QString strippedText(QString s)
 
 - (void)closePanel
 {
-    *mCurrentSelection = QT_PREPEND_NAMESPACE(QCFString::toQString)([mSavePanel filename]);
-    [mSavePanel close];
+    *mCurrentSelection = QT_PREPEND_NAMESPACE(QCFString::toQString)([[mSavePanel URL] path]);
+    if ([mSavePanel respondsToSelector:@selector(closePanel:)])
+        [mSavePanel close];
 }
 
 - (void)showModelessPanel
 {
     if (mOpenPanel){
         QFileInfo info(*mCurrentSelection);
-        NSString *filename = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.fileName());
         NSString *filepath = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath());
         bool selectable = (mOptions->acceptMode() == QFileDialogOptions::AcceptSave)
             || [self panel:nil shouldShowFilename:filepath];
-        [mOpenPanel
-            beginForDirectory:mCurrentDir
-            file:selectable ? filename : nil
-            types:nil
-            modelessDelegate:self
-            didEndSelector:@selector(openPanelDidEnd:returnCode:contextInfo:)
-            contextInfo:nil];
+
+        [mOpenPanel setAllowedFileTypes:nil];
+        [mOpenPanel setDirectoryURL:selectable ? [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath())]
+                                               : [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.path())]];
+        [mOpenPanel beginWithCompletionHandler:^(NSInteger result){
+            mReturnCode = result;
+            if (mHelper)
+                mHelper->QNSOpenSavePanelDelegate_panelClosed(result == NSOKButton);
+        }];
     }
 }
 
 - (BOOL)runApplicationModalPanel
 {
     QFileInfo info(*mCurrentSelection);
-    NSString *filename = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.fileName());
     NSString *filepath = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath());
     bool selectable = (mOptions->acceptMode() == QFileDialogOptions::AcceptSave)
         || [self panel:nil shouldShowFilename:filepath];
-    mReturnCode = [mSavePanel
-        runModalForDirectory:mCurrentDir
-        file:selectable ? filename : @"untitled"];
+
+    [mSavePanel setDirectoryURL:selectable ? [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath())]
+                                           : [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.path())]];
+    mReturnCode = [mSavePanel runModal];
 
     QAbstractEventDispatcher::instance()->interrupt();
     return (mReturnCode == NSOKButton);
@@ -257,18 +262,19 @@ static QString strippedText(QString s)
 - (void)showWindowModalSheet:(QWindow *)parent
 {
     QFileInfo info(*mCurrentSelection);
-    NSString *filename = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.fileName());
     NSString *filepath = QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath());
     bool selectable = (mOptions->acceptMode() == QFileDialogOptions::AcceptSave)
         || [self panel:nil shouldShowFilename:filepath];
+
+    [mSavePanel setDirectoryURL:selectable ? [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.filePath())]
+                                           : [NSURL fileURLWithPath:QT_PREPEND_NAMESPACE(QCFString::toNSString)(info.path())]];
     NSWindow *nsparent = static_cast<NSWindow *>(qGuiApp->platformNativeInterface()->nativeResourceForWindow("nswindow", parent));
-    [mSavePanel
-        beginSheetForDirectory:mCurrentDir
-        file:selectable ? filename : nil
-        modalForWindow:nsparent
-        modalDelegate:self
-        didEndSelector:@selector(openPanelDidEnd:returnCode:contextInfo:)
-        contextInfo:nil];
+
+    [mSavePanel beginSheetModalForWindow:nsparent completionHandler:^(NSInteger result){
+        mReturnCode = result;
+        if (mHelper)
+            mHelper->QNSOpenSavePanelDelegate_panelClosed(result == NSOKButton);
+    }];
 }
 
 - (BOOL)panel:(id)sender shouldShowFilename:(NSString *)filename
@@ -345,7 +351,8 @@ static QString strippedText(QString s)
     Q_UNUSED(sender);
     QString selection = mNameFilterDropDownList->value([mPopUpButton indexOfSelectedItem]);
     *mSelectedNameFilter = [self findStrippedFilterWithVisualFilterName:selection];
-    [mSavePanel validateVisibleColumns];
+    if ([mSavePanel respondsToSelector:@selector(validateVisibleColumns:)])
+        [mSavePanel validateVisibleColumns];
     [self updateProperties];
     if (mHelper)
         mHelper->QNSOpenSavePanelDelegate_filterSelected([mPopUpButton indexOfSelectedItem]);
@@ -358,11 +365,15 @@ static QString strippedText(QString s)
 
 - (QStringList)selectedFiles
 {
-    if (mOpenPanel)
-        return QT_PREPEND_NAMESPACE(qt_mac_NSArrayToQStringList)([mOpenPanel filenames]);
-    else{
+    if (mOpenPanel) {
         QStringList result;
-        QString filename = QT_PREPEND_NAMESPACE(QCFString::toQString)([mSavePanel filename]);
+        NSArray* array = [mOpenPanel URLs];
+        for (NSUInteger i=0; i<[array count]; ++i)
+            result << QCFString::toQString([[array objectAtIndex:i] path]);
+        return result;
+    } else {
+        QStringList result;
+        QString filename = QT_PREPEND_NAMESPACE(QCFString::toQString)([[mSavePanel URL] path]);
         result << filename.remove(QLatin1String("___qt_very_unlikely_prefix_"));
         return result;
     }
@@ -392,29 +403,22 @@ static QString strippedText(QString s)
         ext.prepend(defaultSuffix);
     [mSavePanel setAllowedFileTypes:ext.isEmpty() ? nil : QT_PREPEND_NAMESPACE(qt_mac_QStringListToNSMutableArray(ext))];
 
-    if ([mSavePanel isVisible])
-        [mOpenPanel validateVisibleColumns];
+    if ([mSavePanel respondsToSelector:@selector(isVisible)] && [mSavePanel isVisible]) {
+        if ([mSavePanel respondsToSelector:@selector(validateVisibleColumns)])
+            [mSavePanel validateVisibleColumns];
+    }
 }
 
 - (void)panelSelectionDidChange:(id)sender
 {
     Q_UNUSED(sender);
     if (mHelper) {
-        QString selection = QT_PREPEND_NAMESPACE(QCFString::toQString([mSavePanel filename]));
+        QString selection = QT_PREPEND_NAMESPACE(QCFString::toQString([[mSavePanel URL] path]));
         if (selection != mCurrentSelection) {
             *mCurrentSelection = selection;
             mHelper->QNSOpenSavePanelDelegate_selectionChanged(selection);
         }
     }
-}
-
-- (void)openPanelDidEnd:(NSOpenPanel *)panel returnCode:(int)returnCode  contextInfo:(void *)contextInfo
-{
-    Q_UNUSED(panel);
-    Q_UNUSED(contextInfo);
-    mReturnCode = returnCode;
-    if (mHelper)
-        mHelper->QNSOpenSavePanelDelegate_panelClosed(returnCode == NSOKButton);
 }
 
 - (void)panel:(id)sender directoryDidChange:(NSString *)path
@@ -523,6 +527,7 @@ QCocoaFileDialogHelper::~QCocoaFileDialogHelper()
 {
     if (!mDelegate)
         return;
+    QCocoaAutoReleasePool pool;
     [reinterpret_cast<QT_MANGLE_NAMESPACE(QNSOpenSavePanelDelegate) *>(mDelegate) release];
     mDelegate = 0;
 }
@@ -559,7 +564,7 @@ extern void qt_mac_to_pascal_string(QString s, Str255 str, TextEncoding encoding
 void QCocoaFileDialogHelper::setDirectory(const QString &directory)
 {
     QT_MANGLE_NAMESPACE(QNSOpenSavePanelDelegate) *delegate = static_cast<QT_MANGLE_NAMESPACE(QNSOpenSavePanelDelegate) *>(mDelegate);
-    [delegate->mSavePanel setDirectory:QCFString::toNSString(directory)];
+    [delegate->mSavePanel setDirectoryURL:[NSURL fileURLWithPath:QCFString::toNSString(directory)]];
 }
 
 QString QCocoaFileDialogHelper::directory() const
@@ -638,6 +643,7 @@ void QCocoaFileDialogHelper::createNSOpenSavePanelDelegate()
 {
     if (mDelegate)
         return;
+    QCocoaAutoReleasePool pool;
     const SharedPointerFileDialogOptions &opts = options();
     const QStringList selectedFiles = opts->initiallySelectedFiles();
     const QString directory = opts->initialDirectory();
@@ -685,6 +691,7 @@ void QCocoaFileDialogHelper::exec()
     // QEventLoop has been interrupted, and the second-most event loop has not
     // yet been reactivated (regardless if [NSApp run] is still on the stack)),
     // showing a native modal dialog will fail.
+    QCocoaAutoReleasePool pool;
     QT_MANGLE_NAMESPACE(QNSOpenSavePanelDelegate) *delegate = static_cast<QT_MANGLE_NAMESPACE(QNSOpenSavePanelDelegate) *>(mDelegate);
     if ([delegate runApplicationModalPanel])
         emit accept();

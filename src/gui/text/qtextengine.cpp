@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -52,12 +52,12 @@
 #include "qfontengine_p.h"
 #include "qstring.h"
 #include <private/qunicodetables_p.h>
-#include <private/qunicodetools_p.h>
 #include "qtextdocument_p.h"
 #include "qrawfont.h"
 #include "qrawfont_p.h"
 #include <qguiapplication.h>
 #include <qinputmethod.h>
+#include <algorithm>
 #include <stdlib.h>
 
 #include "qfontengine_qpa_p.h"
@@ -1197,33 +1197,30 @@ QTextEngine::~QTextEngine()
     resetFontEngineCache();
 }
 
-const HB_CharAttributes *QTextEngine::attributes() const
+const QCharAttributes *QTextEngine::attributes() const
 {
     if (layoutData && layoutData->haveCharAttributes)
-        return (HB_CharAttributes *) layoutData->memory;
+        return (QCharAttributes *) layoutData->memory;
 
     itemize();
     if (! ensureSpace(layoutData->string.length()))
         return NULL;
 
-    QVarLengthArray<HB_ScriptItem> hbScriptItems(layoutData->items.size());
-
+    QVarLengthArray<QUnicodeTools::ScriptItem> scriptItems(layoutData->items.size());
     for (int i = 0; i < layoutData->items.size(); ++i) {
         const QScriptItem &si = layoutData->items[i];
-        hbScriptItems[i].pos = si.position;
-        hbScriptItems[i].length = length(i);
-        hbScriptItems[i].bidiLevel = si.analysis.bidiLevel;
-        hbScriptItems[i].script = (HB_Script)si.analysis.script;
+        scriptItems[i].position = si.position;
+        scriptItems[i].script = si.analysis.script;
     }
 
     QUnicodeTools::initCharAttributes(reinterpret_cast<const HB_UChar16 *>(layoutData->string.constData()),
                                       layoutData->string.length(),
-                                      hbScriptItems.data(), hbScriptItems.size(),
-                                      (HB_CharAttributes *)layoutData->memory);
+                                      scriptItems.data(), scriptItems.size(),
+                                      (QCharAttributes *)layoutData->memory);
 
 
     layoutData->haveCharAttributes = true;
-    return (HB_CharAttributes *) layoutData->memory;
+    return (QCharAttributes *) layoutData->memory;
 }
 
 void QTextEngine::shape(int item) const
@@ -1857,7 +1854,7 @@ void QTextEngine::justify(const QScriptLine &line)
 
     // don't include trailing white spaces when doing justification
     int line_length = line.length;
-    const HB_CharAttributes *a = attributes();
+    const QCharAttributes *a = attributes();
     if (! a)
         return;
     a += line.from;
@@ -2057,7 +2054,7 @@ QTextEngine::LayoutData::LayoutData(const QString &str, void **stack_memory, int
 {
     allocated = _allocated;
 
-    int space_charAttributes = sizeof(HB_CharAttributes)*string.length()/sizeof(void*) + 1;
+    int space_charAttributes = sizeof(QCharAttributes)*string.length()/sizeof(void*) + 1;
     int space_logClusters = sizeof(unsigned short)*string.length()/sizeof(void*) + 1;
     available_glyphs = ((int)allocated - space_charAttributes - space_logClusters)*(int)sizeof(void*)/(int)QGlyphLayout::spaceNeededForGlyphLayout(1);
 
@@ -2099,7 +2096,7 @@ bool QTextEngine::LayoutData::reallocate(int totalGlyphs)
         return true;
     }
 
-    int space_charAttributes = sizeof(HB_CharAttributes)*string.length()/sizeof(void*) + 1;
+    int space_charAttributes = sizeof(QCharAttributes)*string.length()/sizeof(void*) + 1;
     int space_logClusters = sizeof(unsigned short)*string.length()/sizeof(void*) + 1;
     int space_glyphs = QGlyphLayout::spaceNeededForGlyphLayout(totalGlyphs)/sizeof(void*) + 2;
 
@@ -2198,11 +2195,11 @@ int QTextEngine::formatIndex(const QScriptItem *si) const
 QTextCharFormat QTextEngine::format(const QScriptItem *si) const
 {
     QTextCharFormat format;
-    const QTextFormatCollection *formats = 0;
-    if (block.docHandle()) {
-        formats = this->formats();
+    const QTextFormatCollection *formats = this->formats();
+
+    if (formats)
         format = formats->charFormat(formatIndex(si));
-    }
+
     if (specialData && specialData->resolvedFormatIndices.isEmpty()) {
         int end = si->position + length(si);
         for (int i = 0; i < specialData->addFormats.size(); ++i) {
@@ -2289,11 +2286,15 @@ bool QTextEngine::atSpace(int position) const
 
 void QTextEngine::indexAdditionalFormats()
 {
-    if (!block.docHandle())
-        return;
-
     specialData->addFormatIndices.resize(specialData->addFormats.count());
-    QTextFormatCollection * const formats = this->formats();
+
+    QTextFormatCollection *formats = this->formats();
+
+    if (!formats) {
+        Q_ASSERT(!block.docHandle());
+        specialData->formats.reset(new QTextFormatCollection);
+        formats = specialData->formats.data();
+    }
 
     for (int i = 0; i < specialData->addFormats.count(); ++i) {
         specialData->addFormatIndices[i] = formats->indexForFormat(specialData->addFormats.at(i).format);
@@ -2366,7 +2367,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
 
     if (flags & Qt::TextShowMnemonic) {
         itemize();
-        HB_CharAttributes *attributes = const_cast<HB_CharAttributes *>(this->attributes());
+        QCharAttributes *attributes = const_cast<QCharAttributes *>(this->attributes());
         if (!attributes)
             return QString();
         for (int i = 0; i < layoutData->items.size(); ++i) {
@@ -2382,9 +2383,9 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
                 if (layoutData->string.at(i) == QLatin1Char('&')) {
                     const int gp = logClusters[i - si.position];
                     glyphs.attributes[gp].dontPrint = true;
-                    attributes[i + 1].charStop = false;
+                    attributes[i + 1].graphemeBoundary = false;
+                    attributes[i + 1].lineBreak = false;
                     attributes[i + 1].whiteSpace = false;
-                    attributes[i + 1].lineBreakType = HB_NoBreak;
                     if (layoutData->string.at(i + 1) == QLatin1Char('&'))
                         ++i;
                 }
@@ -2446,7 +2447,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
     if (availableWidth < 0)
         return QString();
 
-    const HB_CharAttributes *attributes = this->attributes();
+    const QCharAttributes *attributes = this->attributes();
     if (!attributes)
         return QString();
 
@@ -2459,7 +2460,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
             pos = nextBreak;
 
             ++nextBreak;
-            while (nextBreak < layoutData->string.length() && !attributes[nextBreak].charStop)
+            while (nextBreak < layoutData->string.length() && !attributes[nextBreak].graphemeBoundary)
                 ++nextBreak;
 
             currentWidth += this->width(pos, nextBreak - pos);
@@ -2482,7 +2483,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
             pos = nextBreak;
 
             --nextBreak;
-            while (nextBreak > 0 && !attributes[nextBreak].charStop)
+            while (nextBreak > 0 && !attributes[nextBreak].graphemeBoundary)
                 --nextBreak;
 
             currentWidth += this->width(nextBreak, pos - nextBreak);
@@ -2511,11 +2512,11 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
             rightPos = nextRightBreak;
 
             ++nextLeftBreak;
-            while (nextLeftBreak < layoutData->string.length() && !attributes[nextLeftBreak].charStop)
+            while (nextLeftBreak < layoutData->string.length() && !attributes[nextLeftBreak].graphemeBoundary)
                 ++nextLeftBreak;
 
             --nextRightBreak;
-            while (nextRightBreak > from && !attributes[nextRightBreak].charStop)
+            while (nextRightBreak > from && !attributes[nextRightBreak].graphemeBoundary)
                 --nextRightBreak;
 
             leftWidth += this->width(leftPos, nextLeftBreak - leftPos);
@@ -2535,20 +2536,31 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
     return layoutData->string.mid(from, to - from);
 }
 
+namespace {
+struct QScriptItemComparator {
+    bool operator()(const QScriptItem &a, const QScriptItem &b) { return a.position < b.position; }
+    bool operator()(int p, const QScriptItem &b) { return p < b.position; }
+#if defined(Q_CC_MSVC) && _MSC_VER < 1600
+//The STL implementation of MSVC 2008 requires the definition
+    bool operator()(const QScriptItem &a, int p) { return a.position < p; }
+#endif
+};
+}
+
 void QTextEngine::setBoundary(int strPos) const
 {
     if (strPos <= 0 || strPos >= layoutData->string.length())
         return;
 
-    int itemToSplit = 0;
-    while (itemToSplit < layoutData->items.size() && layoutData->items.at(itemToSplit).position <= strPos)
-        itemToSplit++;
-    itemToSplit--;
-    if (layoutData->items.at(itemToSplit).position == strPos) {
+    const QScriptItem* it = std::upper_bound(layoutData->items.constBegin(), layoutData->items.constEnd(),
+                                             strPos, QScriptItemComparator());
+    Q_ASSERT(it > layoutData->items.constBegin());
+    --it;
+    if (it->position == strPos) {
         // already a split at the requested position
         return;
     }
-    splitItem(itemToSplit, strPos - layoutData->items.at(itemToSplit).position);
+    splitItem(it - layoutData->items.constBegin(), strPos - it->position);
 }
 
 void QTextEngine::splitItem(int item, int pos) const
@@ -2678,20 +2690,85 @@ QFixed QTextEngine::calculateTabWidth(int item, QFixed x) const
     return tabWidth;
 }
 
+namespace {
+class FormatRangeComparatorByStart {
+    const QList<QTextLayout::FormatRange> &list;
+public:
+    FormatRangeComparatorByStart(const QList<QTextLayout::FormatRange> &list) : list(list) { }
+    bool operator()(int a, int b) {
+        return list.at(a).start < list.at(b).start;
+    }
+};
+class FormatRangeComparatorByEnd {
+    const QList<QTextLayout::FormatRange> &list;
+public:
+    FormatRangeComparatorByEnd(const QList<QTextLayout::FormatRange> &list) : list(list) { }
+    bool operator()(int a, int b) {
+        return list.at(a).start + list.at(a).length < list.at(b).start + list.at(b).length;
+    }
+};
+}
+
 void QTextEngine::resolveAdditionalFormats() const
 {
     if (!specialData || specialData->addFormats.isEmpty()
-        || !block.docHandle()
         || !specialData->resolvedFormatIndices.isEmpty())
         return;
 
-    QTextFormatCollection *collection = this->formats();
+    QTextFormatCollection *collection = formats();
 
     specialData->resolvedFormatIndices.clear();
     QVector<int> indices(layoutData->items.count());
+
+
+    QVarLengthArray<int, 64> addFormatSortedByStart;
+    addFormatSortedByStart.reserve(specialData->addFormats.count());
+    for (int i = 0; i < specialData->addFormats.count(); ++i) {
+        if (specialData->addFormats.at(i).length >= 0)
+            addFormatSortedByStart.append(i);
+    }
+    QVarLengthArray<int, 64> addFormatSortedByEnd = addFormatSortedByStart;
+    qSort(addFormatSortedByStart.begin(), addFormatSortedByStart.end(),
+          FormatRangeComparatorByStart(specialData->addFormats));
+    qSort(addFormatSortedByEnd.begin(), addFormatSortedByEnd.end(),
+          FormatRangeComparatorByEnd(specialData->addFormats));
+
+    QVarLengthArray<int, 16>  currentFormats;
+    const int *startIt = addFormatSortedByStart.constBegin();
+    const int *endIt = addFormatSortedByEnd.constBegin();
+
     for (int i = 0; i < layoutData->items.count(); ++i) {
-        QTextCharFormat f = format(&layoutData->items.at(i));
-        indices[i] = collection->indexForFormat(f);
+        const QScriptItem *si = &layoutData->items.at(i);
+        int end = si->position + length(si);
+
+        while (startIt != addFormatSortedByStart.end() &&
+            specialData->addFormats.at(*startIt).start <= si->position) {
+            currentFormats.insert(std::upper_bound(currentFormats.begin(), currentFormats.end(), *startIt),
+                                  *startIt);
+            ++startIt;
+        }
+        while (endIt != addFormatSortedByEnd.end() &&
+            specialData->addFormats.at(*endIt).start + specialData->addFormats.at(*endIt).length < end) {
+            currentFormats.remove(qBinaryFind(currentFormats, *endIt) - currentFormats.begin());
+            ++endIt;
+        }
+        QTextCharFormat format;
+        if (block.docHandle()) {
+            // when we have a docHandle, formatIndex might still return a valid index based
+            // on the preeditPosition. for all other cases, we cleared the resolved format indices
+            format = collection->charFormat(formatIndex(si));
+        }
+
+        foreach (int cur, currentFormats) {
+            const QTextLayout::FormatRange &r = specialData->addFormats.at(cur);
+            Q_ASSERT (r.start <= si->position && r.start + r.length >= end);
+            if (!specialData->addFormatIndices.isEmpty()) {
+                format.merge(collection->format(specialData->addFormatIndices.at(cur)));
+            } else {
+                format.merge(r.format);
+            }
+        }
+        indices[i] = collection->indexForFormat(format);
     }
     specialData->resolvedFormatIndices = indices;
 }
@@ -2755,12 +2832,12 @@ QFixed QTextEngine::offsetInLigature(const QScriptItem *si, int pos, int max, in
 
 // Scan in logClusters[from..to-1] for glyph_pos
 int QTextEngine::getClusterLength(unsigned short *logClusters,
-                                  const HB_CharAttributes *attributes,
+                                  const QCharAttributes *attributes,
                                   int from, int to, int glyph_pos, int *start)
 {
     int clusterLength = 0;
     for (int i = from; i < to; i++) {
-        if (logClusters[i] == glyph_pos && attributes[i].charStop) {
+        if (logClusters[i] == glyph_pos && attributes[i].graphemeBoundary) {
             if (*start < 0)
                 *start = i;
             clusterLength++;
@@ -2799,7 +2876,7 @@ int QTextEngine::positionInLigature(const QScriptItem *si, int end,
             glyph_pos--;
     }
 
-    const HB_CharAttributes *attrs = attributes();
+    const QCharAttributes *attrs = attributes();
     logClusters = this->logClusters(si);
     clusterLength = getClusterLength(logClusters, attrs, 0, end, glyph_pos, &clusterStart);
 
@@ -2817,8 +2894,8 @@ int QTextEngine::positionInLigature(const QScriptItem *si, int end,
         if (cursorOnCharacter && closestItem > 0)
             closestItem--;
         int pos = si->position + clusterStart + closestItem;
-        // Jump to the next charStop
-        while (pos < end && !attrs[pos].charStop)
+        // Jump to the next grapheme boundary
+        while (pos < end && !attrs[pos].graphemeBoundary)
             pos++;
         return pos;
     }
@@ -2827,21 +2904,21 @@ int QTextEngine::positionInLigature(const QScriptItem *si, int end,
 
 int QTextEngine::previousLogicalPosition(int oldPos) const
 {
-    const HB_CharAttributes *attrs = attributes();
+    const QCharAttributes *attrs = attributes();
     if (!attrs || oldPos < 0)
         return oldPos;
 
     if (oldPos <= 0)
         return 0;
     oldPos--;
-    while (oldPos && !attrs[oldPos].charStop)
+    while (oldPos && !attrs[oldPos].graphemeBoundary)
         oldPos--;
     return oldPos;
 }
 
 int QTextEngine::nextLogicalPosition(int oldPos) const
 {
-    const HB_CharAttributes *attrs = attributes();
+    const QCharAttributes *attrs = attributes();
     int len = block.isValid() ? block.length() - 1
                               : layoutData->string.length();
     Q_ASSERT(len <= layoutData->string.length());
@@ -2849,7 +2926,7 @@ int QTextEngine::nextLogicalPosition(int oldPos) const
         return oldPos;
 
     oldPos++;
-    while (oldPos < len && !attrs[oldPos].charStop)
+    while (oldPos < len && !attrs[oldPos].graphemeBoundary)
         oldPos++;
     return oldPos;
 }

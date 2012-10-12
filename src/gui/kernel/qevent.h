@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -86,12 +86,12 @@ protected:
 class Q_GUI_EXPORT QMouseEvent : public QInputEvent
 {
 public:
-    QMouseEvent(Type type, const QPointF &pos, Qt::MouseButton button,
+    QMouseEvent(Type type, const QPointF &localPos, Qt::MouseButton button,
                 Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers);
-    QMouseEvent(Type type, const QPointF &pos, const QPointF &globalPos,
+    QMouseEvent(Type type, const QPointF &localPos, const QPointF &screenPos,
                 Qt::MouseButton button, Qt::MouseButtons buttons,
                 Qt::KeyboardModifiers modifiers);
-    QMouseEvent(Type type, const QPointF &pos, const QPointF &windowPos, const QPointF &globalPos,
+    QMouseEvent(Type type, const QPointF &localPos, const QPointF &windowPos, const QPointF &screenPos,
                 Qt::MouseButton button, Qt::MouseButtons buttons,
                 Qt::KeyboardModifiers modifiers);
     ~QMouseEvent();
@@ -203,8 +203,8 @@ public:
                  Qt::KeyboardModifiers keyState, qint64 uniqueID);
     ~QTabletEvent();
 
-    inline const QPoint pos() const { return mPos.toPoint(); }
-    inline const QPoint globalPos() const { return mGPos.toPoint(); }
+    inline QPoint pos() const { return mPos.toPoint(); }
+    inline QPoint globalPos() const { return mGPos.toPoint(); }
 #if QT_DEPRECATED_SINCE(5,0)
     QT_DEPRECATED inline const QPointF &hiResGlobalPos() const { return mPos; }
 #endif
@@ -500,7 +500,7 @@ public:
                Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers, Type type = Drop);
     ~QDropEvent();
 
-    inline const QPoint pos() const { return p.toPoint(); }
+    inline QPoint pos() const { return p.toPoint(); }
     inline const QPointF &posF() const { return p; }
     inline Qt::MouseButtons mouseButtons() const { return mouseState; }
     inline Qt::KeyboardModifiers keyboardModifiers() const { return modState; }
@@ -779,7 +779,7 @@ public:
     };
 
 #if QT_DEPRECATED_SINCE(5, 0)
-    QT_DEPRECATED enum DeviceType {
+    enum DeviceType {
         TouchScreen,
         TouchPad
     };

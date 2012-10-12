@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -45,6 +45,9 @@
 #include <qstringlist.h>
 
 #include <locale.h>
+#ifdef Q_OS_WINCE
+#include <windows.h> // needed for GetUserDefaultLCID
+#endif
 
 class tst_QStringList : public QObject
 {
@@ -66,6 +69,8 @@ private slots:
     void join() const;
     void join_data() const;
     void joinEmptiness() const;
+    void joinChar() const;
+    void joinChar_data() const;
 
     void initializeList() const;
 };
@@ -210,13 +215,23 @@ void tst_QStringList::sort()
     list2 << "BETA" << "Gamma" << "alpha" << "beta" << "epsilon" << "gAmma" << "gamma";
     QCOMPARE( list1, list2 );
 
+#ifdef Q_OS_WINCE
+    DWORD oldLcid = GetUserDefaultLCID();
+    // Assume c locale to be english
+    SetUserDefaultLCID(MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), SORT_DEFAULT));
+#else
     char *current_locale = setlocale(LC_ALL, "C");
+#endif
     QStringList list3, list4;
     list3 << "alpha" << "beta" << "BETA" << "gamma" << "Gamma" << "gAmma" << "epsilon";
     list3.sort(Qt::CaseInsensitive);
     list4 << "alpha" << "beta" << "BETA" << "epsilon" << "Gamma" << "gAmma" << "gamma";
     QCOMPARE( list3, list4 );
+#ifdef Q_OS_WINCE
+    SetUserDefaultLCID(oldLcid);
+#else
     setlocale(LC_ALL, current_locale);
+#endif
 }
 
 void tst_QStringList::replaceInStrings()
@@ -359,6 +374,42 @@ void tst_QStringList::join_data() const
                         << QLatin1String("b")
                         << QLatin1String("c"))
                 << QString(QLatin1String(" "))
+                << QString("a b c");
+}
+
+void tst_QStringList::joinChar() const
+{
+    QFETCH(QStringList, input);
+    QFETCH(QChar, separator);
+    QFETCH(QString, expectedResult);
+
+    QCOMPARE(input.join(separator), expectedResult);
+}
+
+void tst_QStringList::joinChar_data() const
+{
+    QTest::addColumn<QStringList>("input");
+    QTest::addColumn<QChar>("separator");
+    QTest::addColumn<QString>("expectedResult");
+
+    QTest::newRow("data1")
+                << QStringList()
+                << QChar(QLatin1Char(' '))
+                << QString();
+
+    QTest::newRow("data5")
+                << (QStringList()
+                        << QLatin1String("a")
+                        << QLatin1String("b"))
+                << QChar(QLatin1Char(' '))
+                << QString("a b");
+
+    QTest::newRow("data6")
+                << (QStringList()
+                        << QLatin1String("a")
+                        << QLatin1String("b")
+                        << QLatin1String("c"))
+                << QChar(QLatin1Char(' '))
                 << QString("a b c");
 }
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDBus module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,6 +48,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection
+    \inmodule QtDBus
     \brief Information about introspected objects and interfaces on D-Bus.
     \internal
 
@@ -60,6 +61,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Argument
+    \inmodule QtDBus
     \brief One argument to a D-Bus method or signal.
 
     This struct represents one argument passed to a method or received from a method or signal in
@@ -83,6 +85,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Method
+    \inmodule QtDBus
     \brief Information about one method.
 
     This struct represents one method discovered through introspection. A method is composed of
@@ -118,6 +121,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Signal
+    \inmodule QtDBus
     \brief Information about one signal.
 
     This struct represents one signal discovered through introspection. A signal is composed of
@@ -147,6 +151,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Property
+    \inmodule QtDBus
     \brief Information about one property.
 
     This struct represents one property discovered through introspection. A property is composed of
@@ -189,6 +194,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Interface
+    \inmodule QtDBus
     \brief Information about one interface on the bus.
 
     Each interface on D-Bus has an unique \a name, identifying where that interface was defined.
@@ -243,6 +249,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::Object
+    \inmodule QtDBus
     \brief Information about one object on the bus.
 
     An object on the D-Bus bus is represented by its service and path on the service but, unlike
@@ -289,6 +296,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QDBusIntrospection::ObjectTree
+    \inmodule QtDBus
     \brief Complete information about one object node and its descendency.
     
     This struct contains the same data as QDBusIntrospection::Object, plus the actual data for the

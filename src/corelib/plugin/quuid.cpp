@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -163,6 +163,7 @@ static QUuid createFromName(const QUuid &ns, const QByteArray &baseData, QCrypto
 
 /*!
     \class QUuid
+    \inmodule QtCore
     \brief The QUuid class stores a Universally Unique Identifier (UUID).
 
     \reentrant
@@ -427,8 +428,8 @@ QUuid::QUuid(const QByteArray &text)
   \since 5.0
   \fn QUuid QUuid::createUuidV3(const QUuid &ns, const QByteArray &baseData);
 
-  This functions returns a new UUID with variant QUuid::DCE and version QUuid::MD5.
-  \a ns is the namespace and \a name is the name as described by RFC 4122.
+  This functions returns a new UUID with variant QUuid::DCE and version QUuid::Md5.
+  \a ns is the namespace and \a baseData is the basic data as described by RFC 4122.
 
   \sa variant(), version(), createUuidV5()
 */
@@ -437,8 +438,8 @@ QUuid::QUuid(const QByteArray &text)
   \since 5.0
   \fn QUuid QUuid::createUuidV5(const QUuid &ns, const QByteArray &baseData);
 
-  This functions returns a new UUID with variant QUuid::DCE and version QUuid::SHA1.
-  \a ns is the namespace and \a name is the name as described by RFC 4122.
+  This functions returns a new UUID with variant QUuid::DCE and version QUuid::Sha1.
+  \a ns is the namespace and \a baseData is the basic data as described by RFC 4122.
 
   \sa variant(), version(), createUuidV3()
 */
@@ -457,7 +458,7 @@ QUuid QUuid::createUuidV5(const QUuid &ns, const QByteArray &baseData)
 /*!
   Creates a QUuid object from the binary representation of the UUID, as
   specified by RFC 4122 section 4.1.2. See toRfc4122() for a further
-  explanation of the order of bytes required.
+  explanation of the order of \a bytes required.
 
   The byte array accepted is NOT a human readable format.
 
@@ -757,7 +758,9 @@ bool QUuid::isNull() const
     MAC network card address (if available) for the node sections
     \value EmbeddedPOSIX DCE Security version, with embedded POSIX UUIDs
     \value Name Name-based, by using values from a name for all sections
+    \value Md5 Alias for Name
     \value Random Random-based, by using random numbers for all sections
+    \value Sha1
 */
 
 /*!
@@ -1004,7 +1007,7 @@ QDebug operator<<(QDebug dbg, const QUuid &id)
     \relates QUuid
     Returns a hash of the UUID \a uuid, using \a seed to seed the calculation.
 */
-uint qHash(const QUuid &uuid, uint seed)
+uint qHash(const QUuid &uuid, uint seed) Q_DECL_NOTHROW
 {
     return uuid.data1 ^ uuid.data2 ^ (uuid.data3 << 16)
             ^ ((uuid.data4[0] << 24) | (uuid.data4[1] << 16) | (uuid.data4[2] << 8) | uuid.data4[3])

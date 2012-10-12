@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -103,32 +103,17 @@ void tst_QElapsedTimer::basics()
     QVERIFY(!(t1 < t1));
     QCOMPARE(t1.msecsTo(t1), qint64(0));
     QCOMPARE(t1.secsTo(t1), qint64(0));
-//    QCOMPARE(t1 + 0, t1);
-//    QCOMPARE(t1 - 0, t1);
-
-#if 0
-    QElapsedTimer t2 = t1;
-    t2 += 1000;   // so we can use secsTo
-
-    QVERIFY(t1 != t2);
-    QVERIFY(!(t1 == t2));
-    QVERIFY(t1 < t2);
-    QVERIFY(!(t2 < t1));
-    QCOMPARE(t1.msecsTo(t2), qint64(1000));
-    QCOMPARE(t1.secsTo(t2), qint64(1));
-//    QCOMPARE(t2 - t1, qint64(1000));
-//    QCOMPARE(t1 - t2, qint64(-1000));
-#endif
 
     quint64 value1 = t1.msecsSinceReference();
-    qDebug() << value1 << t1;
+    qDebug() << "value1:" << value1 << "t1:" << t1;
     qint64 nsecs = t1.nsecsElapsed();
     qint64 elapsed = t1.restart();
     QVERIFY(elapsed < minResolution);
     QVERIFY(nsecs / 1000000 < minResolution);
 
     quint64 value2 = t1.msecsSinceReference();
-    qDebug() << value2 << t1 << elapsed << nsecs;
+    qDebug() << "value2:" << value2 << "t1:" << t1
+             << "elapsed:" << elapsed << "nsecs:" << nsecs;
     // in theory, elapsed == value2 - value1
 
     // However, since QElapsedTimer keeps internally the full resolution,
@@ -149,8 +134,6 @@ void tst_QElapsedTimer::elapsed()
     QVERIFY(!(t1 == t2));
     QVERIFY(t1 < t2);
     QVERIFY(t1.msecsTo(t2) > 0);
-    // don't check: t1.secsTo(t2)
-//    QVERIFY(t1 - t2 < 0);
 
     QVERIFY(t1.nsecsElapsed() > 0);
     QVERIFY(t1.elapsed() > 0);

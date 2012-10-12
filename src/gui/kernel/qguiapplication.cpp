@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -66,11 +66,9 @@
 #include <private/qdrawhelper_p.h>
 
 #include <QtGui/qgenericpluginfactory.h>
-#include <qpa/qplatformintegration.h>
 #include <QtGui/qstylehints.h>
-#include <QtGui/qinputpanel.h>
+#include <QtGui/qinputmethod.h>
 #include <QtGui/qpixmapcache.h>
-#include <qpa/qplatformtheme.h>
 #include <qpa/qplatforminputcontext.h>
 #include <qpa/qplatforminputcontext_p.h>
 
@@ -81,7 +79,6 @@
 
 #include "private/qdnd_p.h"
 #include <qpa/qplatformthemefactory_p.h>
-#include <qpa/qplatformdrag.h>
 
 #ifndef QT_NO_CURSOR
 #include <qpa/qplatformcursor.h>
@@ -91,6 +88,10 @@
 
 #ifndef QT_NO_CLIPBOARD
 #include <QtGui/QClipboard>
+#endif
+
+#ifdef Q_OS_MAC
+#  include "private/qcore_mac_p.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -334,7 +335,11 @@ static inline void clearFontUnlocked()
 
     \sa arguments()
 */
+#ifdef Q_QDOC
+QGuiApplication::QGuiApplication(int &argc, char **argv)
+#else
 QGuiApplication::QGuiApplication(int &argc, char **argv, int flags)
+#endif
     : QCoreApplication(*new QGuiApplicationPrivate(argc, argv, flags))
 {
     d_func()->init();
@@ -342,6 +347,9 @@ QGuiApplication::QGuiApplication(int &argc, char **argv, int flags)
     QCoreApplicationPrivate::eventDispatcher->startingUp();
 }
 
+/*!
+    \internal
+*/
 QGuiApplication::QGuiApplication(QGuiApplicationPrivate &p)
     : QCoreApplication(p)
 {
@@ -454,6 +462,8 @@ void QGuiApplicationPrivate::showModalWindow(QWindow *modal)
         if (!window->d_func()->blockedByModalWindow)
             updateBlockedStatus(window);
     }
+
+    updateBlockedStatus(modal);
 }
 
 void QGuiApplicationPrivate::hideModalWindow(QWindow *window)
@@ -557,6 +567,8 @@ QWindow *QGuiApplication::focusWindow()
     \fn QGuiApplication::focusObjectChanged(QObject *focusObject)
 
     This signal is emitted when final receiver of events tied to focus is changed.
+    \a focusObject is the new receiver.
+
     \sa focusObject()
 */
 
@@ -564,6 +576,8 @@ QWindow *QGuiApplication::focusWindow()
     \fn QGuiApplication::focusWindowChanged(QWindow *focusWindow)
 
     This signal is emitted when the focused window changes.
+    \a focusWindow is the new focused window.
+
     \sa focusWindow()
 */
 
@@ -604,8 +618,13 @@ QWindowList QGuiApplication::topLevelWindows()
     const QWindowList &list = QGuiApplicationPrivate::window_list;
     QWindowList topLevelWindows;
     for (int i = 0; i < list.size(); i++) {
-        if (!list.at(i)->parent())
-            topLevelWindows.prepend(list.at(i));
+        if (!list.at(i)->parent()) {
+            // Top windows of embedded QAxServers do not have QWindow parents,
+            // but they are not true top level windows, so do not include them.
+            const bool embedded = list.at(i)->handle() && list.at(i)->handle()->isEmbedded(0);
+            if (!embedded)
+                topLevelWindows.prepend(list.at(i));
+        }
     }
     return topLevelWindows;
 }
@@ -632,7 +651,16 @@ QList<QScreen *> QGuiApplication::screens()
 }
 
 /*!
-    Returns the top level window at the given position, if any.
+    \fn void QGuiApplication::screenAdded(QScreen *screen)
+
+    This signal is emitted whenever a new screen \a screen has been added to the system.
+
+    \sa screens(), primaryScreen()
+*/
+
+
+/*!
+    Returns the top level window at the given position \a pos, if any.
 */
 QWindow *QGuiApplication::topLevelAt(const QPoint &pos)
 {
@@ -848,6 +876,18 @@ void QGuiApplicationPrivate::init()
         } else if (arg == "-reverse") {
             force_reverse = true;
             QGuiApplication::setLayoutDirection(Qt::RightToLeft);
+#ifdef Q_OS_MAC
+        } else if (arg.startsWith("-psn_")) {
+            // eat "-psn_xxxx" on Mac, which is passed when starting an app from Finder.
+            // special hack to change working directory (for an app bundle) when running from finder
+            if (QDir::currentPath() == QLatin1String("/")) {
+                QCFType<CFURLRef> bundleURL(CFBundleCopyBundleURL(CFBundleGetMainBundle()));
+                QString qbundlePath = QCFString(CFURLCopyFileSystemPath(bundleURL,
+                                                                        kCFURLPOSIXPathStyle));
+                if (qbundlePath.endsWith(QLatin1String(".app")))
+                    QDir::setCurrent(qbundlePath.section(QLatin1Char('/'), 0, -2));
+            }
+#endif
         } else {
             argv[j++] = argv[i];
         }
@@ -883,7 +923,7 @@ void QGuiApplicationPrivate::init()
 
     is_app_running = true;
     init_plugins(pluginList);
-    QWindowSystemInterface::sendWindowSystemEvents(QEventLoop::AllEvents);
+    QWindowSystemInterface::flushWindowSystemEvents();
 }
 
 extern void qt_cleanupFontDatabase();
@@ -960,7 +1000,7 @@ Qt::KeyboardModifiers QGuiApplication::keyboardModifiers()
 }
 
 /*!
-    \fn Qt::KeyboardModifiers QApplication::queryKeyboardModifiers()
+    \fn Qt::KeyboardModifiers QGuiApplication::queryKeyboardModifiers()
 
     Queries and returns the state of the modifier keys on the keyboard.
     Unlike keyboardModifiers, this method returns the actual keys held
@@ -1168,6 +1208,10 @@ void QGuiApplicationPrivate::processWindowSystemEvent(QWindowSystemInterfacePriv
     case QWindowSystemInterfacePrivate::TabletLeaveProximity:
         QGuiApplicationPrivate::processTabletLeaveProximityEvent(
                     static_cast<QWindowSystemInterfacePrivate::TabletLeaveProximityEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::PlatformPanel:
+        QGuiApplicationPrivate::processPlatformPanelEvent(
+                    static_cast<QWindowSystemInterfacePrivate::PlatformPanelEvent *>(e));
         break;
     default:
         qWarning() << "Unknown user input event type:" << e->type;
@@ -1400,7 +1444,7 @@ void QGuiApplicationPrivate::processActivatedEvent(QWindowSystemInterfacePrivate
         QFocusEvent focusOut(QEvent::FocusOut);
         QCoreApplication::sendSpontaneousEvent(previous, &focusOut);
         QObject::disconnect(previous, SIGNAL(focusObjectChanged(QObject*)),
-                            qApp, SLOT(q_updateFocusObject(QObject*)));
+                            qApp, SLOT(_q_updateFocusObject(QObject*)));
     } else {
         QEvent appActivate(QEvent::ApplicationActivate);
         qApp->sendSpontaneousEvent(qApp, &appActivate);
@@ -1410,7 +1454,7 @@ void QGuiApplicationPrivate::processActivatedEvent(QWindowSystemInterfacePrivate
         QFocusEvent focusIn(QEvent::FocusIn);
         QCoreApplication::sendSpontaneousEvent(QGuiApplicationPrivate::focus_window, &focusIn);
         QObject::connect(QGuiApplicationPrivate::focus_window, SIGNAL(focusObjectChanged(QObject*)),
-                         qApp, SLOT(q_updateFocusObject(QObject*)));
+                         qApp, SLOT(_q_updateFocusObject(QObject*)));
     } else {
         QEvent appActivate(QEvent::ApplicationDeactivate);
         qApp->sendSpontaneousEvent(qApp, &appActivate);
@@ -1420,7 +1464,7 @@ void QGuiApplicationPrivate::processActivatedEvent(QWindowSystemInterfacePrivate
         self->notifyActiveWindowChange(previous);
 
         if (previousFocusObject != qApp->focusObject())
-            self->q_updateFocusObject(qApp->focusObject());
+            self->_q_updateFocusObject(qApp->focusObject());
     }
 
     emit qApp->focusWindowChanged(newFocus);
@@ -1581,6 +1625,20 @@ void QGuiApplicationPrivate::processTabletLeaveProximityEvent(QWindowSystemInter
 #else
     Q_UNUSED(e)
 #endif
+}
+
+void QGuiApplicationPrivate::processPlatformPanelEvent(QWindowSystemInterfacePrivate::PlatformPanelEvent *e)
+{
+    if (!e->window)
+        return;
+
+    if (e->window->d_func()->blockedByModalWindow) {
+        // a modal window is blocking this window, don't allow events through
+        return;
+    }
+
+    QEvent ev(QEvent::PlatformPanel);
+    QGuiApplication::sendSpontaneousEvent(e->window.data(), &ev);
 }
 
 Q_GUI_EXPORT uint qHash(const QGuiApplicationPrivate::ActiveTouchPointsKey &k)
@@ -2073,7 +2131,7 @@ QPalette QGuiApplication::palette()
 }
 
 /*!
-    Changes the default application palette to \a palette.
+    Changes the default application palette to \a pal.
 
     \sa palette()
 */
@@ -2169,6 +2227,17 @@ bool QGuiApplication::quitOnLastWindowClosed()
 }
 
 
+/*!
+    \fn void QGuiApplication::lastWindowClosed()
+
+    This signal is emitted from exec() when the last visible
+    primary window (i.e. window with no parent) is closed.
+
+    By default, QGuiApplication quits after this signal is emitted. This feature
+    can be turned off by setting \l quitOnLastWindowClosed to false.
+
+    \sa QWindow::close(), QWindow::isTopLevel()
+*/
 
 void QGuiApplicationPrivate::emitLastWindowClosed()
 {
@@ -2265,6 +2334,15 @@ static inline void applyCursor(const QList<QWindow *> &l, const QCursor &c)
     }
 }
 
+static inline void applyWindowCursor(const QList<QWindow *> &l)
+{
+    for (int i = 0; i < l.size(); ++i) {
+        QWindow *w = l.at(i);
+        if (w->handle() && w->windowType() != Qt::Desktop)
+            applyCursor(w, w->cursor());
+    }
+}
+
 /*!
     \fn void QGuiApplication::setOverrideCursor(const QCursor &cursor)
 
@@ -2313,8 +2391,12 @@ void QGuiApplication::restoreOverrideCursor()
     if (qGuiApp->d_func()->cursor_list.isEmpty())
         return;
     qGuiApp->d_func()->cursor_list.removeFirst();
-    QCursor c(qGuiApp->d_func()->cursor_list.value(0, QCursor()));
-    applyCursor(QGuiApplicationPrivate::window_list, c);
+    if (qGuiApp->d_func()->cursor_list.size() > 0) {
+        QCursor c(qGuiApp->d_func()->cursor_list.value(0));
+        applyCursor(QGuiApplicationPrivate::window_list, c);
+    } else {
+        applyWindowCursor(QGuiApplicationPrivate::window_list);
+    }
 }
 #endif// QT_NO_CURSOR
 
@@ -2369,7 +2451,7 @@ bool QGuiApplication::desktopSettingsAware()
   the virtual keyboard. It also provides information about the position of the
   current focused input element.
 
-  \sa QInputPanel
+  \sa QInputMethod
   */
 QInputMethod *QGuiApplication::inputMethod()
 {
@@ -2377,19 +2459,6 @@ QInputMethod *QGuiApplication::inputMethod()
         qGuiApp->d_func()->inputMethod = new QInputMethod();
     return qGuiApp->d_func()->inputMethod;
 }
-
-/*!
-  \fn QInputPanel *QGuiApplication::inputPanel() const
-  returns the input panel.
-
-  The input panel returns properties about the state and position of
-  the virtual keyboard. It also provides information about the position of the
-  current focused input element.
-
-  \obsolete
-
-  \sa inputMethod()
-  */
 
 /*!
     \fn void QGuiApplication::fontDatabaseChanged()
@@ -2546,7 +2615,7 @@ const QDrawHelperGammaTables *QGuiApplicationPrivate::gammaTables()
     return result;
 }
 
-void QGuiApplicationPrivate::q_updateFocusObject(QObject *object)
+void QGuiApplicationPrivate::_q_updateFocusObject(QObject *object)
 {
     Q_Q(QGuiApplication);
 

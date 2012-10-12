@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,6 +48,7 @@
 #include "tree.h"
 #include "config.h"
 #include "generator.h"
+#include "qdocdatabase.h"
 #include <qdebug.h>
 
 QT_BEGIN_NAMESPACE
@@ -81,6 +82,7 @@ QMap<QString,QString> CodeParser::nameToTitle;
  */
 CodeParser::CodeParser()
 {
+    qdb_ = QDocDatabase::qdocDB();
     parsers.prepend(this);
 }
 
@@ -114,16 +116,14 @@ QStringList CodeParser::headerFileNameFilter()
     return sourceFileNameFilter();
 }
 
-void CodeParser::parseHeaderFile(const Location& location,
-                                 const QString& filePath,
-                                 Tree *tree)
+void CodeParser::parseHeaderFile(const Location& location, const QString& filePath)
 {
-    parseSourceFile(location, filePath, tree);
+    parseSourceFile(location, filePath);
 }
 
-void CodeParser::doneParsingHeaderFiles(Tree *tree)
+void CodeParser::doneParsingHeaderFiles()
 {
-    doneParsingSourceFiles(tree);
+    doneParsingSourceFiles();
 }
 
 /*!
@@ -230,8 +230,7 @@ QSet<QString> CodeParser::commonMetaCommands()
 void CodeParser::processCommonMetaCommand(const Location& location,
                                           const QString& command,
                                           const ArgLocPair& arg,
-                                          Node* node,
-                                          Tree* tree)
+                                          Node* node)
 {
     if (command == COMMAND_COMPAT) {
         location.warning(tr("\\compat command used, but Qt3 compatibility is no longer supported"));
@@ -241,21 +240,16 @@ void CodeParser::processCommonMetaCommand(const Location& location,
         node->setStatus(Node::Deprecated);
     }
     else if (command == COMMAND_INGROUP) {
-        tree->addToGroup(node, arg.first);
+        qdb_->addToGroup(node, arg.first);
     }
     else if (command == COMMAND_INPUBLICGROUP) {
-        tree->addToPublicGroup(node, arg.first);
+        qdb_->addToPublicGroup(node, arg.first);
     }
     else if (command == COMMAND_INMODULE) {
-        node->setModuleName(arg.first);
+        qdb_->addToModule(arg.first,node);
     }
     else if (command == COMMAND_INQMLMODULE) {
-        node->setQmlModule(arg);
-        FakeNode* fn = FakeNode::lookupQmlModuleNode(tree, arg);
-        fn->addQmlModuleMember(node);
-        QString qmid = node->qmlModuleIdentifier();
-        QmlClassNode* qcn = static_cast<QmlClassNode*>(node);
-        QmlClassNode::insertQmlModuleMember(qmid, qcn);
+        qdb_->addToQmlModule(arg.first,node);
     }
     else if (command == COMMAND_MAINCLASS) {
         node->setStatus(Node::Main);
@@ -297,9 +291,9 @@ void CodeParser::processCommonMetaCommand(const Location& location,
         node->addPageKeywords(arg.first);
     }
     else if (command == COMMAND_SUBTITLE) {
-        if (node->type() == Node::Fake) {
-            FakeNode *fake = static_cast<FakeNode *>(node);
-            fake->setSubTitle(arg.first);
+        if (node->type() == Node::Document) {
+            DocNode *dn = static_cast<DocNode *>(node);
+            dn->setSubTitle(arg.first);
         }
         else
             location.warning(tr("Ignored '\\%1'").arg(COMMAND_SUBTITLE));
@@ -308,13 +302,13 @@ void CodeParser::processCommonMetaCommand(const Location& location,
         node->setThreadSafeness(Node::ThreadSafe);
     }
     else if (command == COMMAND_TITLE) {
-        if (node->type() == Node::Fake) {
-            FakeNode *fake = static_cast<FakeNode *>(node);
-            fake->setTitle(arg.first);
-            if (fake->subType() == Node::Example) {
-                ExampleNode::exampleNodeMap.insert(fake->title(),static_cast<ExampleNode*>(fake));
+        if (node->type() == Node::Document) {
+            DocNode *dn = static_cast<DocNode *>(node);
+            dn->setTitle(arg.first);
+            if (dn->subType() == Node::Example) {
+                ExampleNode::exampleNodeMap.insert(dn->title(),static_cast<ExampleNode*>(dn));
             }
-            nameToTitle.insert(fake->name(),arg.first);
+            nameToTitle.insert(dn->name(),arg.first);
         }
         else
             location.warning(tr("Ignored '\\%1'").arg(COMMAND_TITLE));
@@ -367,55 +361,6 @@ void CodeParser::setLink(Node* node, Node::LinkType linkType, const QString& arg
     QString desc;
     extractPageLinkAndDesc(arg, &link, &desc);
     node->setLink(linkType, link, desc);
-}
-
-/*!
-  If the \e {basedir} variable is not set in the qdocconf
-  file, do nothing.
-
-  Otherwise, search for the basedir string string in the
-  \a filePath. It must be found, or else a warning message
-  is output. Extract the subdirectory name that follows the
-  basedir name and create a subdirectory using that name
-  in the output director.
- */
-void CodeParser::createOutputSubdirectory(const Location& location,
-                                          const QString& filePath)
-{
-    QString bd = Generator::baseDir();
-    if (!bd.isEmpty()) {
-        int baseIdx = filePath.indexOf(bd);
-        if (baseIdx == -1)
-            location.warning(tr("File path: '%1' does not contain bundle base dir: '%2'")
-                             .arg(filePath).arg(bd));
-        else {
-            int subDirIdx = filePath.indexOf(QLatin1Char('/'),baseIdx);
-            if (subDirIdx == -1)
-                location.warning(tr("File path: '%1' has no sub dir after bundle base dir: '%2'")
-                                 .arg(filePath).arg(bd));
-            else {
-                ++subDirIdx;
-                int fileNameIdx = filePath.indexOf(QLatin1Char('/'),subDirIdx);
-                if (fileNameIdx == -1)
-                    location.warning(tr("File path: '%1' has no file name after sub dir: '%2/'")
-                                     .arg(filePath).arg(filePath.mid(subDirIdx)));
-                else {
-                    currentSubDir_ = filePath.mid(subDirIdx,fileNameIdx-subDirIdx);
-                    if (currentSubDir_.isEmpty())
-                        location.warning(tr("File path: '%1' has no sub dir after bundle base dir: '%2'")
-                                         .arg(filePath).arg(bd));
-                    else {
-                        QString subDirPath = Generator::outputDir() + QLatin1Char('/') + currentSubDir_;
-                        QDir dirInfo;
-                        if (!dirInfo.exists(subDirPath)) {
-                            if (!dirInfo.mkpath(subDirPath))
-                                location.fatal(tr("Cannot create output sub-directory '%1'").arg(currentSubDir_));
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 /*!

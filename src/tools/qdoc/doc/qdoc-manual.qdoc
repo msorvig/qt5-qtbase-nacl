@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -3398,7 +3398,7 @@
     \target legalese-command
     \section1 \\legalese
 
-    The \\legalese and \\endlegalese commands delimit a licence agreement.
+    The \\legalese and \\endlegalese commands delimit a license agreement.
 
     In the generated HTML, the delimited text is surrounded by a \b
     {<div class="LegaleseLeft">} and \b {</div>} tags.
@@ -5634,7 +5634,7 @@
     colons (\c{::}).
 
     \code
-        A link to the UI Component's TabWidget is \l {UIComponent::TabWidget}.
+        A link to the UI Component's TabWidget is \l {UIComponent::TabWidget}.
     \endcode
 
     QDoc will generate a page for the module with a listing of the members
@@ -7198,7 +7198,6 @@
     \li \l {22-qdoc-configuration-generalvariables.html#alias-variable} {alias}
     \li \l {23-qdoc-configuration-cppvariables.html#Cpp.ignoredirectives-variable} {Cpp.ignoredirectives}
     \li \l {23-qdoc-configuration-cppvariables.html#Cpp.ignoretokens-variable} {Cpp.ignoretokens}
-    \li \l {22-qdoc-configuration-generalvariables.html#basedir-variable} {basedir} \span {class="newStuff"} {(experimental)}
     \li \l {22-qdoc-configuration-generalvariables.html#defines-variable} {defines}
     \li \l {22-qdoc-configuration-generalvariables.html#edition-variable} {edition}
     \li \l {22-qdoc-configuration-generalvariables.html#exampledirs-variable} {exampledirs}
@@ -7370,40 +7369,6 @@
     Specific Configuration Variables#HTML.stylesheets} {stylesheets}
     to adjust the appearance of certain types of HTML elements, this
     level of indentation is not always required.
-
-    \target basedir-variable
-    \section1 basedir
-
-    The \c basedir variable tells QDoc two things. First, the fact that
-    it is set it tells QDoc to the put the output files in subdirectories
-    of the output directory. Second, the value of basedir is the name of
-    the bundle directory for your project. .e.g. if you are working with
-    the Qt5 bundle, you will have checked out the bundle into some root
-    subdirectory (the base directory), and that root directory might
-    very well be \e {qt5}
-
-    Then in your qdocconf file, you would assign to the basedir variable:
-
-    \code
-        basedir = qt5
-    \endcode
-
-    Now, QDoc knows to scan the file path of each source file it parses,
-    looking for \e qt5. For example, this file would be:
-
-    \code
-        ~/depot/qt5/qtdoc/tools/qdoc/doc/qdoc-manual.qdoc
-    \endcode
-
-    QDoc scans the path for the basedir \e{qt5} and the next subdirectory
-    \e{qtdoc} becomes one of the subdirectories in the output directory.
-    The HTML output file created from this file will be stored in the
-    \e{qtdoc} subdirectory.
-
-    \note This is an experimental command. It is currently used only by
-    the Qt documentation group. If you use it, be advised that you might
-    find some broken links in your HTML output due to remaining problems
-    with cross-subdirectory linking.
 
     \target defines-variable
     \section1 defines
@@ -7599,14 +7564,11 @@
     \l {sourcedirs-variable} {sourcedirs} or \l {headerdirs-variable} {headerdirs}
     variables.
 
-    For example in \l qt.qdocconf
+    For example,
 
     \code
-        excludedirs = $QTDIR/extensions/activeqt \
-                      $QTDIR/extensions/motif \
-                      $QTDIR/tools/designer/src/lib/extension \
-                      $QTDIR/tools/designer/src/lib/sdk \
-                      $QTDIR/tools/designer/src/lib/uilib
+        sourcedirs =  src/corelib
+        excludedirs = src/corelib/tmp
     \endcode
 
     When executed, QDoc will exclude the listed directories from
@@ -8712,7 +8674,7 @@
 */
 
 /*!
-    \page 27-qdoc-commmands-alphabetical.html
+    \page 27-qdoc-commands-alphabetical.html
     \previouspage Introduction to QDoc
     \contentspage Table of Contents
     \nextpage Topic Commands
@@ -8762,8 +8724,10 @@
     \li \l {15-qdoc-commands-navigation.html#indexpage-command} {\\indexpage}
     \li \l {19-qdoc-commands-grouping.html#ingroup-command} {\\ingroup}
     \li \l {18-qdoc-commands-relating.html#inherits-command}{\\inherits}
-    \li \l {19-qdoc-commands-grouping.html#inmodule-command} {\\inmodule}
     \li \l {09-qdoc-commands-includingimages.html#inlineimage-command} {\\inlineimage}
+    \li \l {19-qdoc-commands-grouping.html#inmodule-command} {\\inmodule}
+    \li \l {13-qdoc-commands-topics.html#inqmlmodule-command} {\\inqmlmodule}
+    \li \l {13-qdoc-commands-topics.html#instantiates-command} {\\instantiates} \span {class="newStuff"} {(new 27/7/2012)}
     \li \l {16-qdoc-commands-status.html#internal-command} {\\internal}
     \li \l {08-qdoc-commands-creatinglinks.html#keyword-command} {\\keyword}
     \li \l {08-qdoc-commands-creatinglinks.html#l-command} {\\l}
@@ -8803,8 +8767,6 @@
     \li \l {13-qdoc-commands-topics.html#qmlproperty-command} {\\qmlproperty}
     \li \l {13-qdoc-commands-topics.html#qmlsignal-command} {\\qmlsignal}
     \li \l {13-qdoc-commands-topics.html#qmlmodule-command} {\\qmlmodule}
-    \li \l {13-qdoc-commands-topics.html#inqmlmodule-command} {\\inqmlmodule}
-    \li \l {13-qdoc-commands-topics.html#instantiates-command} {\\instantiates} \span {class="newStuff"} {(new 27/7/2012)}
     \li \l {11-qdoc-commands-specialcontent.html#quotation-command} {\\quotation}
     \li \l {07-0-qdoc-commands-includingexternalcode.html#quotefile-command} {\\quotefile}
     \li \l {07-0-qdoc-commands-includingexternalcode.html#quotefromfile-command} {\\quotefromfile}

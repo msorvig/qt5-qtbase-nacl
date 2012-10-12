@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -70,8 +70,10 @@ static void initStandardTreeModel(QStandardItemModel *model)
     model->insertRow(2, item);
 }
 
+class tst_QTreeView;
 struct PublicView : public QTreeView
 {
+    friend class tst_QTreeView;
     inline void executeDelayedItemsLayout()
     { QTreeView::executeDelayedItemsLayout(); }
 
@@ -152,6 +154,7 @@ private slots:
     void itemDelegate();
     void itemDelegateForColumnOrRow();
     void keyboardSearch();
+    void keyboardSearchMultiColumn();
     void setModel();
     void openPersistentEditor();
     void rootIndex();
@@ -169,6 +172,9 @@ private slots:
     void expandAndCollapse();
     void expandAndCollapseAll();
     void expandWithNoChildren();
+#ifndef QT_NO_ANIMATION
+    void quickExpandCollapse();
+#endif
     void keyboardNavigation();
     void headerSections();
     void moveCursor_data();
@@ -240,6 +246,7 @@ private slots:
     void taskQTBUG_11466_keyboardNavigationRegression();
     void taskQTBUG_13567_removeLastItemRegression();
     void taskQTBUG_25333_adjustViewOptionsForIndex();
+    void taskQTBUG_18539_emitLayoutChanged();
 };
 
 class QtTestModel: public QAbstractItemModel
@@ -1137,6 +1144,35 @@ void tst_QTreeView::keyboardSearch()
     QVERIFY(view.selectionModel()->isSelected(model.index(1, 0)));
 }
 
+void tst_QTreeView::keyboardSearchMultiColumn()
+{
+    QTreeView view;
+
+    QStandardItemModel model(4, 2);
+
+    model.setItem(0, 0, new QStandardItem("1"));    model.setItem(0, 1, new QStandardItem("green"));
+    model.setItem(1, 0, new QStandardItem("bad"));    model.setItem(1, 1, new QStandardItem("eggs"));
+    model.setItem(2, 0, new QStandardItem("moof"));    model.setItem(2, 1, new QStandardItem("and"));
+    model.setItem(3, 0, new QStandardItem("elf"));    model.setItem(3, 1, new QStandardItem("ham"));
+
+    view.setModel(&model);
+    view.show();
+    qApp->setActiveWindow(&view);
+    QVERIFY(QTest::qWaitForWindowActive(&view));
+
+    view.setCurrentIndex(model.index(0, 1));
+
+    // First item is selected
+    view.keyboardSearch(QLatin1String("eggs"));
+    QVERIFY(view.selectionModel()->isSelected(model.index(1, 1)));
+
+    QTest::qWait(QApplication::keyboardInputInterval() * 2);
+
+    // 'ham' is selected
+    view.keyboardSearch(QLatin1String("h"));
+    QVERIFY(view.selectionModel()->isSelected(model.index(3, 1)));
+}
+
 void tst_QTreeView::setModel()
 {
     QTreeView view;
@@ -1869,17 +1905,21 @@ void tst_QTreeView::indexAbove()
             model.fetchMore(p);
         int rows = model.rowCount(p);
         for (int r = rows - 1; r > 0; --r) {
-            QModelIndex idx = model.index(r, 0, p);
-            QModelIndex expected = model.index(r - 1, 0, p);
-            QCOMPARE(view.indexAbove(idx), expected);
+            for (int column = 0; column < 3; ++column) {
+                QModelIndex idx = model.index(r, column, p);
+                QModelIndex expected = model.index(r - 1, column, p);
+                QCOMPARE(view.indexAbove(idx), expected);
+            }
         }
         // hide even rows
         for (int r = 0; r < rows; r+=2)
             view.setRowHidden(r, p, true);
         for (int r = rows - 1; r > 0; r-=2) {
-            QModelIndex idx = model.index(r, 0, p);
-            QModelIndex expected = model.index(r - 2, 0, p);
-            QCOMPARE(view.indexAbove(idx), expected);
+            for (int column = 0; column < 3; ++column) {
+                QModelIndex idx = model.index(r, column, p);
+                QModelIndex expected = model.index(r - 2, column, p);
+                QCOMPARE(view.indexAbove(idx), expected);
+            }
         }
 //        for (int r = 0; r < rows; ++r)
 //            parents.push(model.index(r, 0, p));
@@ -1888,21 +1928,39 @@ void tst_QTreeView::indexAbove()
 
 void tst_QTreeView::indexBelow()
 {
-    QtTestModel model(2, 1);
+    QtTestModel model(2, 2);
 
     QTreeView view;
     view.setModel(&model);
     view.show();
 
-    QModelIndex i = model.index(0, 0, view.rootIndex());
-    QVERIFY(i.isValid());
-    QCOMPARE(i.row(), 0);
+    {
+        QModelIndex i = model.index(0, 0, view.rootIndex());
+        QVERIFY(i.isValid());
+        QCOMPARE(i.row(), 0);
+        QCOMPARE(i.column(), 0);
 
-    i = view.indexBelow(i);
-    QVERIFY(i.isValid());
-    QCOMPARE(i.row(), 1);
-    i = view.indexBelow(i);
-    QVERIFY(!i.isValid());
+        i = view.indexBelow(i);
+        QVERIFY(i.isValid());
+        QCOMPARE(i.row(), 1);
+        QCOMPARE(i.column(), 0);
+        i = view.indexBelow(i);
+        QVERIFY(!i.isValid());
+    }
+
+    {
+        QModelIndex i = model.index(0, 1, view.rootIndex());
+        QVERIFY(i.isValid());
+        QCOMPARE(i.row(), 0);
+        QCOMPARE(i.column(), 1);
+
+        i = view.indexBelow(i);
+        QVERIFY(i.isValid());
+        QCOMPARE(i.row(), 1);
+        QCOMPARE(i.column(), 1);
+        i = view.indexBelow(i);
+        QVERIFY(!i.isValid());
+    }
 }
 
 void tst_QTreeView::clicked()
@@ -1941,7 +1999,7 @@ void tst_QTreeView::mouseDoubleClick()
         model.insertRows(0, 20, index);
         model.insertColumns(0,2,index);
         for (int i1 = 0; i1 <  model.rowCount(index); i1++) {
-            QModelIndex index2 = model.index(i1, 0, index);
+            (void)model.index(i1, 0, index);
         }
     }
 
@@ -2365,6 +2423,12 @@ void tst_QTreeView::selectAll()
     int selectedCount = view.selectedIndexes().count();
     view.selectAll();
     QCOMPARE(view.selectedIndexes().count(), selectedCount);
+
+    PublicView view3;
+    view3.setModel(&model);
+    view3.setSelectionMode(QAbstractItemView::NoSelection);
+    view3.selectAll();
+    QCOMPARE(view3.selectedIndexes().count(), 0);
 }
 
 void tst_QTreeView::extendedSelection_data()
@@ -3487,8 +3551,6 @@ void tst_QTreeView::task230123_setItemsExpandable()
 
     QTest::keyClick(&tree, Qt::Key_Left);
     QVERIFY(!root.isExpanded());
-
-
 }
 
 void tst_QTreeView::task202039_closePersistentEditor()
@@ -3910,7 +3972,7 @@ public:
             qint64 parentRowPlusOne = index.internalId();
             if (parentRowPlusOne > 0) {
                 int row = static_cast<int>(parentRowPlusOne - 1);
-                return createIndex(row, 0, (quint32)0);
+                return createIndex(row, 0);
             }
         }
         return QModelIndex();
@@ -3930,7 +3992,7 @@ public:
 
     QModelIndex index(int row, int column, const QModelIndex &parent) const
     {
-        return createIndex(row, column, parent.isValid() ? (quint32)(parent.row() + 1) : (quint32)0);
+        return createIndex(row, column, parent.isValid() ? (quintptr)(parent.row() + 1) : (quintptr)0);
     }
 
 public slots:
@@ -3941,16 +4003,16 @@ public slots:
 
         if (current.isValid()) {
             int selectedRow = current.row();
-            quint32 parentRowPlusOne = static_cast<quint32>(current.internalId());
+            const quintptr parentRowPlusOne = current.internalId();
 
             for (int i = 0; i < 2; ++i) {
                 // announce the removal of all non top level items
-                beginRemoveRows(createIndex(i, 0, 0), 0, 3);
+                beginRemoveRows(createIndex(i, 0), 0, 3);
                 // nothing to actually do for the removal
                 endRemoveRows();
 
                 // put them back in again
-                beginInsertRows(createIndex(i, 0, 0), 0, 3);
+                beginInsertRows(createIndex(i, 0), 0, 3);
                 // nothing to actually do for the insertion
                 endInsertRows();
             }
@@ -4048,6 +4110,78 @@ void tst_QTreeView::taskQTBUG_25333_adjustViewOptionsForIndex()
 
 }
 
+void tst_QTreeView::taskQTBUG_18539_emitLayoutChanged()
+{
+    QTreeView view;
+
+    QStandardItem* item = new QStandardItem("Orig");
+    QStandardItem* child = new QStandardItem("Child");
+    item->setChild(0, 0, child);
+
+    QStandardItemModel model;
+    model.appendRow(item);
+
+    view.setModel(&model);
+
+    QStandardItem* replacementItem = new QStandardItem("Replacement");
+    QStandardItem* replacementChild = new QStandardItem("ReplacementChild");
+
+    replacementItem->setChild(0, 0, replacementChild);
+
+    QSignalSpy beforeSpy(&model, SIGNAL(layoutAboutToBeChanged()));
+    QSignalSpy afterSpy(&model, SIGNAL(layoutChanged()));
+
+    QSignalSpy beforeRISpy(&model, SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)));
+    QSignalSpy afterRISpy(&model, SIGNAL(rowsInserted(QModelIndex,int,int)));
+
+    QSignalSpy beforeRRSpy(&model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)));
+    QSignalSpy afterRRSpy(&model, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+
+    model.setItem(0, 0, replacementItem);
+
+    QCOMPARE(beforeSpy.size(), 1);
+    QCOMPARE(afterSpy.size(), 1);
+
+    QCOMPARE(beforeRISpy.size(), 0);
+    QCOMPARE(afterRISpy.size(), 0);
+
+    QCOMPARE(beforeRISpy.size(), 0);
+    QCOMPARE(afterRISpy.size(), 0);
+}
+
+#ifndef QT_NO_ANIMATION
+void tst_QTreeView::quickExpandCollapse()
+{
+    //this unit tests makes sure the state after the animation is restored correctly
+    //after starting a 2nd animation while the first one was still on-going
+    //this tests that the stateBeforeAnimation is not set to AnimatingState
+    PublicView tree;
+    tree.setAnimated(true);
+    QStandardItemModel model;
+    QStandardItem *root = new QStandardItem("root");
+    root->appendRow(new QStandardItem("subnode"));
+    model.appendRow(root);
+    tree.setModel(&model);
+
+    QModelIndex rootIndex = root->index();
+    QVERIFY(rootIndex.isValid());
+
+    tree.show();
+    QTest::qWaitForWindowShown(&tree);
+
+    int initialState = tree.state();
+
+    tree.expand(rootIndex);
+    QCOMPARE(tree.state(), (int)PublicView::AnimatingState);
+
+    tree.collapse(rootIndex);
+    QCOMPARE(tree.state(), (int)PublicView::AnimatingState);
+
+    QTest::qWait(500); //the animation lasts for 250ms max so 500 should be enough
+
+    QCOMPARE(tree.state(), initialState);
+}
+#endif
 
 QTEST_MAIN(tst_QTreeView)
 #include "tst_qtreeview.moc"

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -157,10 +157,6 @@ private:
         notifyTextChanged();
     }
 };
-
-QT_BEGIN_INCLUDE_NAMESPACE
-#include "qinputdialog.moc"
-QT_END_INCLUDE_NAMESPACE
 
 class QInputDialogPrivate : public QDialogPrivate
 {
@@ -1224,6 +1220,38 @@ int QInputDialog::getInt(QWidget *parent, const QString &title, const QString &l
 }
 
 /*!
+    \fn QInputDialog::getInteger(QWidget *parent, const QString &title, const QString &label, int value, int min, int max, int step, bool *ok, Qt::WindowFlags flags)
+    \deprecated use getInt()
+
+    Static convenience function to get an integer input from the user.
+
+    \a title is the text which is displayed in the title bar of the dialog.
+    \a label is the text which is shown to the user (it should say what should
+    be entered).
+    \a value is the default integer which the spinbox will be set to.
+    \a min and \a max are the minimum and maximum values the user may choose.
+    \a step is the amount by which the values change as the user presses the
+    arrow buttons to increment or decrement the value.
+
+    If \a ok is nonnull *\a ok will be set to true if the user pressed \uicontrol OK
+    and to false if the user pressed \uicontrol Cancel. The dialog's parent is
+    \a parent. The dialog will be modal and uses the widget \a flags.
+
+    On success, this function returns the integer which has been entered by the
+    user; on failure, it returns the initial \a value.
+
+    Use this static function like this:
+
+    \snippet dialogs/standarddialogs/dialog.cpp 0
+
+    \warning Do not delete \a parent during the execution of the dialog. If you
+    want to do this, you should create the dialog yourself using one of the
+    QInputDialog constructors.
+
+    \sa getText(), getDouble(), getItem()
+*/
+
+/*!
     Static convenience function to get a floating point number from the user.
 
     \a title is the text which is displayed in the title bar of the dialog.
@@ -1331,41 +1359,6 @@ QString QInputDialog::getItem(QWidget *parent, const QString &title, const QStri
 }
 
 /*!
-    \fn QString QInputDialog::getText(const QString &title, const QString &label,
-                                      QLineEdit::EchoMode echo = QLineEdit::Normal,
-                                      const QString &text = QString(), bool *ok = 0,
-                                      QWidget *parent = 0, const char *name = 0, Qt::WindowFlags flags = 0)
-
-    Call getText(\a parent, \a title, \a label, \a echo, \a text, \a
-    ok, \a flags) instead.
-
-    The \a name parameter is ignored.
-*/
-
-/*!
-    \fn double QInputDialog::getDouble(const QString &title, const QString &label, double value = 0,
-                                       double min = -2147483647, double max = 2147483647,
-                                       int decimals = 1, bool *ok = 0,
-                                       QWidget *parent = 0, const char *name = 0, Qt::WindowFlags flags = 0)
-
-    Call getDouble(\a parent, \a title, \a label, \a value, \a
-    min, \a max, \a decimals, \a ok, \a flags).
-
-    The \a name parameter is ignored.
-*/
-
-/*!
-    \fn QString QInputDialog::getItem(const QString &title, const QString &label, const QStringList &list,
-                                      int current = 0, bool editable = true, bool *ok = 0,
-                                      QWidget *parent = 0, const char *name = 0, Qt::WindowFlags flags = 0)
-
-    Call getItem(\a parent, \a title, \a label, \a list, \a current,
-    \a editable, \a ok, \a flags) instead.
-
-    The \a name parameter is ignored.
-*/
-
-/*!
     \fn void QInputDialog::doubleValueChanged(double value)
 
     This signal is emitted whenever the double value changes in the dialog.
@@ -1430,6 +1423,7 @@ QString QInputDialog::getItem(QWidget *parent, const QString &title, const QStri
 
 QT_END_NAMESPACE
 
+#include "qinputdialog.moc"
 #include "moc_qinputdialog.cpp"
 
 #endif // QT_NO_INPUTDIALOG

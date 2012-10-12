@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,7 +42,7 @@
 #include <qglobal.h>
 
 // To prevent windows system header files from re-defining min/max
-#define NOMINMAX
+#define NOMINMAX 1
 #if defined(_WIN32)
 #include <winsock2.h>
 #else
@@ -692,7 +692,7 @@ void tst_QTcpSocket::hostNotFound()
 {
     QTcpSocket *socket = newSocket();
 
-    socket->connectToHost("nosuchserver.troll.no", 80);
+    socket->connectToHost("nosuchserver.qt-project.org", 80);
     QVERIFY(!socket->waitForConnected());
     QCOMPARE(socket->state(), QTcpSocket::UnconnectedState);
     QCOMPARE(int(socket->error()), int(QTcpSocket::HostNotFoundError));
@@ -1572,25 +1572,25 @@ void tst_QTcpSocket::dontCloseOnTimeout()
 //----------------------------------------------------------------------------------
 void tst_QTcpSocket::recursiveReadyRead()
 {
-    QTcpSocket *smtp = newSocket();
-    connect(smtp, SIGNAL(connected()), SLOT(exitLoopSlot()));
-    connect(smtp, SIGNAL(readyRead()), SLOT(recursiveReadyReadSlot()));
-    tmpSocket = smtp;
+    QTcpSocket *testSocket = newSocket();
+    connect(testSocket, SIGNAL(connected()), SLOT(exitLoopSlot()));
+    connect(testSocket, SIGNAL(readyRead()), SLOT(recursiveReadyReadSlot()));
+    tmpSocket = testSocket;
 
-    QSignalSpy spy(smtp, SIGNAL(readyRead()));
+    QSignalSpy spy(testSocket, SIGNAL(readyRead()));
 
-    smtp->connectToHost("smtp.trolltech.com", 25);
+    testSocket->connectToHost(QtNetworkSettings::serverName(), 25);
     enterLoop(30);
     QVERIFY2(!timeout(),
-            "Timed out when connecting to smtp.trolltech.com:25");
+            "Timed out when connecting to QtNetworkSettings::serverName().");
 
     enterLoop(30);
     QVERIFY2(!timeout(),
-            "Timed out when waiting for the readyRead() signal");
+            "Timed out when waiting for the readyRead() signal.");
 
     QCOMPARE(spy.count(), 1);
 
-    delete smtp;
+    delete testSocket;
 }
 
 void tst_QTcpSocket::recursiveReadyReadSlot()
@@ -1855,7 +1855,7 @@ void tst_QTcpSocket::nestedEventLoopInErrorSlot()
     QPointer<QTcpSocket> p(socket);
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(enterLoopSlot()));
 
-    socket->connectToHost("hostnotfoundhostnotfound.troll.no", 9999); // Host not found, fyi
+    socket->connectToHost("hostnotfoundhostnotfound.qt-project.org", 9999);
     enterLoop(30);
     QVERIFY(!p);
 }
@@ -2306,13 +2306,13 @@ void tst_QTcpSocket::connectToMultiIP()
     // 30s*2 = 60s.
     QTime stopWatch;
     stopWatch.start();
-    socket->connectToHost("multi.dev.troll.no", 80);
+    socket->connectToHost("multi.dev.qt-project.org", 80);
     QVERIFY(socket->waitForConnected(60500));
     QVERIFY(stopWatch.elapsed() < 70000);
     socket->abort();
 
     stopWatch.restart();
-    socket->connectToHost("multi.dev.troll.no", 81);
+    socket->connectToHost("multi.dev.qt-project.org", 81);
     QVERIFY(!socket->waitForConnected(2000));
     QVERIFY(stopWatch.elapsed() < 2000);
     QCOMPARE(socket->error(), QAbstractSocket::SocketTimeoutError);
@@ -2511,10 +2511,10 @@ void tst_QTcpSocket::invalidProxy_data()
     QTest::newRow("http-caching-proxy") << int(QNetworkProxy::HttpCachingProxy) << fluke << 3128 << true
                                         << int(QAbstractSocket::UnsupportedSocketOperationError);
     QTest::newRow("no-such-host-socks5") << int(QNetworkProxy::Socks5Proxy)
-                                         << "this-host-will-never-exist.troll.no" << 1080 << false
+                                         << "this-host-will-never-exist.qt-project.org" << 1080 << false
                                          << int(QAbstractSocket::ProxyNotFoundError);
     QTest::newRow("no-such-host-http") << int(QNetworkProxy::HttpProxy)
-                                       << "this-host-will-never-exist.troll.no" << 3128 << false
+                                       << "this-host-will-never-exist.qt-project.org" << 3128 << false
                                        << int(QAbstractSocket::ProxyNotFoundError);
     QTest::newRow("http-on-socks5") << int(QNetworkProxy::HttpProxy) << fluke << 1080 << false
                                     << int(QAbstractSocket::ProxyConnectionClosedError);

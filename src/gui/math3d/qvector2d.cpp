@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -62,11 +62,6 @@ QT_BEGIN_NAMESPACE
     The QVector2D class can also be used to represent vertices in 2D space.
     We therefore do not need to provide a separate vertex class.
 
-    \b{Note:} By design values in the QVector2D instance are stored as \c float.
-    This means that on platforms where the \c qreal arguments to QVector2D
-    functions are represented by \c double values, it is possible to
-    lose precision.
-
     \sa QVector3D, QVector4D, QQuaternion
 */
 
@@ -77,7 +72,7 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    \fn QVector2D::QVector2D(qreal xpos, qreal ypos)
+    \fn QVector2D::QVector2D(float xpos, float ypos)
 
     Constructs a vector with coordinates (\a xpos, \a ypos).
 */
@@ -134,7 +129,7 @@ QVector2D::QVector2D(const QVector4D& vector)
 */
 
 /*!
-    \fn qreal QVector2D::x() const
+    \fn float QVector2D::x() const
 
     Returns the x coordinate of this point.
 
@@ -142,7 +137,7 @@ QVector2D::QVector2D(const QVector4D& vector)
 */
 
 /*!
-    \fn qreal QVector2D::y() const
+    \fn float QVector2D::y() const
 
     Returns the y coordinate of this point.
 
@@ -150,7 +145,7 @@ QVector2D::QVector2D(const QVector4D& vector)
 */
 
 /*!
-    \fn void QVector2D::setX(qreal x)
+    \fn void QVector2D::setX(float x)
 
     Sets the x coordinate of this point to the given \a x coordinate.
 
@@ -158,7 +153,7 @@ QVector2D::QVector2D(const QVector4D& vector)
 */
 
 /*!
-    \fn void QVector2D::setY(qreal y)
+    \fn void QVector2D::setY(float y)
 
     Sets the y coordinate of this point to the given \a y coordinate.
 
@@ -170,9 +165,12 @@ QVector2D::QVector2D(const QVector4D& vector)
 
     \sa lengthSquared(), normalized()
 */
-qreal QVector2D::length() const
+float QVector2D::length() const
 {
-    return qSqrt(xp * xp + yp * yp);
+    // Need some extra precision if the length is very small.
+    double len = double(xp) * double(xp) +
+                 double(yp) * double(yp);
+    return float(sqrt(len));
 }
 
 /*!
@@ -181,7 +179,7 @@ qreal QVector2D::length() const
 
     \sa length(), dotProduct()
 */
-qreal QVector2D::lengthSquared() const
+float QVector2D::lengthSquared() const
 {
     return xp * xp + yp * yp;
 }
@@ -200,12 +198,14 @@ QVector2D QVector2D::normalized() const
     // Need some extra precision if the length is very small.
     double len = double(xp) * double(xp) +
                  double(yp) * double(yp);
-    if (qFuzzyIsNull(len - 1.0f))
+    if (qFuzzyIsNull(len - 1.0f)) {
         return *this;
-    else if (!qFuzzyIsNull(len))
-        return *this / qSqrt(len);
-    else
+    } else if (!qFuzzyIsNull(len)) {
+        double sqrtLen = sqrt(len);
+        return QVector2D(float(double(xp) / sqrtLen), float(double(yp) / sqrtLen));
+    } else {
         return QVector2D();
+    }
 }
 
 /*!
@@ -222,10 +222,10 @@ void QVector2D::normalize()
     if (qFuzzyIsNull(len - 1.0f) || qFuzzyIsNull(len))
         return;
 
-    len = qSqrt(len);
+    len = sqrt(len);
 
-    xp /= len;
-    yp /= len;
+    xp = float(double(xp) / len);
+    yp = float(double(yp) / len);
 }
 
 /*!
@@ -247,7 +247,7 @@ void QVector2D::normalize()
 */
 
 /*!
-    \fn QVector2D &QVector2D::operator*=(qreal factor)
+    \fn QVector2D &QVector2D::operator*=(float factor)
 
     Multiplies this vector's coordinates by the given \a factor, and
     returns a reference to this vector.
@@ -263,7 +263,7 @@ void QVector2D::normalize()
 */
 
 /*!
-    \fn QVector2D &QVector2D::operator/=(qreal divisor)
+    \fn QVector2D &QVector2D::operator/=(float divisor)
 
     Divides this vector's coordinates by the given \a divisor, and
     returns a reference to this vector.
@@ -274,7 +274,7 @@ void QVector2D::normalize()
 /*!
     Returns the dot product of \a v1 and \a v2.
 */
-qreal QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
+float QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
 {
     return v1.xp * v2.xp + v1.yp * v2.yp;
 }
@@ -316,7 +316,7 @@ qreal QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
 */
 
 /*!
-    \fn const QVector2D operator*(qreal factor, const QVector2D &vector)
+    \fn const QVector2D operator*(float factor, const QVector2D &vector)
     \relates QVector2D
 
     Returns a copy of the given \a vector,  multiplied by the given \a factor.
@@ -325,7 +325,7 @@ qreal QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
 */
 
 /*!
-    \fn const QVector2D operator*(const QVector2D &vector, qreal factor)
+    \fn const QVector2D operator*(const QVector2D &vector, float factor)
     \relates QVector2D
 
     Returns a copy of the given \a vector,  multiplied by the given \a factor.
@@ -353,7 +353,7 @@ qreal QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
 */
 
 /*!
-    \fn const QVector2D operator/(const QVector2D &vector, qreal divisor)
+    \fn const QVector2D operator/(const QVector2D &vector, float divisor)
     \relates QVector2D
 
     Returns the QVector2D object formed by dividing all three components of
@@ -379,7 +379,7 @@ qreal QVector2D::dotProduct(const QVector2D& v1, const QVector2D& v2)
 */
 QVector3D QVector2D::toVector3D() const
 {
-    return QVector3D(xp, yp, 0.0f, 1);
+    return QVector3D(xp, yp, 0.0f);
 }
 
 #endif
@@ -393,7 +393,7 @@ QVector3D QVector2D::toVector3D() const
 */
 QVector4D QVector2D::toVector4D() const
 {
-    return QVector4D(xp, yp, 0.0f, 0.0f, 1);
+    return QVector4D(xp, yp, 0.0f, 0.0f);
 }
 
 #endif
@@ -446,7 +446,7 @@ QDebug operator<<(QDebug dbg, const QVector2D &vector)
 
 QDataStream &operator<<(QDataStream &stream, const QVector2D &vector)
 {
-    stream << double(vector.x()) << double(vector.y());
+    stream << vector.x() << vector.y();
     return stream;
 }
 
@@ -462,11 +462,11 @@ QDataStream &operator<<(QDataStream &stream, const QVector2D &vector)
 
 QDataStream &operator>>(QDataStream &stream, QVector2D &vector)
 {
-    double x, y;
+    float x, y;
     stream >> x;
     stream >> y;
-    vector.setX(qreal(x));
-    vector.setY(qreal(y));
+    vector.setX(x);
+    vector.setY(y);
     return stream;
 }
 

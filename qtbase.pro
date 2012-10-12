@@ -29,6 +29,7 @@ unix {
 			(cd config.tests/unix/sqlite2 && $(MAKE) distclean); \
 			(cd config.tests/unix/libjpeg && $(MAKE) distclean); \
 			(cd config.tests/unix/libpng && $(MAKE) distclean); \
+                        (cd config.tests/unix/slog2 && $(MAKE) distclean); \
 			(cd config.tests/x11/xcursor && $(MAKE) distclean); \
 			(cd config.tests/x11/xrender && $(MAKE) distclean); \
 			(cd config.tests/x11/xrandr && $(MAKE) distclean); \
@@ -97,6 +98,10 @@ mkspecs.files -= $$PWD/mkspecs/modules
     mkspecs.depends += mkspecs_pre
 }
 INSTALLS += mkspecs
+
+global_docs.files = $$PWD/doc/global
+global_docs.path = $$[QT_INSTALL_DOCS]
+INSTALLS += global_docs
 
 OTHER_FILES += \
     configure \

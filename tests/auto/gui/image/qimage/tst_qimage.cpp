@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -95,6 +95,12 @@ private slots:
 
     void copy();
 
+    void load();
+    void loadFromData();
+#if !defined(QT_NO_DATASTREAM)
+    void loadFromDataStream();
+#endif
+
     void setPixel_data();
     void setPixel();
 
@@ -136,6 +142,8 @@ private slots:
     void fillColor();
 
     void fillColorWithAlpha();
+
+    void fillRGB888();
 
     void rgbSwapped_data();
     void rgbSwapped();
@@ -1004,6 +1012,85 @@ void tst_QImage::copy()
     }
 }
 
+void tst_QImage::load()
+{
+    const QString prefix = QFINDTESTDATA("images/");
+    if (prefix.isEmpty())
+        QFAIL("can not find images directory!");
+    const QString filePath = prefix + QLatin1String("image.jpg");
+
+    QImage dest(filePath);
+    QVERIFY(!dest.isNull());
+    QVERIFY(!dest.load("image_that_does_not_exist.png"));
+    QVERIFY(dest.isNull());
+    QVERIFY(dest.load(filePath));
+    QVERIFY(!dest.isNull());
+}
+
+void tst_QImage::loadFromData()
+{
+    const QString prefix = QFINDTESTDATA("images/");
+    if (prefix.isEmpty())
+        QFAIL("can not find images directory!");
+    const QString filePath = prefix + QLatin1String("image.jpg");
+
+    QImage original(filePath);
+    QVERIFY(!original.isNull());
+
+    QByteArray ba;
+    {
+        QBuffer buf(&ba);
+        QVERIFY(buf.open(QIODevice::WriteOnly));
+        QVERIFY(original.save(&buf, "BMP"));
+    }
+    QVERIFY(!ba.isEmpty());
+
+    QImage dest;
+    QVERIFY(dest.loadFromData(ba, "BMP"));
+    QVERIFY(!dest.isNull());
+
+    QCOMPARE(original, dest);
+
+    QVERIFY(!dest.loadFromData(QByteArray()));
+    QVERIFY(dest.isNull());
+}
+
+#if !defined(QT_NO_DATASTREAM)
+void tst_QImage::loadFromDataStream()
+{
+    const QString prefix = QFINDTESTDATA("images/");
+    if (prefix.isEmpty())
+        QFAIL("can not find images directory!");
+    const QString filePath = prefix + QLatin1String("image.jpg");
+
+    QImage original(filePath);
+    QVERIFY(!original.isNull());
+
+    QByteArray ba;
+    {
+        QDataStream s(&ba, QIODevice::WriteOnly);
+        s << original;
+    }
+    QVERIFY(!ba.isEmpty());
+
+    QImage dest;
+    {
+        QDataStream s(&ba, QIODevice::ReadOnly);
+        s >> dest;
+    }
+    QVERIFY(!dest.isNull());
+
+    QCOMPARE(original, dest);
+
+    {
+        ba.clear();
+        QDataStream s(&ba, QIODevice::ReadOnly);
+        s >> dest;
+    }
+    QVERIFY(dest.isNull());
+}
+#endif // QT_NO_DATASTREAM
+
 void tst_QImage::setPixel_data()
 {
     QTest::addColumn<int>("format");
@@ -1047,11 +1134,11 @@ void tst_QImage::setPixel_data()
     QTest::newRow("ARGB8555_Premultiplied blue") << int(QImage::Format_ARGB8555_Premultiplied)
                                    << 0xff0000ff << 0x001fffu;
     QTest::newRow("RGB888 red") << int(QImage::Format_RGB888)
-                                << 0xffff0000 << 0x0000ffu;
+                                << 0xffff0000 << 0xff0000u;
     QTest::newRow("RGB888 green") << int(QImage::Format_RGB888)
                                   << 0xff00ff00 << 0x00ff00u;
     QTest::newRow("RGB888 blue") << int(QImage::Format_RGB888)
-                                 << 0xff0000ff << 0xff0000u;
+                                 << 0xff0000ff << 0x0000ffu;
 }
 
 void tst_QImage::setPixel()
@@ -1870,6 +1957,21 @@ void tst_QImage::fillColorWithAlpha()
     QImage argb32pm(1, 1, QImage::Format_ARGB32_Premultiplied);
     argb32pm.fill(QColor(255, 0, 0, 127));
     QCOMPARE(argb32pm.pixel(0, 0), 0x7f7f0000u);
+}
+
+void tst_QImage::fillRGB888()
+{
+    QImage expected(1, 1, QImage::Format_RGB888);
+    QImage actual(1, 1, QImage::Format_RGB888);
+
+    for (int c = Qt::black; c < Qt::transparent; ++c) {
+        QColor color = QColor(Qt::GlobalColor(c));
+
+        expected.fill(color);
+        actual.fill(color.rgba());
+
+        QCOMPARE(actual.pixel(0, 0), expected.pixel(0, 0));
+    }
 }
 
 void tst_QImage::rgbSwapped_data()

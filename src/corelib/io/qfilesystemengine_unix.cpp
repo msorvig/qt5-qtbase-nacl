@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -41,7 +41,6 @@
 
 #include "qplatformdefs.h"
 #include "qfilesystemengine_p.h"
-#include "qplatformdefs.h"
 #include "qfile.h"
 
 #include <QtCore/qvarlengtharray.h>
@@ -197,8 +196,13 @@ QFileSystemEntry QFileSystemEngine::canonicalName(const QFileSystemEntry &entry,
 #  if _POSIX_VERSION >= 200801L
     ret = realpath(entry.nativeFilePath().constData(), (char*)0);
 #  else
-    ret = (char*)malloc(PATH_MAX);
-    realpath(entry.nativeFilePath().constData(), (char*)ret);
+    ret = (char*)malloc(PATH_MAX + 1);
+    if (realpath(entry.nativeFilePath().constData(), (char*)ret) == 0) {
+        const int savedErrno = errno; // errno is checked below, and free() might change it
+        free(ret);
+        errno = savedErrno;
+        ret = 0;
+    }
 #  endif
 # endif
     if (ret) {
@@ -465,7 +469,10 @@ bool QFileSystemEngine::fillMetaData(const QFileSystemEntry &entry, QFileSystemM
         data.knownFlagsMask |= QFileSystemMetaData::BundleType;
     }
 #endif
-
+    if (!entryExists) {
+        data.clearFlags(what);
+        return false;
+    }
     return data.hasFlags(what);
 }
 
@@ -621,9 +628,12 @@ QString QFileSystemEngine::tempPath()
     return QLatin1String(QT_UNIX_TEMP_PATH_OVERRIDE);
 #elif defined(Q_OS_BLACKBERRY)
     QString temp = QFile::decodeName(qgetenv("TEMP"));
+    if (temp.isEmpty())
+        temp = QFile::decodeName(qgetenv("TMPDIR"));
+
     if (temp.isEmpty()) {
-        qWarning("TEMP environment variable not set. Cannot determine temporary directory");
-        return QString();
+        qWarning("Neither the TEMP nor the TMPDIR environment variable is set, falling back to /tmp.");
+        temp = QLatin1String("/tmp/");
     }
     return QDir::cleanPath(temp);
 #else

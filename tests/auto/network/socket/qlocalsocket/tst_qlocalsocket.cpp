@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -259,7 +259,7 @@ void tst_QLocalSocket::socket_basic()
     socket.close();
     socket.disconnectFromServer();
     QCOMPARE(QLocalSocket::UnknownSocketError, socket.error());
-    QVERIFY(socket.errorString() != QString());
+    QVERIFY(!socket.errorString().isEmpty());
     QCOMPARE(socket.flush(), false);
     QCOMPARE(socket.isValid(), false);
     QVERIFY(socket.readBufferSize() == 0);
@@ -307,12 +307,12 @@ void tst_QLocalSocket::listen()
     QCOMPARE(server.hits.count(), 0);
     QCOMPARE(spyNewConnection.count(), 0);
     if (canListen) {
-        QVERIFY(server.errorString() == QString());
+        QVERIFY(server.errorString().isEmpty());
         QCOMPARE(server.serverError(), QAbstractSocket::UnknownSocketError);
         // already isListening
         QVERIFY(!server.listen(name));
     } else {
-        QVERIFY(server.errorString() != QString());
+        QVERIFY(!server.errorString().isEmpty());
         QCOMPARE(server.serverError(), QAbstractSocket::HostNotFoundError);
     }
     QCOMPARE(server.maxPendingConnections(), 30);
@@ -345,10 +345,8 @@ void tst_QLocalSocket::listenAndConnect()
     QFETCH(QString, name);
     QFETCH(bool, canListen);
     QCOMPARE(server.listen(name), canListen);
-    QTest::qWait(1000);
-    //QVERIFY(!server.errorString().isEmpty());
-    QCOMPARE(server.serverError(),
-            canListen ? QAbstractSocket::UnknownSocketError : QAbstractSocket::HostNotFoundError);
+    QTRY_COMPARE(server.serverError(),
+                 canListen ? QAbstractSocket::UnknownSocketError : QAbstractSocket::HostNotFoundError);
 
     // test creating connection(s)
     QFETCH(int, connections);
@@ -379,7 +377,7 @@ void tst_QLocalSocket::listenAndConnect()
             //QVERIFY(socket->socketDescriptor() != -1);
             QCOMPARE(spyError.count(), 0);
         } else {
-            QVERIFY(socket->errorString() != QString());
+            QVERIFY(!socket->errorString().isEmpty());
             QVERIFY(socket->error() != QLocalSocket::UnknownSocketError);
             QCOMPARE(socket->state(), QLocalSocket::UnconnectedState);
             //QVERIFY(socket->socketDescriptor() == -1);
@@ -434,7 +432,7 @@ void tst_QLocalSocket::listenAndConnect()
             QVERIFY(server.nextPendingConnection() != (QLocalSocket*)0);
             QTRY_COMPARE(server.hits.count(), i + 1);
             QCOMPARE(spyNewConnection.count(), i + 1);
-            QVERIFY(server.errorString() == QString());
+            QVERIFY(server.errorString().isEmpty());
             QCOMPARE(server.serverError(), QAbstractSocket::UnknownSocketError);
         } else {
             QVERIFY(server.serverName().isEmpty());
@@ -442,7 +440,7 @@ void tst_QLocalSocket::listenAndConnect()
             QVERIFY(server.nextPendingConnection() == (QLocalSocket*)0);
             QCOMPARE(spyNewConnection.count(), 0);
             QCOMPARE(server.hits.count(), 0);
-            QVERIFY(server.errorString() != QString());
+            QVERIFY(!server.errorString().isEmpty());
             QCOMPARE(server.serverError(), QAbstractSocket::HostNotFoundError);
         }
     }
@@ -1149,10 +1147,10 @@ void tst_QLocalSocket::verifyListenWithDescriptor_data()
 
     QTest::newRow("normal") << QDir::tempPath() + QLatin1String("/testsocket") << false << true;
 #ifdef Q_OS_LINUX
-    QTest::newRow("absrtact") << QString::fromLatin1("abstractsocketname") << true << true;
+    QTest::newRow("abstract") << QString::fromLatin1("abstractsocketname") << true << true;
     QTest::newRow("abstractwithslash") << QString::fromLatin1("abstractsocketwitha/inthename") << true << true;
 #endif
-    QTest::newRow("no path") << QString::fromLatin1("/invalid/no path name speficied") << true << false;
+    QTest::newRow("no path") << QString::fromLatin1("/invalid/no path name specified") << true << false;
 
 #endif
 

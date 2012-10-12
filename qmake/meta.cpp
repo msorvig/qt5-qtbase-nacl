@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -46,9 +46,10 @@
 
 QT_BEGIN_NAMESPACE
 
-QHash<QString, QHash<QString, QStringList> > QMakeMetaInfo::cache_vars;
+QHash<QString, ProValueMap> QMakeMetaInfo::cache_vars;
 
-QMakeMetaInfo::QMakeMetaInfo()
+QMakeMetaInfo::QMakeMetaInfo(QMakeProject *_conf)
+    : conf(_conf)
 {
 
 }
@@ -75,7 +76,7 @@ QMakeMetaInfo::readLib(QString lib)
                 meta_type = "libtool";
         } else if(meta_file.endsWith(Option::prl_ext)) {
             QMakeProject proj;
-            if(!proj.read(Option::normalizePath(meta_file), QMakeProject::ReadProFile))
+            if (!proj.read(Option::normalizePath(meta_file), QMakeEvaluator::LoadProOnly))
                 return false;
             meta_type = "qmake";
             vars = proj.variables();
@@ -135,32 +136,32 @@ QMakeMetaInfo::readLibtoolFile(const QString &f)
     /* I can just run the .la through the .pro parser since they are compatible.. */
     QMakeProject proj;
     QString nf = Option::normalizePath(f);
-    if(!proj.read(nf, QMakeProject::ReadProFile))
+    if (!proj.read(nf, QMakeEvaluator::LoadProOnly))
         return false;
     QString dirf = nf.section(QLatin1Char('/'), 0, -2);
     if(dirf == nf)
         dirf = "";
     else if(!dirf.isEmpty() && !dirf.endsWith(Option::output_dir))
         dirf += QLatin1Char('/');
-    const QHash<QString, QStringList> &v = proj.variables();
-    for (QHash<QString, QStringList>::ConstIterator it = v.begin(); it != v.end(); ++it) {
-        QStringList lst = it.value();
+    const ProValueMap &v = proj.variables();
+    for (ProValueMap::ConstIterator it = v.begin(); it != v.end(); ++it) {
+        ProStringList lst = it.value();
         if(lst.count() == 1 && (lst.first().startsWith("'") || lst.first().startsWith("\"")) &&
-           lst.first().endsWith(QString(lst.first()[0])))
-            lst = QStringList(lst.first().mid(1, lst.first().length() - 2));
+           lst.first().endsWith(QString(lst.first().at(0))))
+            lst = ProStringList(lst.first().mid(1, lst.first().length() - 2));
         if(!vars.contains("QMAKE_PRL_TARGET") &&
            (it.key() == "dlname" || it.key() == "library_names" || it.key() == "old_library")) {
-            QString dir = v["libdir"].first();
-            if((dir.startsWith("'") || dir.startsWith("\"")) && dir.endsWith(QString(dir[0])))
+            ProString dir = v["libdir"].first();
+            if ((dir.startsWith('\'') || dir.startsWith('"')) && dir.endsWith(dir.at(0)))
                 dir = dir.mid(1, dir.length() - 2);
             dir = dir.trimmed();
             if(!dir.isEmpty() && !dir.endsWith(QLatin1Char('/')))
                 dir += QLatin1Char('/');
             if(lst.count() == 1)
-                lst = lst.first().split(" ");
-            for(QStringList::Iterator lst_it = lst.begin(); lst_it != lst.end(); ++lst_it) {
+                lst = ProStringList(lst.first().toQString().split(" "));
+            for (ProStringList::Iterator lst_it = lst.begin(); lst_it != lst.end(); ++lst_it) {
                 bool found = false;
-                QString dirs[] = { "", dir, dirf, dirf + ".libs/", "(term)" };
+                QString dirs[] = { "", dir.toQString(), dirf, dirf + ".libs/", "(term)" };
                 for(int i = 0; !found && dirs[i] != "(term)"; i++) {
                     if(QFile::exists(dirs[i] + (*lst_it))) {
                         QString targ = dirs[i] + (*lst_it);
@@ -175,24 +176,17 @@ QMakeMetaInfo::readLibtoolFile(const QString &f)
             }
         } else if(it.key() == "dependency_libs") {
             if(lst.count() == 1) {
-                QString dep = lst.first();
-                if((dep.startsWith("'") || dep.startsWith("\"")) && dep.endsWith(QString(dep[0])))
+                ProString dep = lst.first();
+                if ((dep.startsWith('\'') || dep.startsWith('"')) && dep.endsWith(dep.at(0)))
                     dep = dep.mid(1, dep.length() - 2);
-                lst = dep.trimmed().split(" ");
+                lst = ProStringList(dep.trimmed().toQString().split(" "));
             }
-            QMakeProject *conf = NULL;
-            for(QStringList::Iterator lit = lst.begin(); lit != lst.end(); ++lit) {
+            for (ProStringList::Iterator lit = lst.begin(); lit != lst.end(); ++lit) {
                 if((*lit).startsWith("-R")) {
-                    if(!conf) {
-                        conf = new QMakeProject;
-                        conf->read(QMakeProject::ReadAll ^ QMakeProject::ReadProFile);
-                    }
                     if(!conf->isEmpty("QMAKE_LFLAGS_RPATH"))
                         (*lit) = conf->first("QMAKE_LFLAGS_RPATH") + (*lit).mid(2);
                 }
             }
-            if(conf)
-                delete conf;
             vars["QMAKE_PRL_LIBS"] += lst;
         }
     }

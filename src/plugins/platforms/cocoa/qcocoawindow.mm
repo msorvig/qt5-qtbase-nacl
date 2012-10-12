@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -45,6 +45,7 @@
 #include "qcocoaglcontext.h"
 #include "qcocoahelpers.h"
 #include "qnsview.h"
+#include <QtCore/qfileinfo.h>
 #include <QtCore/private/qcore_mac_p.h>
 #include <qwindow.h>
 #include <qpa/qwindowsysteminterface.h>
@@ -186,6 +187,7 @@ QCocoaWindow::QCocoaWindow(QWindow *tlw)
     : QPlatformWindow(tlw)
     , m_nsWindow(0)
     , m_synchedWindowState(Qt::WindowActive)
+    , m_windowModality(Qt::NonModal)
     , m_inConstructor(true)
     , m_glContext(0)
     , m_menubar(0)
@@ -211,6 +213,7 @@ QCocoaWindow::~QCocoaWindow()
     qDebug() << "QCocoaWindow::~QCocoaWindow" << this;
 #endif
 
+    QCocoaAutoReleasePool pool;
     clearNSWindow(m_nsWindow);
     [m_contentView release];
     [m_nsWindow release];
@@ -229,6 +232,7 @@ void QCocoaWindow::setGeometry(const QRect &rect)
 
 void QCocoaWindow::setCocoaGeometry(const QRect &rect)
 {
+    QCocoaAutoReleasePool pool;
     if (m_nsWindow) {
         NSRect bounds = qt_mac_flipRect(rect, window());
         [m_nsWindow setContentSize : bounds.size];
@@ -245,6 +249,9 @@ void QCocoaWindow::setVisible(bool visible)
     qDebug() << "QCocoaWindow::setVisible" << window() << visible;
 #endif
     if (visible) {
+        // We need to recreate if the modality has changed as the style mask will need updating
+        if (m_windowModality != window()->windowModality())
+            recreateWindow(parent());
         QCocoaWindow *parentCocoaWindow = 0;
         if (window()->transientParent()) {
             parentCocoaWindow = static_cast<QCocoaWindow *>(window()->transientParent()->handle());
@@ -263,7 +270,8 @@ void QCocoaWindow::setVisible(bool visible)
         }
 
         // Make sure the QWindow has a frame ready before we show the NSWindow.
-        QWindowSystemInterface::handleSynchronousExposeEvent(window(), QRect(QPoint(), geometry().size()));
+        QWindowSystemInterface::handleExposeEvent(window(), QRect(QPoint(), geometry().size()));
+        QWindowSystemInterface::flushWindowSystemEvents();
 
         if (m_nsWindow) {
             // setWindowState might have been called while the window was hidden and
@@ -288,6 +296,10 @@ void QCocoaWindow::setVisible(bool visible)
                 } else {
                     [m_nsWindow orderFront: nil];
                 }
+
+                // We want the events to properly reach the popup
+                if (window()->windowType() == Qt::Popup)
+                    [(NSPanel *)m_nsWindow setWorksWhenModal:YES];
             }
         }
     } else {
@@ -310,8 +322,81 @@ void QCocoaWindow::setVisible(bool visible)
     }
 }
 
+NSInteger QCocoaWindow::windowLevel(Qt::WindowFlags flags)
+{
+    Qt::WindowType type = static_cast<Qt::WindowType>(int(flags & Qt::WindowType_Mask));
+
+    NSInteger windowLevel = NSNormalWindowLevel;
+
+    if (type == Qt::Tool)
+        windowLevel = NSFloatingWindowLevel;
+    else if ((type & Qt::Popup) == Qt::Popup)
+        windowLevel = NSPopUpMenuWindowLevel;
+
+    // StayOnTop window should appear above Tool windows.
+    if (flags & Qt::WindowStaysOnTopHint)
+        windowLevel = NSPopUpMenuWindowLevel;
+    // Tooltips should appear above StayOnTop windows.
+    if (type == Qt::ToolTip)
+        windowLevel = NSScreenSaverWindowLevel;
+
+    // A window should be in at least the same level as its parent.
+    const QWindow * const transientParent = window()->transientParent();
+    const QCocoaWindow * const transientParentWindow = transientParent ? static_cast<QCocoaWindow *>(transientParent->handle()) : 0;
+    if (transientParentWindow)
+        windowLevel = qMax([transientParentWindow->m_nsWindow level], windowLevel);
+
+    return windowLevel;
+}
+
+NSUInteger QCocoaWindow::windowStyleMask(Qt::WindowFlags flags)
+{
+    Qt::WindowType type = static_cast<Qt::WindowType>(int(flags & Qt::WindowType_Mask));
+    NSInteger styleMask = NSBorderlessWindowMask;
+
+    if ((type & Qt::Popup) == Qt::Popup) {
+        if (!windowIsPopupType(type))
+            styleMask = (NSUtilityWindowMask | NSResizableWindowMask | NSClosableWindowMask |
+                         NSMiniaturizableWindowMask | NSTitledWindowMask);
+    } else {
+        // Filter flags for supported properties
+        flags &= Qt::WindowType_Mask | Qt::FramelessWindowHint | Qt::WindowTitleHint |
+                 Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint;
+        if (flags == Qt::Window) {
+            styleMask = (NSResizableWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSTitledWindowMask);
+        } else if ((flags & Qt::Dialog) && (window()->windowModality() != Qt::NonModal)) {
+            styleMask = NSTitledWindowMask;
+        } else if (!(flags & Qt::FramelessWindowHint)) {
+            if (flags & Qt::WindowMaximizeButtonHint)
+                styleMask |= NSResizableWindowMask;
+            if (flags & Qt::WindowTitleHint)
+                styleMask |= NSTitledWindowMask;
+            if (flags & Qt::WindowCloseButtonHint)
+                styleMask |= NSClosableWindowMask;
+            if (flags & Qt::WindowMinimizeButtonHint)
+                styleMask |= NSMiniaturizableWindowMask;
+        }
+    }
+
+    return styleMask;
+}
+
+void QCocoaWindow::setWindowShadow(Qt::WindowFlags flags)
+{
+    bool keepShadow = !(flags & Qt::NoDropShadowWindowHint);
+    [m_nsWindow setHasShadow:(keepShadow ? YES : NO)];
+}
+
 Qt::WindowFlags QCocoaWindow::setWindowFlags(Qt::WindowFlags flags)
 {
+    if (m_nsWindow) {
+        NSUInteger styleMask = windowStyleMask(flags);
+        NSInteger level = this->windowLevel(flags);
+        [m_nsWindow setStyleMask:styleMask];
+        [m_nsWindow setLevel:level];
+        setWindowShadow(flags);
+    }
+
     m_windowFlags = flags;
     return m_windowFlags;
 }
@@ -333,6 +418,16 @@ void QCocoaWindow::setWindowTitle(const QString &title)
     CFStringRef windowTitle = QCFString::toCFStringRef(title);
     [m_nsWindow setTitle: const_cast<NSString *>(reinterpret_cast<const NSString *>(windowTitle))];
     CFRelease(windowTitle);
+}
+
+void QCocoaWindow::setWindowFilePath(const QString &filePath)
+{
+    QCocoaAutoReleasePool pool;
+    if (!m_nsWindow)
+        return;
+
+    QFileInfo fi(filePath);
+    [m_nsWindow setRepresentedFilename: fi.exists() ? QCFString::toNSString(filePath) : @""];
 }
 
 void QCocoaWindow::raise()
@@ -442,7 +537,8 @@ void QCocoaWindow::windowWillMove()
 {
     // Close any open popups on window move
     if (m_activePopupWindow) {
-        QWindowSystemInterface::handleSynchronousCloseEvent(m_activePopupWindow);
+        QWindowSystemInterface::handleCloseEvent(m_activePopupWindow);
+        QWindowSystemInterface::flushWindowSystemEvents();
         m_activePopupWindow = 0;
     }
 }
@@ -464,12 +560,14 @@ void QCocoaWindow::windowDidResize()
 
 void QCocoaWindow::windowWillClose()
 {
-    QWindowSystemInterface::handleSynchronousCloseEvent(window());
+    QWindowSystemInterface::handleCloseEvent(window());
+    QWindowSystemInterface::flushWindowSystemEvents();
 }
 
-bool QCocoaWindow::windowIsPopupType() const
+bool QCocoaWindow::windowIsPopupType(Qt::WindowType type) const
 {
-    Qt::WindowType type = window()->windowType();
+    if (type == Qt::Widget)
+        type = window()->windowType();
     if (type == Qt::Tool)
         return false; // Qt::Tool has the Popup bit set but isn't, at least on Mac.
 
@@ -506,12 +604,6 @@ void QCocoaWindow::recreateWindow(const QPlatformWindow *parentWindow)
         setWindowFlags(window()->windowFlags());
         setWindowTitle(window()->windowTitle());
         setWindowState(window()->windowState());
-
-        if (window()->transientParent()) {
-            // keep this window on the same level as its transient parent (which may be a modal dialog, for example)
-            QCocoaWindow *parentCocoaWindow = static_cast<QCocoaWindow *>(window()->transientParent()->handle());
-            [m_nsWindow setLevel:[parentCocoaWindow->m_nsWindow level]];
-        }
     } else {
         // Child windows have no NSWindow, link the NSViews instead.
         const QCocoaWindow *parentCococaWindow = static_cast<const QCocoaWindow *>(parentWindow);
@@ -528,42 +620,11 @@ NSWindow * QCocoaWindow::createNSWindow()
     Qt::WindowType type = window()->windowType();
     Qt::WindowFlags flags = window()->windowFlags();
 
-    NSUInteger styleMask;
+    NSUInteger styleMask = windowStyleMask(flags);
     NSWindow *createdWindow = 0;
-    NSInteger windowLevel = -1;
-
-    if (type == Qt::Tool) {
-        windowLevel = NSFloatingWindowLevel;
-    } else if ((type & Qt::Popup) == Qt::Popup) {
-        // styleMask = NSBorderlessWindowMask;
-        windowLevel = NSPopUpMenuWindowLevel;
-
-        // Popup should be in at least the same level as its parent.
-        const QWindow * const transientParent = window()->transientParent();
-        const QCocoaWindow * const transientParentWindow = transientParent ? static_cast<QCocoaWindow *>(transientParent->handle()) : 0;
-        if (transientParentWindow)
-            windowLevel = qMax([transientParentWindow->m_nsWindow level], windowLevel);
-    }
-
-    // StayOnTop window should appear above Tool windows.
-    if (flags & Qt::WindowStaysOnTopHint)
-        windowLevel = NSPopUpMenuWindowLevel;
-    // Tooltips should appear above StayOnTop windows.
-    if (type == Qt::ToolTip)
-        windowLevel = NSScreenSaverWindowLevel;
-    // All other types are Normal level.
-    if (windowLevel == -1)
-        windowLevel = NSNormalWindowLevel;
 
     // Use NSPanel for popup-type windows. (Popup, Tool, ToolTip, SplashScreen)
     if ((type & Qt::Popup) == Qt::Popup) {
-        if (windowIsPopupType()) {
-            styleMask = NSBorderlessWindowMask;
-        } else {
-            styleMask = (NSUtilityWindowMask | NSResizableWindowMask | NSClosableWindowMask |
-                         NSMiniaturizableWindowMask | NSTitledWindowMask);
-        }
-
         QNSPanel *window;
         window  = [[QNSPanel alloc] initWithContentRect:frame
                                          styleMask: styleMask
@@ -581,7 +642,6 @@ NSWindow * QCocoaWindow::createNSWindow()
         window->m_cocoaPlatformWindow = this;
         createdWindow = window;
     } else {
-        styleMask = (NSResizableWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSTitledWindowMask);
         QNSWindow *window;
         window  = [[QNSWindow alloc] initWithContentRect:frame
                                          styleMask: styleMask
@@ -589,6 +649,7 @@ NSWindow * QCocoaWindow::createNSWindow()
                                          defer:NO]; // Deferring window creation breaks OpenGL (the GL context is set up
                                                     // before the window is shown and needs a proper window.).
         window->m_cocoaPlatformWindow = this;
+        setWindowShadow(flags);
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
     if (QSysInfo::QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
@@ -601,8 +662,9 @@ NSWindow * QCocoaWindow::createNSWindow()
         createdWindow = window;
     }
 
-    [createdWindow setLevel:windowLevel];
-
+    NSInteger level = windowLevel(flags);
+    [createdWindow setLevel:level];
+    m_windowModality = window()->windowModality();
     return createdWindow;
 }
 
@@ -666,6 +728,15 @@ void QCocoaWindow::syncWindowState(Qt::WindowState newState)
 {
     if (!m_nsWindow)
         return;
+
+    // if content view width or height is 0 then the window animations will crash so
+    // do nothing except set the new state
+    NSRect contentRect = [contentView() frame];
+    if (contentRect.size.width <= 0 || contentRect.size.height <= 0) {
+        qWarning() << Q_FUNC_INFO << "invalid window content view size, check your window geometry";
+        m_synchedWindowState = newState;
+        return;
+    }
 
     if ((m_synchedWindowState & Qt::WindowMaximized) != (newState & Qt::WindowMaximized)) {
         [m_nsWindow performZoom : m_nsWindow]; // toggles

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,6 +44,7 @@
 #include <QtTest/QtTest>
 #include <stdio.h>
 #include <qobject.h>
+#include <qmetaobject.h>
 
 #include "using-namespaces.h"
 #include "assign-namespace.h"
@@ -70,6 +71,10 @@
 #include "parse-boost.h"
 #endif
 #include "cxx11-enums.h"
+#include "cxx11-final-classes.h"
+#include "cxx11-explicit-override-control.h"
+
+#include "parse-defines.h"
 
 QT_USE_NAMESPACE
 
@@ -475,7 +480,6 @@ CtorTestClass::CtorTestClass(QObject *parent)
 
 CtorTestClass::CtorTestClass(int, int, int) {}
 
-
 class tst_Moc : public QObject
 {
     Q_OBJECT
@@ -542,8 +546,14 @@ private slots:
     void cxx11Enums_data();
     void cxx11Enums();
     void returnRefs();
-
     void privateSignalConnection();
+    void finalClasses_data();
+    void finalClasses();
+    void explicitOverrideControl_data();
+    void explicitOverrideControl();
+    void autoPropertyMetaTypeRegistration();
+    void autoMethodArgumentMetaTypeRegistration();
+    void parseDefines();
 
 signals:
     void sigWithUnsignedArg(unsigned foo);
@@ -2225,7 +2235,532 @@ void tst_Moc::privateSignalConnection()
     // Which doesn't work as ClassWithPrivateSignals::QPrivateSignal is private.
 }
 
+void tst_Moc::finalClasses_data()
+{
+    QTest::addColumn<QString>("className");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("FinalTestClassQt") << FinalTestClassQt::staticMetaObject.className() << "FinalTestClassQt";
+    QTest::newRow("ExportedFinalTestClassQt") << ExportedFinalTestClassQt::staticMetaObject.className() << "ExportedFinalTestClassQt";
+    QTest::newRow("ExportedFinalTestClassQtX") << ExportedFinalTestClassQtX::staticMetaObject.className() << "ExportedFinalTestClassQtX";
+
+    QTest::newRow("FinalTestClassCpp11") << FinalTestClassCpp11::staticMetaObject.className() << "FinalTestClassCpp11";
+    QTest::newRow("ExportedFinalTestClassCpp11") << ExportedFinalTestClassCpp11::staticMetaObject.className() << "ExportedFinalTestClassCpp11";
+    QTest::newRow("ExportedFinalTestClassCpp11X") << ExportedFinalTestClassCpp11X::staticMetaObject.className() << "ExportedFinalTestClassCpp11X";
+
+    QTest::newRow("SealedTestClass") << SealedTestClass::staticMetaObject.className() << "SealedTestClass";
+    QTest::newRow("ExportedSealedTestClass") << ExportedSealedTestClass::staticMetaObject.className() << "ExportedSealedTestClass";
+    QTest::newRow("ExportedSealedTestClassX") << ExportedSealedTestClassX::staticMetaObject.className() << "ExportedSealedTestClassX";
+}
+
+void tst_Moc::finalClasses()
+{
+    QFETCH(QString, className);
+    QFETCH(QString, expected);
+
+    QCOMPARE(className, expected);
+}
+
+Q_DECLARE_METATYPE(const QMetaObject*);
+
+void tst_Moc::explicitOverrideControl_data()
+{
+    QTest::addColumn<const QMetaObject*>("mo");
+
+#define ADD(x) QTest::newRow(#x) << &x::staticMetaObject
+    ADD(ExplicitOverrideControlFinalQt);
+    ADD(ExplicitOverrideControlFinalCxx11);
+    ADD(ExplicitOverrideControlSealed);
+    ADD(ExplicitOverrideControlOverrideQt);
+    ADD(ExplicitOverrideControlOverrideCxx11);
+    ADD(ExplicitOverrideControlFinalQtOverrideQt);
+    ADD(ExplicitOverrideControlFinalCxx11OverrideCxx11);
+    ADD(ExplicitOverrideControlSealedOverride);
+#undef ADD
+}
+
+void tst_Moc::explicitOverrideControl()
+{
+    QFETCH(const QMetaObject*, mo);
+
+    QVERIFY(mo);
+    QCOMPARE(mo->indexOfMethod("pureSlot0()"), mo->methodOffset() + 0);
+    QCOMPARE(mo->indexOfMethod("pureSlot1()"), mo->methodOffset() + 1);
+    QCOMPARE(mo->indexOfMethod("pureSlot2()"), mo->methodOffset() + 2);
+    QCOMPARE(mo->indexOfMethod("pureSlot3()"), mo->methodOffset() + 3);
+#if 0 // moc doesn't support volatile slots
+    QCOMPARE(mo->indexOfMethod("pureSlot4()"), mo->methodOffset() + 4);
+    QCOMPARE(mo->indexOfMethod("pureSlot5()"), mo->methodOffset() + 5);
+    QCOMPARE(mo->indexOfMethod("pureSlot6()"), mo->methodOffset() + 6);
+    QCOMPARE(mo->indexOfMethod("pureSlot7()"), mo->methodOffset() + 7);
+    QCOMPARE(mo->indexOfMethod("pureSlot8()"), mo->methodOffset() + 8);
+    QCOMPARE(mo->indexOfMethod("pureSlot9()"), mo->methodOffset() + 9);
+#endif
+}
+
+class CustomQObject : public QObject
+{
+    Q_OBJECT
+    Q_ENUMS(Number)
+public:
+    enum Number {
+      Zero,
+      One,
+      Two
+    };
+    explicit CustomQObject(QObject *parent = 0)
+      : QObject(parent)
+    {
+    }
+};
+
+Q_DECLARE_METATYPE(CustomQObject::Number)
+
+typedef CustomQObject* CustomQObjectStar;
+Q_DECLARE_METATYPE(CustomQObjectStar);
+
+namespace SomeNamespace {
+
+class NamespacedQObject : public QObject
+{
+    Q_OBJECT
+public:
+    explicit NamespacedQObject(QObject *parent = 0)
+      : QObject(parent)
+    {
+
+    }
+};
+
+struct NamespacedNonQObject {};
+}
+Q_DECLARE_METATYPE(SomeNamespace::NamespacedNonQObject)
+
+// Need different types for the invokable method tests because otherwise the registration
+// done in the property test would interfere.
+
+class CustomQObject2 : public QObject
+{
+    Q_OBJECT
+    Q_ENUMS(Number)
+public:
+    enum Number {
+      Zero,
+      One,
+      Two
+    };
+    explicit CustomQObject2(QObject *parent = 0)
+      : QObject(parent)
+    {
+    }
+};
+
+Q_DECLARE_METATYPE(CustomQObject2::Number)
+
+typedef CustomQObject2* CustomQObject2Star;
+Q_DECLARE_METATYPE(CustomQObject2Star);
+
+namespace SomeNamespace2 {
+
+class NamespacedQObject2 : public QObject
+{
+    Q_OBJECT
+public:
+    explicit NamespacedQObject2(QObject *parent = 0)
+      : QObject(parent)
+    {
+
+    }
+};
+
+struct NamespacedNonQObject2 {};
+}
+Q_DECLARE_METATYPE(SomeNamespace2::NamespacedNonQObject2)
+
+
+struct CustomObject3 {};
+struct CustomObject4 {};
+struct CustomObject5 {};
+struct CustomObject6 {};
+struct CustomObject7 {};
+struct CustomObject8 {};
+struct CustomObject9 {};
+struct CustomObject10 {};
+struct CustomObject11 {};
+
+Q_DECLARE_METATYPE(CustomObject3)
+Q_DECLARE_METATYPE(CustomObject4)
+Q_DECLARE_METATYPE(CustomObject5)
+Q_DECLARE_METATYPE(CustomObject6)
+Q_DECLARE_METATYPE(CustomObject7)
+Q_DECLARE_METATYPE(CustomObject8)
+Q_DECLARE_METATYPE(CustomObject9)
+Q_DECLARE_METATYPE(CustomObject10)
+Q_DECLARE_METATYPE(CustomObject11)
+
+class AutoRegistrationObject : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QObject* object READ object CONSTANT)
+    Q_PROPERTY(CustomQObject* customObject READ customObject CONSTANT)
+    Q_PROPERTY(QSharedPointer<CustomQObject> customObjectP READ customObjectP CONSTANT)
+    Q_PROPERTY(QWeakPointer<CustomQObject> customObjectWP READ customObjectWP CONSTANT)
+    Q_PROPERTY(QPointer<CustomQObject> customObjectTP READ customObjectTP CONSTANT)
+    Q_PROPERTY(QList<int> listInt READ listInt CONSTANT)
+    Q_PROPERTY(QVector<QVariant> vectorVariant READ vectorVariant CONSTANT)
+    Q_PROPERTY(QList<CustomQObject*> listObject READ listObject CONSTANT)
+    Q_PROPERTY(QVector<QList<int>> vectorListInt READ vectorListInt CONSTANT)
+    Q_PROPERTY(QVector<QList<CustomQObject*>> vectorListObject READ vectorListObject CONSTANT)
+    Q_PROPERTY(CustomQObject::Number enumValue READ enumValue CONSTANT)
+    Q_PROPERTY(CustomQObjectStar customObjectTypedef READ customObjectTypedef CONSTANT)
+    Q_PROPERTY(SomeNamespace::NamespacedQObject* customObjectNamespaced READ customObjectNamespaced CONSTANT)
+    Q_PROPERTY(SomeNamespace::NamespacedNonQObject customNonQObjectNamespaced READ customNonQObjectNamespaced CONSTANT)
+public:
+    AutoRegistrationObject(QObject *parent = 0)
+      : QObject(parent)
+    {
+    }
+
+    QObject* object() const
+    {
+        return 0;
+    }
+
+    QSharedPointer<CustomQObject> customObjectP() const
+    {
+        return QSharedPointer<CustomQObject>();
+    }
+
+    QWeakPointer<CustomQObject> customObjectWP() const
+    {
+        return QWeakPointer<CustomQObject>();
+    }
+
+    QPointer<CustomQObject> customObjectTP() const
+    {
+        return QPointer<CustomQObject>();
+    }
+
+    CustomQObject* customObject() const
+    {
+        return 0;
+    }
+
+    QList<int> listInt() const
+    {
+        return QList<int>();
+    }
+
+    QVector<QVariant> vectorVariant() const
+    {
+        return QVector<QVariant>();
+    }
+
+    QList<CustomQObject*> listObject() const
+    {
+        return QList<CustomQObject*>();
+    }
+
+    QVector<QList<int> > vectorListInt() const
+    {
+        return QVector<QList<int> >();
+    }
+
+    QVector<QList<CustomQObject*> > vectorListObject() const
+    {
+        return QVector<QList<CustomQObject*> >();
+    }
+
+    CustomQObject::Number enumValue() const
+    {
+        return CustomQObject::Zero;
+    }
+
+    CustomQObjectStar customObjectTypedef() const
+    {
+        return 0;
+    }
+
+    SomeNamespace::NamespacedQObject* customObjectNamespaced() const
+    {
+        return 0;
+    }
+
+    SomeNamespace::NamespacedNonQObject customNonQObjectNamespaced() const
+    {
+        return SomeNamespace::NamespacedNonQObject();
+    }
+
+public slots:
+    void objectSlot(QObject*) {}
+    void customObjectSlot(CustomQObject2*) {}
+    void sharedPointerSlot(QSharedPointer<CustomQObject2>) {}
+    void weakPointerSlot(QWeakPointer<CustomQObject2>) {}
+    void trackingPointerSlot(QPointer<CustomQObject2>) {}
+    void listIntSlot(QList<int>) {}
+    void vectorVariantSlot(QVector<QVariant>) {}
+    void listCustomObjectSlot(QList<CustomQObject2*>) {}
+    void vectorListIntSlot(QVector<QList<int> >) {}
+    void vectorListCustomObjectSlot(QVector<QList<CustomQObject2*> >) {}
+    void enumSlot(CustomQObject2::Number) {}
+    void typedefSlot(CustomQObject2Star) {}
+    void namespacedQObjectSlot(SomeNamespace2::NamespacedQObject2*) {}
+    void namespacedNonQObjectSlot(SomeNamespace2::NamespacedNonQObject2) {}
+
+    void bu1(int, CustomObject3) {}
+    void bu2(CustomObject4, int) {}
+    void bu3(CustomObject5, CustomObject6) {}
+    void bu4(CustomObject7, int, CustomObject8) {}
+    void bu5(int, CustomObject9, CustomObject10) {}
+    void bu6(int, CustomObject11, int) {}
+
+    // these can't be registered, but they should at least compile
+    void ref1(int&) {}
+    void ref2(QList<int>&) {}
+    void ref3(CustomQObject2&) {}
+    void ref4(QSharedPointer<CustomQObject2>&) {}
+};
+
+void tst_Moc::autoPropertyMetaTypeRegistration()
+{
+    AutoRegistrationObject aro;
+
+    static const int numPropertiesUnderTest = 15;
+    QVector<int> propertyMetaTypeIds;
+    propertyMetaTypeIds.reserve(numPropertiesUnderTest);
+
+    const QMetaObject *metaObject = aro.metaObject();
+    QCOMPARE(metaObject->propertyCount(), numPropertiesUnderTest);
+    for (int i = 0; i < metaObject->propertyCount(); ++i) {
+        const QMetaProperty prop = metaObject->property(i);
+        propertyMetaTypeIds.append(prop.userType());
+        QVariant var = prop.read(&aro);
+        QVERIFY(var.isValid());
+    }
+
+    // Verify that QMetaProperty::userType gave us what we expected.
+    QVector<int> expectedMetaTypeIds = QVector<int>()
+        << QMetaType::QString            // QObject::userType
+        << QMetaType::QObjectStar        // AutoRegistrationObject::object
+        << qMetaTypeId<CustomQObject*>() // etc.
+        << qMetaTypeId<QSharedPointer<CustomQObject> >()
+        << qMetaTypeId<QWeakPointer<CustomQObject> >()
+        << qMetaTypeId<QPointer<CustomQObject> >()
+        << qMetaTypeId<QList<int> >()
+        << qMetaTypeId<QVector<QVariant> >()
+        << qMetaTypeId<QList<CustomQObject*> >()
+        << qMetaTypeId<QVector<QList<int> > >()
+        << qMetaTypeId<QVector<QList<CustomQObject*> > >()
+        << qMetaTypeId<CustomQObject::Number>()
+        << qMetaTypeId<CustomQObjectStar>()
+        << qMetaTypeId<SomeNamespace::NamespacedQObject*>()
+        << qMetaTypeId<SomeNamespace::NamespacedNonQObject>()
+        ;
+
+    QCOMPARE(propertyMetaTypeIds, expectedMetaTypeIds);
+}
+
+template<typename T>
+struct DefaultConstructor
+{
+  static inline T construct() { return T(); }
+};
+
+template<typename T>
+struct DefaultConstructor<T*>
+{
+  static inline T* construct() { return 0; }
+};
+
+void tst_Moc::autoMethodArgumentMetaTypeRegistration()
+{
+    AutoRegistrationObject aro;
+
+    QVector<int> methodArgMetaTypeIds;
+
+    const QMetaObject *metaObject = aro.metaObject();
+
+    int i = metaObject->methodOffset(); // Start after QObject built-in slots;
+
+#define TYPE_LOOP(TYPE) \
+    { \
+        const QMetaMethod method = metaObject->method(i); \
+        for (int j = 0; j < method.parameterCount(); ++j) \
+            methodArgMetaTypeIds.append(method.parameterType(j)); \
+        QVERIFY(method.invoke(&aro, Q_ARG(TYPE, DefaultConstructor<TYPE>::construct()))); \
+        ++i; \
+    }
+
+#define FOR_EACH_SLOT_ARG_TYPE(F) \
+    F(QObject*) \
+    F(CustomQObject2*) \
+    F(QSharedPointer<CustomQObject2>) \
+    F(QWeakPointer<CustomQObject2>) \
+    F(QPointer<CustomQObject2>) \
+    F(QList<int>) \
+    F(QVector<QVariant>) \
+    F(QList<CustomQObject2*>) \
+    F(QVector<QList<int> >) \
+    F(QVector<QList<CustomQObject2*> >) \
+    F(CustomQObject2::Number) \
+    F(CustomQObject2Star) \
+    F(SomeNamespace2::NamespacedQObject2*) \
+    F(SomeNamespace2::NamespacedNonQObject2)
+
+    // Note: mulit-arg slots are tested below.
+
+    FOR_EACH_SLOT_ARG_TYPE(TYPE_LOOP)
+
+#undef TYPE_LOOP
+#undef FOR_EACH_SLOT_ARG_TYPE
+
+    QVector<int> expectedMetaTypeIds = QVector<int>()
+        << QMetaType::QObjectStar
+        << qMetaTypeId<CustomQObject2*>()
+        << qMetaTypeId<QSharedPointer<CustomQObject2> >()
+        << qMetaTypeId<QWeakPointer<CustomQObject2> >()
+        << qMetaTypeId<QPointer<CustomQObject2> >()
+        << qMetaTypeId<QList<int> >()
+        << qMetaTypeId<QVector<QVariant> >()
+        << qMetaTypeId<QList<CustomQObject2*> >()
+        << qMetaTypeId<QVector<QList<int> > >()
+        << qMetaTypeId<QVector<QList<CustomQObject2*> > >()
+        << qMetaTypeId<CustomQObject2::Number>()
+        << qMetaTypeId<CustomQObject2Star>()
+        << qMetaTypeId<SomeNamespace2::NamespacedQObject2*>()
+        << qMetaTypeId<SomeNamespace2::NamespacedNonQObject2>()
+        ;
+
+    QCOMPARE(methodArgMetaTypeIds, expectedMetaTypeIds);
+
+
+    QVector<int> methodMultiArgMetaTypeIds;
+
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu1"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(int, 42), Q_ARG(CustomObject3, CustomObject3())));
+        ++i;
+    }
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu2"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(CustomObject4, CustomObject4()), Q_ARG(int, 42)));
+        ++i;
+    }
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu3"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(CustomObject5, CustomObject5()), Q_ARG(CustomObject6, CustomObject6())));
+        ++i;
+    }
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu4"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(CustomObject7, CustomObject7()), Q_ARG(int, 42), Q_ARG(CustomObject8, CustomObject8())));
+        ++i;
+    }
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu5"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(int, 42), Q_ARG(CustomObject9, CustomObject9()), Q_ARG(CustomObject10, CustomObject10())));
+        ++i;
+    }
+    {
+        const QMetaMethod method = metaObject->method(i);
+        QCOMPARE(method.name(), QByteArray("bu6"));
+        for (int j = 0; j < method.parameterCount(); ++j)
+            methodMultiArgMetaTypeIds.append(method.parameterType(j));
+        QVERIFY(method.invoke(&aro, Q_ARG(int, 42), Q_ARG(CustomObject11, CustomObject11()), Q_ARG(int, 42)));
+        ++i;
+    }
+
+    QVector<int> expectedMultiMetaTypeIds = QVector<int>()
+        << QMetaType::Int
+        << qMetaTypeId<CustomObject3>()
+        << qMetaTypeId<CustomObject4>()
+        << QMetaType::Int
+        << qMetaTypeId<CustomObject5>()
+        << qMetaTypeId<CustomObject6>()
+        << qMetaTypeId<CustomObject7>()
+        << QMetaType::Int
+        << qMetaTypeId<CustomObject8>()
+        << QMetaType::Int
+        << qMetaTypeId<CustomObject9>()
+        << qMetaTypeId<CustomObject10>()
+        << QMetaType::Int
+        << qMetaTypeId<CustomObject11>()
+        << QMetaType::Int
+        ;
+
+    QCOMPARE(methodMultiArgMetaTypeIds, expectedMultiMetaTypeIds);
+
+
+}
+
+void tst_Moc::parseDefines()
+{
+    const QMetaObject *mo = &PD_NAMESPACE::PD_CLASSNAME::staticMetaObject;
+    QCOMPARE(mo->className(), PD_SCOPED_STRING(PD_NAMESPACE, PD_CLASSNAME));
+    QVERIFY(mo->indexOfSlot("voidFunction()") != -1);
+
+    int index = mo->indexOfSlot("stringMethod()");
+    QVERIFY(index != -1);
+    QVERIFY(mo->method(index).returnType() == QMetaType::QString);
+
+    index = mo->indexOfSlot("combined1()");
+    QVERIFY(index != -1);
+
+    index = mo->indexOfSlot("combined2()");
+    QVERIFY(index != -1);
+
+    index = mo->indexOfSlot("combined3()");
+    QVERIFY(index != -1);
+
+    index = mo->indexOfSlot("combined4(int,int)");
+    QVERIFY(index != -1);
+
+    index = mo->indexOfSlot("combined5()");
+    QVERIFY(index != -1);
+
+    index = mo->indexOfSlot("combined6()");
+    QVERIFY(index != -1);
+
+#if defined(Q_COMPILER_VARIADIC_MACROS)
+    index = mo->indexOfSlot("vararg1()");
+    QVERIFY(index != -1);
+    index = mo->indexOfSlot("vararg2(int)");
+    QVERIFY(index != -1);
+    index = mo->indexOfSlot("vararg3(int,int)");
+    QVERIFY(index != -1);
+#endif
+
+    int count = 0;
+    for (int i = 0; i < mo->classInfoCount(); ++i) {
+        QMetaClassInfo mci = mo->classInfo(i);
+        if (!qstrcmp(mci.name(), "TestString")) {
+            ++count;
+            QVERIFY(!qstrcmp(mci.value(), "ParseDefine"));
+        }
+        if (!qstrcmp(mci.name(), "TestString2")) {
+            ++count;
+            QVERIFY(!qstrcmp(mci.value(), "TestValue"));
+        }
+    }
+    QVERIFY(count == 2);
+}
 
 QTEST_MAIN(tst_Moc)
+
 #include "tst_moc.moc"
 

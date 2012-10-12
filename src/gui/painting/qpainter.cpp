@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1526,7 +1526,7 @@ bool QPainter::isActive() const
 
 /*!
     Initializes the painters pen, background and font to the same as
-    the given \a paint device.
+    the given \a device.
 
     \obsolete
 
@@ -1541,7 +1541,7 @@ void QPainter::initFrom(const QPaintDevice *device)
         return;
     }
 
-    device->init(this);
+    device->initPainter(this);
 
     if (d->extended) {
         d->extended->penChanged();
@@ -2319,6 +2319,23 @@ void QPainter::setBrushOrigin(const QPointF &p)
     \value RasterOp_SourceAndNotDestination Does a bitwise operation
     where the source is AND'ed with the inverted destination pixels
     (src AND (NOT dst)).
+
+    \value RasterOp_NotSourceOrDestination Does a bitwise operation
+    where the source is inverted and then OR'ed with the destination
+    ((NOT src) OR dst).
+
+    \value RasterOp_ClearDestination The pixels in the destination are
+    cleared (set to 0) independent of the source.
+
+    \value RasterOp_SetDestination The pixels in the destination are
+    set (set to 1) independent of the source.
+
+    \value RasterOp_NotDestination Does a bitwise operation
+    where the destination pixels are inverted (NOT dst).
+
+    \value RasterOp_SourceOrNotDestination Does a bitwise operation
+    where the source is OR'ed with the inverted destination pixels
+    (src OR (NOT dst)).
 
     \sa compositionMode(), setCompositionMode(), {QPainter#Composition
     Modes}{Composition Modes}, {Image Composition Example}
@@ -4375,8 +4392,7 @@ void QPainter::drawArc(const QRectF &r, int a, int alen)
 /*!
     \fn void QPainter::drawPie(const QRectF &rectangle, int startAngle, int spanAngle)
 
-    Draws a pie defined by the given \a rectangle, \a startAngle and
-    and \a spanAngle.
+    Draws a pie defined by the given \a rectangle, \a startAngle and \a spanAngle.
 
     The pie is filled with the current brush().
 
@@ -5654,7 +5670,7 @@ void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, QFixedPoint *positio
     Draws the given \a text with the currently defined text direction,
     beginning at the given \a position.
 
-    This function does not handle the newline character (\n), as it cannot
+    This function does not handle the newline character (\\n), as it cannot
     break text into multiple lines, and it cannot display the newline character.
     Use the QPainter::drawText() overload that takes a rectangle instead
     if you want to draw multiple lines of text with the newline character, or

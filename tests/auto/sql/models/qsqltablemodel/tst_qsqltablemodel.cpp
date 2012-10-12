@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -43,6 +43,7 @@
 #include <QtTest/QtTest>
 #include "../../kernel/qsqldatabase/tst_databases.h"
 #include <QtSql>
+#include <QtSql/private/qsqltablemodel_p.h>
 
 const QString test(qTableName("test", __FILE__)),
                    test2(qTableName("test2", __FILE__)),
@@ -75,12 +76,20 @@ private slots:
 
     void select_data() { generic_data(); }
     void select();
+    void selectRow_data() { generic_data(); }
+    void selectRow();
+    void selectRowOverride_data() { generic_data(); }
+    void selectRowOverride();
     void insertColumns_data() { generic_data_with_strategies(); }
     void insertColumns();
     void submitAll_data() { generic_data(); }
     void submitAll();
     void setRecord_data()  { generic_data(); }
     void setRecord();
+    void setRecordReimpl_data()  { generic_data(); }
+    void setRecordReimpl();
+    void recordReimpl_data()  { generic_data(); }
+    void recordReimpl();
     void insertRow_data() { generic_data_with_strategies(); }
     void insertRow();
     void insertRowFailure_data() { generic_data_with_strategies(); }
@@ -311,6 +320,114 @@ void tst_QSqlTableModel::select()
     QCOMPARE(model.data(model.index(3, 3)), QVariant());
 }
 
+class SelectRowModel: public QSqlTableModel
+{
+    Q_OBJECT
+    Q_DECLARE_PRIVATE(QSqlTableModel)
+public:
+    SelectRowModel(QObject *parent, QSqlDatabase db): QSqlTableModel(parent, db) {}
+    bool cacheEmpty() const
+    {
+        Q_D(const QSqlTableModel);
+        return d->cache.isEmpty();
+    }
+};
+
+void tst_QSqlTableModel::selectRow()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+
+    QString tbl = qTableName("pktest", __FILE__);
+    QSqlQuery q(db);
+    q.exec("DELETE FROM " + tbl);
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (0, 'a')");
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (1, 'b')");
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (2, 'c')");
+
+    SelectRowModel model(0, db);
+    model.setEditStrategy(QSqlTableModel::OnFieldChange);
+    model.setTable(tbl);
+    model.setSort(0, Qt::AscendingOrder);
+    QVERIFY_SQL(model, select());
+
+    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(model.columnCount(), 2);
+
+    QModelIndex idx = model.index(1, 1);
+
+    // selectRow should not make the cache grow if there is no change.
+    model.selectRow(1);
+    QCOMPARE(model.data(idx).toString(), QString("b"));
+    QVERIFY_SQL(model, cacheEmpty());
+
+    // Check if selectRow() refreshes an unchanged row.
+    // Row is not in cache yet.
+    q.exec("UPDATE " + tbl + " SET a = 'Qt' WHERE id = 1");
+    QCOMPARE(model.data(idx).toString(), QString("b"));
+    model.selectRow(1);
+    QCOMPARE(model.data(idx).toString(), QString("Qt"));
+
+    // Check if selectRow() refreshes a changed row.
+    // Row is already in the cache.
+    model.setData(idx, QString("b"));
+    QCOMPARE(model.data(idx).toString(), QString("b"));
+    q.exec("UPDATE " + tbl + " SET a = 'Qt' WHERE id = 1");
+    QCOMPARE(model.data(idx).toString(), QString("b"));
+    model.selectRow(1);
+    QCOMPARE(model.data(idx).toString(), QString("Qt"));
+
+    q.exec("DELETE FROM " + tbl);
+}
+
+class SelectRowOverrideTestModel: public QSqlTableModel
+{
+    Q_OBJECT
+public:
+    SelectRowOverrideTestModel(QObject *parent, QSqlDatabase db):QSqlTableModel(parent, db) { }
+    bool selectRow(int row)
+    {
+        Q_UNUSED(row)
+        return select();
+    }
+};
+
+void tst_QSqlTableModel::selectRowOverride()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+
+    QString tbl = qTableName("pktest", __FILE__);
+    QSqlQuery q(db);
+    q.exec("DELETE FROM " + tbl);
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (0, 'a')");
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (1, 'b')");
+    q.exec("INSERT INTO " + tbl + " (id, a) VALUES (2, 'c')");
+
+    SelectRowOverrideTestModel model(0, db);
+    model.setEditStrategy(QSqlTableModel::OnFieldChange);
+    model.setTable(tbl);
+    model.setSort(0, Qt::AscendingOrder);
+    QVERIFY_SQL(model, select());
+
+    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(model.columnCount(), 2);
+
+    q.exec("UPDATE " + tbl + " SET a = 'Qt' WHERE id = 2");
+    QModelIndex idx = model.index(1, 1);
+    // overridden selectRow() should select() whole table and not crash
+    model.setData(idx, QString("Qt"));
+
+    // both rows should have changed
+    QCOMPARE(model.data(idx).toString(), QString("Qt"));
+    idx = model.index(2, 1);
+    QCOMPARE(model.data(idx).toString(), QString("Qt"));
+
+    q.exec("DELETE FROM " + tbl);
+}
+
 void tst_QSqlTableModel::insertColumns()
 {
     // Just like the select test, with extra stuff
@@ -411,24 +528,28 @@ void tst_QSqlTableModel::setRecord()
             rec.setValue(2, rec.value(2).toString() + 'X');
             QVERIFY(model.setRecord(i, rec));
 
+            // dataChanged() emitted by setData() for each *changed* column
             if ((QSqlTableModel::EditStrategy)submitpolicy == QSqlTableModel::OnManualSubmit) {
-                // setRecord should emit dataChanged() itself for manualSubmit
-                QCOMPARE(spy.count(), 1);
+                QCOMPARE(spy.count(), 2);
                 QCOMPARE(spy.at(0).count(), 2);
-                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(0)), model.index(i, 0));
-                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(1)), model.index(i, rec.count() - 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(0)), model.index(i, 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(1)), model.index(i, 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(1).at(0)), model.index(i, 2));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(1).at(1)), model.index(i, 2));
                 QVERIFY(model.submitAll());
             } else if ((QSqlTableModel::EditStrategy)submitpolicy == QSqlTableModel::OnRowChange && i == model.rowCount() -1)
                 model.submit();
             else {
-                // dataChanged() emitted by selectRow() as well as setRecord()
                 if ((QSqlTableModel::EditStrategy)submitpolicy != QSqlTableModel::OnManualSubmit)
-                    QCOMPARE(spy.count(), 2);
+                    // dataChanged() also emitted by selectRow()
+                    QCOMPARE(spy.count(), 3);
                 else
-                    QCOMPARE(spy.count(), 1);
+                    QCOMPARE(spy.count(), 2);
                 QCOMPARE(spy.at(0).count(), 2);
-                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(0)), model.index(i, 0));
-                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(1)), model.index(i, rec.count() - 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(0)), model.index(i, 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(0).at(1)), model.index(i, 1));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(1).at(0)), model.index(i, 2));
+                QCOMPARE(qvariant_cast<QModelIndex>(spy.at(1).at(1)), model.index(i, 2));
             }
         }
 
@@ -439,6 +560,78 @@ void tst_QSqlTableModel::setRecord()
         QCOMPARE(model.data(model.index(1, 1)).toString(), QString("baz").append(Xsuffix));
         QCOMPARE(model.data(model.index(1, 2)).toString(), QString("joe").append(Xsuffix));
     }
+}
+
+class SetRecordReimplModel: public QSqlTableModel
+{
+    Q_OBJECT
+public:
+    SetRecordReimplModel(QObject *parent, QSqlDatabase db):QSqlTableModel(parent, db) {}
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole)
+    {
+        return QSqlTableModel::setData(index, QString("Qt"), role);
+    }
+};
+
+void tst_QSqlTableModel::setRecordReimpl()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+    SetRecordReimplModel model(0, db);
+    model.setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model.setTable(test3);
+    model.setSort(0, Qt::AscendingOrder);
+    QVERIFY_SQL(model, select());
+
+    // make sure that a reimplemented setData() affects setRecord()
+    QSqlRecord rec = model.record(0);
+    rec.setValue(1, QString("x"));
+    rec.setValue(2, QString("y"));
+    QVERIFY(model.setRecord(0, rec));
+
+    rec = model.record(0);
+    QCOMPARE(rec.value(1).toString(), QString("Qt"));
+    QCOMPARE(rec.value(2).toString(), QString("Qt"));
+}
+
+class RecordReimplModel: public QSqlTableModel
+{
+    Q_OBJECT
+public:
+    RecordReimplModel(QObject *parent, QSqlDatabase db):QSqlTableModel(parent, db) {}
+    QVariant data(const QModelIndex &index, int role = Qt::EditRole) const
+    {
+        if (role == Qt::EditRole)
+            return QString("Qt");
+        else
+            return QSqlTableModel::data(index, role);
+    }
+};
+
+void tst_QSqlTableModel::recordReimpl()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+    RecordReimplModel model(0, db);
+    model.setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model.setTable(test3);
+    model.setSort(0, Qt::AscendingOrder);
+    QVERIFY_SQL(model, select());
+
+    // make sure reimplemented data() affects record(row)
+    QSqlRecord rec = model.record(0);
+    QCOMPARE(rec.value(1).toString(), QString("Qt"));
+    QCOMPARE(rec.value(2).toString(), QString("Qt"));
+
+    // and also when the record is in the cache
+    QVERIFY_SQL(model, setData(model.index(0, 1), QString("not Qt")));
+    QVERIFY_SQL(model, setData(model.index(0, 2), QString("not Qt")));
+
+    rec = model.record(0);
+    QCOMPARE(rec.value(1).toString(), QString("Qt"));
+    QCOMPARE(rec.value(2).toString(), QString("Qt"));
 }
 
 void tst_QSqlTableModel::insertRow()
@@ -1051,6 +1244,14 @@ void tst_QSqlTableModel::isDirty()
     model.setSort(0, Qt::AscendingOrder);
     QVERIFY_SQL(model, select());
     QFAIL_SQL(model, isDirty());
+
+    // check that setting the current value does not add to the cache
+    {
+        QModelIndex i = model.index(0, 1);
+        QVariant v = model.data(i, Qt::EditRole);
+        QVERIFY_SQL(model, setData(i, v));
+        QFAIL_SQL(model, isDirty());
+    }
 
     if (submitpolicy != QSqlTableModel::OnFieldChange) {
         // setData() followed by revertAll()

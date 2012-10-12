@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,15 +44,7 @@
 #include <QtTest/QtTest>
 
 #include "private/qtldurl_p.h"
-
-QT_BEGIN_NAMESPACE
-Q_CORE_EXPORT extern void qt_nameprep(QString *source, int from);
-Q_CORE_EXPORT extern bool qt_check_std3rules(const QChar *, int);
-Q_CORE_EXPORT void qt_punycodeEncoder(const QChar *s, int ucLength, QString *output);
-Q_CORE_EXPORT QString qt_punycodeDecoder(const QString &pc);
-Q_CORE_EXPORT int qt_urlRecode(QString &appendTo, const QChar *input, const QChar *end,
-                               QUrl::ComponentFormattingOptions encoding, const ushort *tableModifications = 0);
-QT_END_NAMESPACE
+#include "private/qurl_p.h"
 
 // For testsuites
 #define IDNA_ACE_PREFIX "xn--"
@@ -83,12 +75,14 @@ class tst_QUrlInternal : public QObject
 
 private Q_SLOTS:
     // IDNA internals
+#ifdef QT_BUILD_INTERNAL
     void idna_testsuite_data();
     void idna_testsuite();
     void nameprep_testsuite_data();
     void nameprep_testsuite();
     void nameprep_highcodes_data();
     void nameprep_highcodes();
+#endif
     void ace_testsuite_data();
     void ace_testsuite();
     void std3violations_data();
@@ -103,9 +97,12 @@ private Q_SLOTS:
     void encodingRecode();
     void encodingRecodeInvalidUtf8_data();
     void encodingRecodeInvalidUtf8();
+    void recodeByteArray_data();
+    void recodeByteArray();
 };
 #include "tst_qurlinternal.moc"
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::idna_testsuite_data()
 {
     QTest::addColumn<int>("numchars");
@@ -250,10 +247,11 @@ void tst_QUrlInternal::idna_testsuite_data()
                                      << QByteArray(IDNA_ACE_PREFIX "b1abfaaepdrnnbgefbadotcwatmq2g4l")
                                      << 0 << 0 << IDNA_SUCCESS << IDNA_SUCCESS;
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::idna_testsuite()
 {
-#ifdef QT_BUILD_INTERNAL
     QFETCH(int, numchars);
     QFETCH(ushortarray, unicode);
     QFETCH(QByteArray, punycode);
@@ -262,9 +260,10 @@ void tst_QUrlInternal::idna_testsuite()
     qt_punycodeEncoder((QChar*)unicode.points, numchars, &result);
     QCOMPARE(result.toLatin1(), punycode);
     QCOMPARE(qt_punycodeDecoder(result), QString::fromUtf16(unicode.points, numchars));
-#endif
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::nameprep_testsuite_data()
 {
     QTest::addColumn<QString>("in");
@@ -504,10 +503,11 @@ void tst_QUrlInternal::nameprep_testsuite_data()
                              "\xe3\x83\xbc\xe3\x83\x88")
         << QString() << 0 << 0;
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::nameprep_testsuite()
 {
-#ifdef QT_BUILD_INTERNAL
     QFETCH(QString, in);
     QFETCH(QString, out);
     QFETCH(QString, profile);
@@ -520,9 +520,10 @@ void tst_QUrlInternal::nameprep_testsuite()
                  "Investigate further", Continue);
     qt_nameprep(&in, 0);
     QCOMPARE(in, out);
-#endif
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::nameprep_highcodes_data()
 {
     QTest::addColumn<QString>("in");
@@ -556,18 +557,19 @@ void tst_QUrlInternal::nameprep_highcodes_data()
             << QString() << 0 << 0;
     }
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QUrlInternal::nameprep_highcodes()
 {
-#ifdef QT_BUILD_INTERNAL
     QFETCH(QString, in);
     QFETCH(QString, out);
     QFETCH(QString, profile);
 
     qt_nameprep(&in, 0);
     QCOMPARE(in, out);
-#endif
 }
+#endif
 
 void tst_QUrlInternal::ace_testsuite_data()
 {
@@ -1012,6 +1014,36 @@ void tst_QUrlInternal::encodingRecodeInvalidUtf8()
     if (!qt_urlRecode(output, input.constData(), input.constData() + input.length(), QUrl::FullyEncoded))
         output += input;
     QCOMPARE(output, QTest::currentDataTag() + input);
+}
+
+void tst_QUrlInternal::recodeByteArray_data()
+{
+    QTest::addColumn<QByteArray>("input");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("null") << QByteArray() << QString();
+    QTest::newRow("empty") << QByteArray("") << QString("");
+    QTest::newRow("normal") << QByteArray("Hello") << "Hello";
+    QTest::newRow("valid-utf8") << QByteArray("\xc3\xa9") << "%C3%A9";
+    QTest::newRow("percent-encoded") << QByteArray("%C3%A9%00%C0%80") << "%C3%A9%00%C0%80";
+    QTest::newRow("invalid-utf8-1") << QByteArray("\xc3\xc3") << "%C3%C3";
+    QTest::newRow("invalid-utf8-2") << QByteArray("\xc0\x80") << "%C0%80";
+
+    // note: percent-encoding the control characters ("\0" -> "%00") would also
+    // be correct, but it's unnecessary for this function
+    QTest::newRow("binary") << QByteArray("\0\x1f", 2) << QString::fromLatin1("\0\x1f", 2);;
+    QTest::newRow("binary+percent-encoded") << QByteArray("\0%25", 4) << QString::fromLatin1("\0%25", 4);
+}
+
+void tst_QUrlInternal::recodeByteArray()
+{
+    QFETCH(QByteArray, input);
+    QFETCH(QString, expected);
+    QString output = qt_urlRecodeByteArray(input);
+
+    QCOMPARE(output.isNull(), input.isNull());
+    QCOMPARE(output.isEmpty(), input.isEmpty());
+    QCOMPARE(output, expected);
 }
 
 QTEST_APPLESS_MAIN(tst_QUrlInternal)

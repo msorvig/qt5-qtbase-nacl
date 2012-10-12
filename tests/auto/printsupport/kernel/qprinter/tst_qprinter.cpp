@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -81,20 +81,23 @@ class tst_QPrinter : public QObject
 {
     Q_OBJECT
 
-#ifdef QT_NO_PRINTER
 public slots:
+#ifdef QT_NO_PRINTER
     void initTestCase();
+    void cleanupTestCase();
 #else
 private slots:
     void getSetCheck();
 // Add your testfunctions and testdata create functions here
+#ifdef Q_OS_WIN
     void testPageSize();
+    void testNonExistentPrinter();
+#endif
     void testPageRectAndPaperRect();
     void testPageRectAndPaperRect_data();
     void testSetOptions();
     void testMargins_data();
     void testMargins();
-    void testNonExistentPrinter();
     void testPageSetupDialog();
     void testMulitpleSets_data();
     void testMulitpleSets();
@@ -124,8 +127,11 @@ void tst_QPrinter::initTestCase()
     QSKIP("This test requires printing support");
 }
 
+void tst_QPrinter::cleanupTestCase()
+{
+    QSKIP("This test requires printing support");
+}
 #else
-
 // Testing get/set functions
 void tst_QPrinter::getSetCheck()
 {
@@ -233,11 +239,10 @@ void tst_QPrinter::testPageSetupDialog()
     }
 }
 
+#ifdef Q_OS_WIN
+// QPrinter::winPageSize(): Windows only.
 void tst_QPrinter::testPageSize()
 {
-#ifndef Q_OS_WIN
-    QSKIP("QPrinter::winPageSize(): Windows only.");
-#else
     QPrinter prn;
 
     prn.setPageSize(QPrinter::Letter);
@@ -255,8 +260,8 @@ void tst_QPrinter::testPageSize()
     prn.setWinPageSize(DMPAPER_A4);
     MYCOMPARE(prn.winPageSize(), DMPAPER_A4);
     MYCOMPARE(prn.pageSize(), QPrinter::A4);
-#endif // Q_OS_WIN
 }
+#endif // Q_OS_WIN
 
 void tst_QPrinter::testPageRectAndPaperRect_data()
 {
@@ -397,11 +402,10 @@ void tst_QPrinter::testMargins()
     QFile::remove("silly");
 }
 
+#ifdef Q_OS_WIN
+// QPrinter::testNonExistentPrinter() is not relevant for this platform
 void tst_QPrinter::testNonExistentPrinter()
 {
-#ifndef Q_OS_WIN
-    QSKIP("QPrinter::testNonExistentPrinter() is not relevant for this platform");
-#else
     QPrinter printer;
     QPainter painter;
 
@@ -429,8 +433,8 @@ void tst_QPrinter::testNonExistentPrinter()
     QCOMPARE(printer.printEngine()->metric(QPaintDevice::PdmPhysicalDpiY), 0);
 
     QVERIFY(!painter.begin(&printer));
-#endif
 }
+#endif
 
 void tst_QPrinter::testMulitpleSets_data()
 {
@@ -487,8 +491,8 @@ void tst_QPrinter::testMulitpleSets()
         return;
     }
 
-    QCOMPARE(printer.widthMM(), widthMMAfter);
-    QCOMPARE(printer.heightMM(), heightMMAfter);
+    QVERIFY(qAbs(printer.widthMM() - widthMMAfter) <= 2);
+    QVERIFY(qAbs(printer.heightMM() - heightMMAfter) <= 2);
 
     computePageValue(printer, paperWidth, paperHeight);
 
@@ -497,8 +501,8 @@ void tst_QPrinter::testMulitpleSets()
 
     // Set it again and see if it still works.
     printer.setPageSize(printerPageSize);
-    QCOMPARE(printer.widthMM(), widthMMAfter);
-    QCOMPARE(printer.heightMM(), heightMMAfter);
+    QVERIFY(qAbs(printer.widthMM() - widthMMAfter) <= 2);
+    QVERIFY(qAbs(printer.heightMM() - heightMMAfter) <= 2);
 
     printer.setOrientation(QPrinter::Landscape);
     computePageValue(printer, paperWidth, paperHeight);
@@ -985,8 +989,16 @@ void tst_QPrinter::taskQTBUG4497_reusePrinterOnDifferentFiles()
     QFile file2("out2.ps");
     QVERIFY(file2.open(QIODevice::ReadOnly));
 
-    QEXPECT_FAIL("", "QTBUG-22562, QTBUG-22296", Abort);
-    QCOMPARE(file1.readAll(), file2.readAll());
+    while (!file1.atEnd() && !file2.atEnd()) {
+        QByteArray file1Line = file1.readLine();
+        QByteArray file2Line = file2.readLine();
+
+        if (!file1Line.startsWith("%%CreationDate"))
+            QCOMPARE(file1Line, file2Line);
+    }
+
+    QVERIFY(file1.atEnd());
+    QVERIFY(file2.atEnd());
 }
 
 void tst_QPrinter::testCurrentPage()
@@ -1038,8 +1050,7 @@ void tst_QPrinter::testPdfTitle()
     const char *expected = reinterpret_cast<const char*>(expectedBuf);
     QVERIFY(file.readAll().contains(QByteArray(expected, 26)));
 }
-
-#endif
+#endif // QT_NO_PRINTER
 
 QTEST_MAIN(tst_QPrinter)
 #include "tst_qprinter.moc"

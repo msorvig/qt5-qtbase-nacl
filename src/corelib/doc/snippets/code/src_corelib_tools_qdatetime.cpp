@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
@@ -17,10 +17,10 @@
 **     notice, this list of conditions and the following disclaimer in
 **     the documentation and/or other materials provided with the
 **     distribution.
-**   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-**     the names of its contributors may be used to endorse or promote
-**     products derived from this software without specific prior written
-**     permission.
+**   * Neither the name of Digia Plc and its Subsidiary(-ies) nor the names
+**     of its contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
 **
 ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -157,3 +157,38 @@ qDebug() << "Days from startDate to endDate: " << startDate.daysTo(endDate);
 qSwap(startDate, endDate); // Make endDate before startDate.
 qDebug() << "Days from startDate to endDate: " << startDate.daysTo(endDate);
 //! [15]
+
+//! [16]
+QDateTime local(QDateTime::currentDateTime());
+QDateTime UTC(local.toTimeSpec(Qt::UTC));
+qDebug() << "Local time is:" << local;
+qDebug() << "UTC time is:" << UTC;
+qDebug() << "No difference between times:" << local.secsTo(UTC);
+//! [16]
+
+//! [17]
+QDateTime UTC(QDateTime::currentDateTimeUtc());
+QDateTime local(UTC.toLocalTime());
+qDebug() << "UTC time is:" << UTC;
+qDebug() << "Local time is:" << local;
+qDebug() << "No difference between times:" << UTC.secsTo(local);
+//! [17]
+
+//! [18]
+QDateTime local(QDateTime::currentDateTime());
+QDateTime UTC(local.toUTC());
+qDebug() << "Local time is:" << local;
+qDebug() << "UTC time is:" << UTC;
+qDebug() << "No difference between times:" << local.secsTo(UTC);
+//! [18]
+
+//! [19]
+QDateTime local(QDateTime::currentDateTime());
+qDebug() << "Local time is:" << local;
+
+QDateTime UTC(local);
+UTC.setTimeSpec(Qt::UTC);
+qDebug() << "UTC time is:" << UTC;
+
+qDebug() << "There are" << local.secsTo(UTC) << "seconds difference between the datetimes.";
+//! [19]

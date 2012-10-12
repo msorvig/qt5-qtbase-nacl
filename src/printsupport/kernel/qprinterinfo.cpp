@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -43,7 +43,7 @@ QPrinterInfoPrivate QPrinterInfoPrivate::shared_null;
 
     \brief The QPrinterInfo class gives access to information about
     existing printers.
-    
+
     \ingroup printing
     \inmodule QtPrintSupport
 
@@ -149,11 +149,9 @@ QString QPrinterInfo::printerName() const
 }
 
 /*!
-    \fn QString QPrinterInfo::description()
-    \since 5.0
-
     Returns the human-readable description of the printer.
 
+    \since 5.0
     \sa QPrinterInfo::printerName()
 */
 QString QPrinterInfo::description() const
@@ -163,10 +161,9 @@ QString QPrinterInfo::description() const
 }
 
 /*!
-    \fn QString QPrinterInfo::location()
-    \since 5.0
-
     Returns the human-readable location of the printer.
+
+    \since 5.0
 */
 QString QPrinterInfo::location() const
 {
@@ -175,10 +172,9 @@ QString QPrinterInfo::location() const
 }
 
 /*!
-    \fn QString QPrinterInfo::makeAndModel()
-    \since 5.0
-
     Returns the human-readable make and model of the printer.
+
+    \since 5.0
 */
 QString QPrinterInfo::makeAndModel() const
 {
@@ -208,13 +204,12 @@ bool QPrinterInfo::isDefault() const
 }
 
 /*!
-    \fn QList< QPrinter::PaperSize> QPrinterInfo::supportedPaperSizes() const
-    \since 4.4
-
     Returns a list of supported paper sizes by the printer.
 
     Not all printer drivers support this query, so the list may be empty.
     On Mac OS X 10.3, this function always returns an empty list.
+
+    \since 4.4
 */
 
 QList<QPrinter::PaperSize> QPrinterInfo::supportedPaperSizes() const
@@ -244,17 +239,14 @@ QPrinterInfo QPrinterInfo::defaultPrinter()
 }
 
 /*!
-    \fn QPrinterInfo QPrinterInfo::printerInfo()
-    \since 5.0
-
-    Returns the named printer.
+    Returns the printer \a printerName.
 
     The return value should be checked using isNull() before being
     used, in case the named printer does not exist.
 
+    \since 5.0
     \sa isNull()
 */
-
 QPrinterInfo QPrinterInfo::printerInfo(const QString &printerName)
 {
     QPlatformPrinterSupport *ps = QPlatformPrinterSupportPlugin::get();

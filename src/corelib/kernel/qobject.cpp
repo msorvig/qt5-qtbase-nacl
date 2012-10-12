@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -72,6 +72,11 @@ QT_BEGIN_NAMESPACE
 
 static int DIRECT_CONNECTION_ONLY = 0;
 
+struct QSlotObjectBaseDeleter { // for use with QScopedPointer<QSlotObjectBase,...>
+    static void cleanup(QtPrivate::QSlotObjectBase *slot) {
+        if (slot) slot->destroyIfLastRef();
+    }
+};
 static int *queuedConnectionTypes(const QList<QByteArray> &typeNames)
 {
     int *types = new int [typeNames.count() + 1];
@@ -122,7 +127,8 @@ static int *queuedConnectionTypes(const QArgumentType *argumentTypes, int argc)
 
 static QBasicMutex _q_ObjectMutexPool[131];
 
-/** \internal
+/**
+ * \internal
  * mutex to be locked when accessing the connectionlists or the senders list
  */
 static inline QMutex *signalSlotLock(const QObject *o)
@@ -232,7 +238,8 @@ QObjectPrivate::~QObjectPrivate()
     delete extraData;
 }
 
-/*!\internal
+/*!
+  \internal
   For a given metaobject, compute the signal offset, and the method offset (including signals)
 */
 static void computeOffsets(const QMetaObject *metaobject, int *signalOffset, int *methodOffset)
@@ -339,8 +346,9 @@ QObjectList QObjectPrivate::senderList() const
     return returnValue;
 }
 
-/*! \internal
-  Add the connection \a c to to the list of connections of the sender's object
+/*!
+  \internal
+  Add the connection \a c to the list of connections of the sender's object
   for the specified \a signal
 
   The signalSlotLock() of the sender and receiver must be locked while calling
@@ -415,7 +423,8 @@ void QObjectPrivate::cleanConnectionLists()
     }
 }
 
-/*! \internal
+/*!
+    \internal
  */
 QMetaCallEvent::QMetaCallEvent(ushort method_offset, ushort method_relative, QObjectPrivate::StaticMetaCallFunction callFunction,
                                const QObject *sender, int signalId,
@@ -425,19 +434,21 @@ QMetaCallEvent::QMetaCallEvent(ushort method_offset, ushort method_relative, QOb
       callFunction_(callFunction), method_offset_(method_offset), method_relative_(method_relative)
 { }
 
-/*! \internal
+/*!
+    \internal
  */
-QMetaCallEvent::QMetaCallEvent(QObject::QSlotObjectBase *slotO, const QObject *sender, int signalId,
+QMetaCallEvent::QMetaCallEvent(QtPrivate::QSlotObjectBase *slotO, const QObject *sender, int signalId,
                                int nargs, int *types, void **args, QSemaphore *semaphore)
     : QEvent(MetaCall), slotObj_(slotO), sender_(sender), signalId_(signalId),
       nargs_(nargs), types_(types), args_(args), semaphore_(semaphore),
-      callFunction_(0), method_offset_(0), method_relative_(-1)
+      callFunction_(0), method_offset_(0), method_relative_(ushort(-1))
 {
     if (slotObj_)
-        slotObj_->ref.ref();
+        slotObj_->ref();
 }
 
-/*! \internal
+/*!
+    \internal
  */
 QMetaCallEvent::~QMetaCallEvent()
 {
@@ -453,11 +464,12 @@ QMetaCallEvent::~QMetaCallEvent()
     if (semaphore_)
         semaphore_->release();
 #endif
-    if (slotObj_ && !slotObj_->ref.deref())
-        delete slotObj_;
+    if (slotObj_)
+        slotObj_->destroyIfLastRef();
 }
 
-/*! \internal
+/*!
+    \internal
  */
 void QMetaCallEvent::placeMetaCall(QObject *object)
 {
@@ -472,6 +484,7 @@ void QMetaCallEvent::placeMetaCall(QObject *object)
 
 /*!
     \class QObject
+    \inmodule QtCore
     \brief The QObject class is the base class of all Qt objects.
 
     \ingroup objectmodel
@@ -679,7 +692,8 @@ QObject::QObject(QObject *parent)
     qt_addObject(this);
 }
 
-/*! \internal
+/*!
+    \internal
  */
 QObject::QObject(QObjectPrivate &dd, QObject *parent)
     : d_ptr(&dd)
@@ -855,8 +869,8 @@ QObjectPrivate::Connection::~Connection()
         if (v != &DIRECT_CONNECTION_ONLY)
             delete [] v;
     }
-    if (isSlotObject && !slotObj->ref.deref())
-        delete slotObj;
+    if (isSlotObject)
+        slotObj->destroyIfLastRef();
 }
 
 
@@ -1007,9 +1021,17 @@ void QObject::setObjectName(const QString &name)
     Returns true if the object is a widget; otherwise returns false.
 
     Calling this function is equivalent to calling
-    inherits("QWidget"), except that it is much faster.
+    \c{inherits("QWidget")}, except that it is much faster.
 */
 
+/*!
+    \fn bool QObject::isWindowType() const
+
+    Returns true if the object is a window; otherwise returns false.
+
+    Calling this function is equivalent to calling
+    \c{inherits("QWindow")}, except that it is much faster.
+*/
 
 /*!
     This virtual function receives events to an object and should
@@ -1018,8 +1040,8 @@ void QObject::setObjectName(const QString &name)
     The event() function can be reimplemented to customize the
     behavior of an object.
 
-    \sa installEventFilter(), timerEvent(), QApplication::sendEvent(),
-    QApplication::postEvent(), QWidget::event()
+    \sa installEventFilter(), timerEvent(), QCoreApplication::sendEvent(),
+    QCoreApplication::postEvent()
 */
 
 bool QObject::event(QEvent *e)
@@ -1505,22 +1527,22 @@ void QObject::killTimer(int id)
     ancestors, it is undefined which one will be returned. In that
     case, findChildren() should be used.
 
-    This example returns a child \l{QPushButton} of \c{parentWidget}
+    This example returns a child \c{QPushButton} of \c{parentWidget}
     named \c{"button1"}, even if the button isn't a direct child of
     the parent:
 
     \snippet code/src_corelib_kernel_qobject.cpp 10
 
-    This example returns a \l{QListWidget} child of \c{parentWidget}:
+    This example returns a \c{QListWidget} child of \c{parentWidget}:
 
     \snippet code/src_corelib_kernel_qobject.cpp 11
 
-    This example returns a child \l{QPushButton} of \c{parentWidget}
+    This example returns a child \c{QPushButton} of \c{parentWidget}
     (its direct parent) named \c{"button1"}:
 
     \snippet code/src_corelib_kernel_qobject.cpp 41
 
-    This example returns a \l{QListWidget} child of \c{parentWidget},
+    This example returns a \c{QListWidget} child of \c{parentWidget},
     its direct parent:
 
     \snippet code/src_corelib_kernel_qobject.cpp 42
@@ -1537,7 +1559,7 @@ void QObject::killTimer(int id)
     The search is performed recursively, unless \a options specifies the
     option FindDirectChildrenOnly.
 
-    The following example shows how to find a list of child \l{QWidget}s of
+    The following example shows how to find a list of child \c{QWidget}s of
     the specified \c{parentWidget} named \c{widgetname}:
 
     \snippet code/src_corelib_kernel_qobject.cpp 12
@@ -1692,7 +1714,8 @@ void qt_qFindChildren_helper(const QObject *parent, const QRegularExpression &re
 }
 #endif // QT_NO_REGEXP
 
-/*! \internal
+/*!
+    \internal
  */
 QObject *qt_qFindChild_helper(const QObject *parent, const QString &name, const QMetaObject &mo, Qt::FindChildOptions options)
 {
@@ -1719,9 +1742,8 @@ QObject *qt_qFindChild_helper(const QObject *parent, const QString &name, const 
 /*!
     Makes the object a child of \a parent.
 
-    \sa QWidget::setParent()
+    \sa parent(), children()
 */
-
 void QObject::setParent(QObject *parent)
 {
     Q_D(QObject);
@@ -1946,12 +1968,13 @@ void QObject::deleteLater()
     translators while performing translations is not supported. Doing
     so will probably result in crashes or other undesirable behavior.
 
-    \sa trUtf8(), QApplication::translate(), {Internationalization with Qt}
+    \sa trUtf8(), QCoreApplication::translate(), {Internationalization with Qt}
 */
 
 /*!
     \fn QString QObject::trUtf8(const char *sourceText, const char *disambiguation, int n)
     \reentrant
+    \obsolete
 
     Returns a translated version of \a sourceText, or
     QString::fromUtf8(\a sourceText) if there is no appropriate
@@ -1969,7 +1992,7 @@ void QObject::deleteLater()
 
     \snippet code/src_corelib_kernel_qobject.cpp 20
 
-    \sa tr(), QApplication::translate(), {Internationalization with Qt}
+    \sa tr(), QCoreApplication::translate(), {Internationalization with Qt}
 */
 
 
@@ -2940,7 +2963,8 @@ void QObject::disconnectNotify(const QMetaMethod &signal)
     Q_UNUSED(signal);
 }
 
-/* \internal
+/*
+    \internal
     convert a signal index from the method range to the signal range
  */
 static int methodIndexToSignalIndex(const QMetaObject **base, int signal_index)
@@ -2963,7 +2987,8 @@ static int methodIndexToSignalIndex(const QMetaObject **base, int signal_index)
     return signal_index;
 }
 
-/*!\internal
+/*!
+   \internal
    \a types is a 0-terminated vector of meta types for queued
    connections.
 
@@ -2981,7 +3006,8 @@ QMetaObject::Connection QMetaObject::connect(const QObject *sender, int signal_i
                                        type, types));
 }
 
-/*! \internal
+/*!
+    \internal
    Same as the QMetaObject::connect, but \a signal_index must be the result of QObjectPrivate::signalIndex
 
     method_index is relative to the rmeta metaobject, if rmeta is null, then it is absolute index
@@ -3043,7 +3069,8 @@ QObjectPrivate::Connection *QMetaObjectPrivate::connect(const QObject *sender,
     return c.take();
 }
 
-/*!\internal
+/*!
+    \internal
  */
 bool QMetaObject::disconnect(const QObject *sender, int signal_index,
                              const QObject *receiver, int method_index)
@@ -3054,7 +3081,8 @@ bool QMetaObject::disconnect(const QObject *sender, int signal_index,
                                           receiver, method_index, 0);
 }
 
-/*!\internal
+/*!
+    \internal
 
 Disconnect a single signal connection.  If QMetaObject::connect() has been called 
 multiple times for the same sender, signal_index, receiver and method_index only 
@@ -3070,7 +3098,8 @@ bool QMetaObject::disconnectOne(const QObject *sender, int signal_index,
                                           QMetaObjectPrivate::DisconnectOne);
 }
 
-/*! \internal
+/*!
+    \internal
     Helper function to remove the connection from the senders list and setting the receivers to 0
  */
 bool QMetaObjectPrivate::disconnectHelper(QObjectPrivate::Connection *c,
@@ -3111,7 +3140,8 @@ bool QMetaObjectPrivate::disconnectHelper(QObjectPrivate::Connection *c,
     return success;
 }
 
-/*! \internal
+/*!
+    \internal
     Same as the QMetaObject::disconnect, but \a signal_index must be the result of QObjectPrivate::signalIndex
  */
 bool QMetaObjectPrivate::disconnect(const QObject *sender,
@@ -3178,7 +3208,7 @@ bool QMetaObjectPrivate::disconnect(const QObject *sender,
 
     \snippet code/src_corelib_kernel_qobject.cpp 33
 
-    Let's assume our object has a child object of type QPushButton with
+    Let's assume our object has a child object of type \c{QPushButton} with
     the \l{QObject::objectName}{object name} \c{button1}. The slot to catch the
     button's \c{clicked()} signal would be:
 
@@ -3238,7 +3268,8 @@ void QMetaObject::connectSlotsByName(QObject *o)
     }
 }
 
-/*! \internal
+/*!
+    \internal
 
     \a signal must be in the signal index range (see QObjectPrivate::signalIndex()).
 */
@@ -3275,7 +3306,8 @@ static void queued_activate(QObject *sender, int signal, QObjectPrivate::Connect
     QCoreApplication::postEvent(c->receiver, ev);
 }
 
-/*!\internal
+/*!
+    \internal
  */
 void QMetaObject::activate(QObject *sender, const QMetaObject *m, int local_signal_index,
                            void **argv)
@@ -3283,7 +3315,8 @@ void QMetaObject::activate(QObject *sender, const QMetaObject *m, int local_sign
     activate(sender, QMetaObjectPrivate::signalOffset(m), local_signal_index, argv);
 }
 
-/*!\internal
+/*!
+    \internal
  */
 void QMetaObject::activate(QObject *sender, int signalOffset, int local_signal_index, void **argv)
 {
@@ -3292,12 +3325,12 @@ void QMetaObject::activate(QObject *sender, int signalOffset, int local_signal_i
     if (!sender->d_func()->isSignalConnected(signal_index))
         return; // nothing connected to these signals, and no spy
 
+    if (sender->d_func()->blockSig)
+        return;
+
     if (sender->d_func()->declarativeData && QAbstractDeclarativeData::signalEmitted)
         QAbstractDeclarativeData::signalEmitted(sender->d_func()->declarativeData, sender, 
                                                 signal_index, argv);
-
-    if (sender->d_func()->blockSig)
-        return;
 
     void *empty_argv[] = { 0 };
     if (qt_signal_spy_callback_set.signal_begin_callback != 0) {
@@ -3393,7 +3426,8 @@ void QMetaObject::activate(QObject *sender, int signalOffset, int local_signal_i
             const QObjectPrivate::StaticMetaCallFunction callFunction = c->callFunction;
             const int method_relative = c->method_relative;
             if (c->isSlotObject) {
-                QExplicitlySharedDataPointer<QObject::QSlotObjectBase> obj(c->slotObj);
+                c->slotObj->ref();
+                const QScopedPointer<QtPrivate::QSlotObjectBase, QSlotObjectBaseDeleter> obj(c->slotObj);
                 locker.unlock();
                 obj->call(receiver, argv ? argv : empty_argv);
                 locker.relock();
@@ -3443,7 +3477,8 @@ void QMetaObject::activate(QObject *sender, int signalOffset, int local_signal_i
 
 }
 
-/*!\internal
+/*!
+    \internal
    signal_index comes from indexOfMethod()
 */
 void QMetaObject::activate(QObject *sender, int signal_index, void **argv)
@@ -3454,7 +3489,8 @@ void QMetaObject::activate(QObject *sender, int signal_index, void **argv)
     activate(sender, mo, signal_index - mo->methodOffset(), argv);
 }
 
-/*! \internal
+/*!
+    \internal
     Implementation of QObject::senderSignalIndex()
 */
 int QObjectPrivate::senderSignalIndex() const
@@ -3472,7 +3508,8 @@ int QObjectPrivate::senderSignalIndex() const
     return -1;
 }
 
-/*! \internal
+/*!
+    \internal
     Returns the signal index used in the internal connectionLists vector.
 
     It is different from QMetaObject::indexOfSignal():  indexOfSignal is the same as indexOfMethod
@@ -3741,7 +3778,8 @@ void QObject::dumpObjectInfo()
 }
 
 #ifndef QT_NO_USERDATA
-/*!\internal
+/*!
+    \internal
  */
 uint QObject::registerUserData()
 {
@@ -3749,13 +3787,15 @@ uint QObject::registerUserData()
     return user_data_registration++;
 }
 
-/*!\internal
+/*!
+    \internal
  */
 QObjectUserData::~QObjectUserData()
 {
 }
 
-/*!\internal
+/*!
+    \internal
  */
 void QObject::setUserData(uint id, QObjectUserData* data)
 {
@@ -3768,7 +3808,8 @@ void QObject::setUserData(uint id, QObjectUserData* data)
     d->extraData->userData[id] = data;
 }
 
-/*!\internal
+/*!
+    \internal
  */
 QObjectUserData* QObject::userData(uint id) const
 {
@@ -4137,7 +4178,8 @@ void qDeleteInEventHandler(QObject *o)
     The connection will automatically disconnect if the sender is destroyed.
  */
 
-/** \internal
+/**
+    \internal
 
     Implementation of the template version of connect
 
@@ -4158,13 +4200,13 @@ void qDeleteInEventHandler(QObject *o)
  */
 QMetaObject::Connection QObject::connectImpl(const QObject *sender, void **signal,
                                              const QObject *receiver, void **slot,
-                                             QObject::QSlotObjectBase *slotObj, Qt::ConnectionType type,
+                                             QtPrivate::QSlotObjectBase *slotObj, Qt::ConnectionType type,
                                              const int *types, const QMetaObject *senderMetaObject)
 {
     if (!sender || !signal || !slotObj || !senderMetaObject) {
         qWarning("QObject::connect: invalid null parametter");
-        if (slotObj && !slotObj->ref.deref())
-            delete slotObj;
+        if (slotObj)
+            slotObj->destroyIfLastRef();
         return QMetaObject::Connection();
     }
     int signal_index = -1;
@@ -4172,8 +4214,7 @@ QMetaObject::Connection QObject::connectImpl(const QObject *sender, void **signa
     senderMetaObject->static_metacall(QMetaObject::IndexOfMethod, 0, args);
     if (signal_index < 0 || signal_index >= QMetaObjectPrivate::get(senderMetaObject)->signalCount) {
         qWarning("QObject::connect: signal not found in %s", senderMetaObject->className());
-        if (!slotObj->ref.deref())
-            delete slotObj;
+        slotObj->destroyIfLastRef();
         return QMetaObject::Connection(0);
     }
     signal_index += QMetaObjectPrivate::signalOffset(senderMetaObject);
@@ -4192,8 +4233,7 @@ QMetaObject::Connection QObject::connectImpl(const QObject *sender, void **signa
 
             while (c2) {
                 if (c2->receiver == receiver && c2->isSlotObject && c2->slotObj->compare(slot)) {
-                    if (!slotObj->ref.deref())
-                        delete slotObj;
+                    slotObj->destroyIfLastRef();
                     return QMetaObject::Connection();
                 }
                 c2 = c2->nextConnectionList;
@@ -4339,6 +4379,7 @@ bool QObject::disconnectImpl(const QObject *sender, void **signal, const QObject
 }
 
 /*! \class QMetaObject::Connection
+    \inmodule QtCore
      Represents a handle to a signal-slot connection.
      It can be used to disconnect that connection, or check if
      the connection was successful
@@ -4384,16 +4425,6 @@ QMetaObject::Connection::~Connection()
     The connection is invalid if QObject::connect was not able to find
     the signal or the slot, or if the arguments do not match.
  */
-
-QObject::QSlotObjectBase::~QSlotObjectBase()
-{
-}
-
-bool QObject::QSlotObjectBase::compare(void** )
-{
-    return false;
-}
-
 
 QT_END_NAMESPACE
 

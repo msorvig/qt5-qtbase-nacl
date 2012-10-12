@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -64,7 +64,6 @@
 
 #include <qhash.h>
 
-#include <private/qguiapplication_p.h>
 #include <private/qpaintengine_raster_p.h>
 
 #include <private/qimage_p.h>
@@ -594,6 +593,7 @@ bool QImageData::checkForAlphaPixels() const
 
 /*!
     \typedef QImageCleanupFunction
+    \relates QImage
     \since 5.0
 
     A function with the following signature that can be used to
@@ -737,10 +737,9 @@ QImage::QImage()
     fill() to fill the image with an appropriate pixel value before
     drawing onto it with QPainter.
 */
-QImage::QImage(int width, int height, Format format, QColorProfile *profile)
+QImage::QImage(int width, int height, Format format)
     : QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(QSize(width, height), format, 0);
 }
 
@@ -753,10 +752,9 @@ QImage::QImage(int width, int height, Format format, QColorProfile *profile)
     fill() to fill the image with an appropriate pixel value before
     drawing onto it with QPainter.
 */
-QImage::QImage(const QSize &size, Format format, QColorProfile *profile)
+QImage::QImage(const QSize &size, Format format)
     : QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(size, format, 0);
 }
 
@@ -822,10 +820,9 @@ QImageData *QImageData::create(uchar *data, int width, int height,  int bpl, QIm
     initially empty and must be sufficiently expanded with
     setColorCount() or setColorTable() before the image is used.
 */
-QImage::QImage(uchar* data, int width, int height, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo, QColorProfile *profile)
+QImage::QImage(uchar* data, int width, int height, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo)
     : QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(data, width, height, 0, format, false, cleanupFunction, cleanupInfo);
 }
 
@@ -854,10 +851,9 @@ QImage::QImage(uchar* data, int width, int height, Format format, QImageCleanupF
     constructing a QImage from raw data, without the possibility of the raw
     data being changed.
 */
-QImage::QImage(const uchar* data, int width, int height, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo, QColorProfile *profile)
+QImage::QImage(const uchar* data, int width, int height, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo)
     : QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(const_cast<uchar*>(data), width, height, 0, format, true, cleanupFunction, cleanupInfo);
 }
 
@@ -878,10 +874,9 @@ QImage::QImage(const uchar* data, int width, int height, Format format, QImageCl
     initially empty and must be sufficiently expanded with
     setColorCount() or setColorTable() before the image is used.
 */
-QImage::QImage(uchar *data, int width, int height, int bytesPerLine, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo, QColorProfile *profile)
+QImage::QImage(uchar *data, int width, int height, int bytesPerLine, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo)
     :QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(data, width, height, bytesPerLine, format, false, cleanupFunction, cleanupInfo);
 }
 
@@ -911,10 +906,9 @@ QImage::QImage(uchar *data, int width, int height, int bytesPerLine, Format form
     data being changed.
 */
 
-QImage::QImage(const uchar *data, int width, int height, int bytesPerLine, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo, QColorProfile *profile)
+QImage::QImage(const uchar *data, int width, int height, int bytesPerLine, Format format, QImageCleanupFunction cleanupFunction, void *cleanupInfo)
     :QPaintDevice()
 {
-    Q_UNUSED(profile);
     d = QImageData::create(const_cast<uchar*>(data), width, height, bytesPerLine, format, true, cleanupFunction, cleanupInfo);
 }
 
@@ -4352,7 +4346,8 @@ QImage QImage::rgbSwapped() const
 
 /*!
     Loads an image from the file with the given \a fileName. Returns true if
-    the image was successfully loaded; otherwise returns false.
+    the image was successfully loaded; otherwise invalidates the image
+    and returns false.
 
     The loader attempts to read the image using the specified \a format, e.g.,
     PNG or JPG. If \a format is not specified (which is the default), the
@@ -4369,15 +4364,9 @@ QImage QImage::rgbSwapped() const
 
 bool QImage::load(const QString &fileName, const char* format)
 {
-    if (fileName.isEmpty())
-        return false;
-
     QImage image = QImageReader(fileName, format).read();
-    if (!image.isNull()) {
-        operator=(image);
-        return true;
-    }
-    return false;
+    operator=(image);
+    return !isNull();
 }
 
 /*!
@@ -4390,11 +4379,8 @@ bool QImage::load(const QString &fileName, const char* format)
 bool QImage::load(QIODevice* device, const char* format)
 {
     QImage image = QImageReader(device, format).read();
-    if(!image.isNull()) {
-        operator=(image);
-        return true;
-    }
-    return false;
+    operator=(image);
+    return !isNull();
 }
 
 /*!
@@ -4402,7 +4388,7 @@ bool QImage::load(QIODevice* device, const char* format)
 
     Loads an image from the first \a len bytes of the given binary \a
     data. Returns true if the image was successfully loaded; otherwise
-    returns false.
+    invalidates the image and returns false.
 
     The loader attempts to read the image using the specified \a format, e.g.,
     PNG or JPG. If \a format is not specified (which is the default), the
@@ -4414,11 +4400,8 @@ bool QImage::load(QIODevice* device, const char* format)
 bool QImage::loadFromData(const uchar *data, int len, const char *format)
 {
     QImage image = fromData(data, len, format);
-    if (!image.isNull()) {
-        operator=(image);
-        return true;
-    }
-    return false;
+    operator=(image);
+    return !isNull();
 }
 
 /*!
@@ -5773,5 +5756,49 @@ QDebug operator<<(QDebug dbg, const QImage &i)
     return dbg.space();
 }
 #endif
+
+/*!
+    \fn void QImage::setNumColors(int n)
+    \obsolete
+
+    Resizes the color table to contain \a n entries.
+
+    \sa setColorCount()
+ */
+
+/*!
+    \fn int QImage::numBytes() const
+    \obsolete
+
+    Returns the number of bytes occupied by the image data.
+
+    \sa byteCount()
+ */
+
+/*!
+    \fn QStringList QImage::textLanguages() const
+    \obsolete
+
+    Returns the language identifiers for which some texts are recorded.
+    Note that if you want to iterate over the list, you should iterate over a copy.
+
+    The language the text is recorded in is no longer relevant since the text is
+    always set using QString and UTF-8 representation.
+
+    \sa textKeys()
+ */
+
+/*!
+    \fn QList<QImageTextKeyLang> QImage::textList() const
+    \obsolete
+
+    Returns a list of QImageTextKeyLang objects that enumerate all the texts
+    key/language pairs set for this image.
+
+    The language the text is recorded in is no longer relevant since the text
+    is always set using QString and UTF-8 representation.
+
+    \sa textKeys()
+ */
 
 QT_END_NAMESPACE

@@ -1,38 +1,38 @@
 /***************************************************************************
 **
 ** Copyright (C) 2011 - 2012 Research In Motion
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -138,7 +138,7 @@ QQnxWindow::QQnxWindow(QWindow *window, screen_context_t context)
 
     // Qt never calls these setters after creating the window, so we need to do that ourselves here
     setWindowState(window->windowState());
-    if (window->parent())
+    if (window->parent() && window->parent()->handle())
         setParent(window->parent()->handle());
     setGeometryHelper(window->geometry());
     setVisible(window->isVisible());
@@ -147,17 +147,16 @@ QQnxWindow::QQnxWindow(QWindow *window, screen_context_t context)
 QQnxWindow::~QQnxWindow()
 {
     qWindowDebug() << Q_FUNC_INFO << "window =" << window();
+
+    // Qt should have already deleted the children before deleting the parent.
+    Q_ASSERT(m_childWindows.size() == 0);
+
     // Remove from plugin's window mapper
     QQnxIntegration::removeWindow(m_window);
 
     // Remove from parent's Hierarchy.
     removeFromParent();
     m_screen->updateHierarchy();
-
-    // We shouldn't allow this case unless QT allows it. Does it? Or should we send the
-    // handleCloseEvent on all children when this window is deleted?
-    if (m_childWindows.size() > 0)
-        qFatal("QQnxWindow: window destroyed before children!");
 
     // Cleanup QNX window and its buffers
     screen_destroy_window(m_window);
@@ -181,7 +180,8 @@ void QQnxWindow::setGeometry(const QRect &rect)
     }
 
     // Send a geometry change event to Qt (triggers resizeEvent() in QWindow/QWidget)
-    QWindowSystemInterface::handleSynchronousGeometryChange(window(), rect);
+    QWindowSystemInterface::handleGeometryChange(window(), rect);
+    QWindowSystemInterface::flushWindowSystemEvents();
 
     // Now move all children.
     if (!oldGeometry.isEmpty()) {
@@ -520,10 +520,7 @@ void QQnxWindow::setParent(const QPlatformWindow *window)
 {
     qWindowDebug() << Q_FUNC_INFO << "window =" << this->window() << "platformWindow =" << window;
     // Cast away the const, we need to modify the hierarchy.
-    QQnxWindow *newParent = 0;
-
-    if (window)
-        newParent = static_cast<QQnxWindow*>((QPlatformWindow *)window);
+    QQnxWindow* const newParent = static_cast<QQnxWindow*>(const_cast<QPlatformWindow*>(window));
 
     if (newParent == m_parentWindow)
         return;
@@ -548,10 +545,9 @@ void QQnxWindow::raise()
 {
     qWindowDebug() << Q_FUNC_INFO << "window =" << window();
 
-    QQnxWindow *oldParent = m_parentWindow;
-    if (oldParent) {
-        removeFromParent();
-        oldParent->m_childWindows.push_back(this);
+    if (m_parentWindow) {
+        m_parentWindow->m_childWindows.removeAll(this);
+        m_parentWindow->m_childWindows.push_back(this);
     } else {
         m_screen->raiseWindow(this);
     }
@@ -563,10 +559,9 @@ void QQnxWindow::lower()
 {
     qWindowDebug() << Q_FUNC_INFO << "window =" << window();
 
-    QQnxWindow *oldParent = m_parentWindow;
-    if (oldParent) {
-        removeFromParent();
-        oldParent->m_childWindows.push_front(this);
+    if (m_parentWindow) {
+        m_parentWindow->m_childWindows.removeAll(this);
+        m_parentWindow->m_childWindows.push_front(this);
     } else {
         m_screen->lowerWindow(this);
     }

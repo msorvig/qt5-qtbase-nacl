@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1173,6 +1173,21 @@ QGLFormat::OpenGLVersionFlags Q_AUTOTEST_EXPORT qOpenGLVersionFlagsFromString(co
                             QGLFormat::OpenGL_Version_3_2 |
                             QGLFormat::OpenGL_Version_3_3 |
                             QGLFormat::OpenGL_Version_4_0;
+            switch (versionString[2].toLatin1()) {
+            case '3':
+                versionFlags |= QGLFormat::OpenGL_Version_4_3;
+            case '2':
+                versionFlags |= QGLFormat::OpenGL_Version_4_2;
+            case '1':
+                versionFlags |= QGLFormat::OpenGL_Version_4_1;
+            case '0':
+                break;
+            default:
+                versionFlags |= QGLFormat::OpenGL_Version_4_1 |
+                                QGLFormat::OpenGL_Version_4_2 |
+                                QGLFormat::OpenGL_Version_4_3;
+                break;
+            }
         } else {
             versionFlags |= QGLFormat::OpenGL_Version_1_1 |
                             QGLFormat::OpenGL_Version_1_2 |
@@ -1185,7 +1200,10 @@ QGLFormat::OpenGLVersionFlags Q_AUTOTEST_EXPORT qOpenGLVersionFlagsFromString(co
                             QGLFormat::OpenGL_Version_3_1 |
                             QGLFormat::OpenGL_Version_3_2 |
                             QGLFormat::OpenGL_Version_3_3 |
-                            QGLFormat::OpenGL_Version_4_0;
+                            QGLFormat::OpenGL_Version_4_0 |
+                            QGLFormat::OpenGL_Version_4_1 |
+                            QGLFormat::OpenGL_Version_4_2 |
+                            QGLFormat::OpenGL_Version_4_3;
         }
     }
     return versionFlags;
@@ -1227,6 +1245,12 @@ QGLFormat::OpenGLVersionFlags Q_AUTOTEST_EXPORT qOpenGLVersionFlagsFromString(co
     \value OpenGL_Version_3_3  OpenGL version 3.3 or higher is present.
 
     \value OpenGL_Version_4_0  OpenGL version 4.0 or higher is present.
+
+    \value OpenGL_Version_4_1  OpenGL version 4.1 or higher is present.
+
+    \value OpenGL_Version_4_2  OpenGL version 4.2 or higher is present.
+
+    \value OpenGL_Version_4_3  OpenGL version 4.3 or higher is present.
 
     \value OpenGL_ES_CommonLite_Version_1_0  OpenGL ES version 1.0 Common Lite or higher is present.
 
@@ -1760,11 +1784,22 @@ struct DDSFormat {
 #define FOURCC_DXT4  0x34545844
 #define FOURCC_DXT5  0x35545844
 
+// ####TODO Properly #ifdef this class to use #define symbols actually defined
+// by system GL includes
 #ifndef GL_COMPRESSED_RGB_S3TC_DXT1_EXT
 #define GL_COMPRESSED_RGB_S3TC_DXT1_EXT   0x83F0
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
 #define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT  0x83F1
-#define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT  0x83F2
-#define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT  0x83F3
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT 0x83F2
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
 #endif
 
 #ifndef GL_GENERATE_MIPMAP_SGIS
@@ -2145,6 +2180,12 @@ QGLTexture *QGLContextPrivate::bindTexture(const QImage &image, GLenum target, G
 }
 
 // #define QGL_BIND_TEXTURE_DEBUG
+
+// ####TODO Properly #ifdef this file to use #define symbols actually defined
+// by OpenGL/ES includes
+#ifndef GL_UNSIGNED_INT_8_8_8_8_REV
+#define GL_UNSIGNED_INT_8_8_8_8_REV 0x8367
+#endif
 
 // map from Qt's ARGB endianness-dependent format to GL's big-endian RGBA layout
 static inline void qgl_byteSwapImage(QImage &img, GLenum pixel_type)
@@ -2960,6 +3001,14 @@ bool QGLContext::areSharing(const QGLContext *context1, const QGLContext *contex
     creating a valid GL rendering context on the paint device
     specified in the constructor; otherwise returns false (i.e. the
     context is invalid).
+
+    If the OpenGL implementation on your system does not support the requested
+    version of OpenGL context, then QGLContext will try to create the closest
+    matching version. The actual created context properties can be queried
+    using the QGLFormat returned by the format() function. For example, if
+    you request a context that supports OpenGL 4.3 Core profile but the driver
+    and/or hardware only supports version 3.2 Core profile contexts then you will
+    get a 3.2 Core profile context.
 
     After successful creation, format() returns the set of features of
     the created GL rendering context.
@@ -4729,6 +4778,12 @@ void QGLExtensionMatcher::init(const char *str)
     }
 }
 
+// ####TODO Properly #ifdef this class to use #define symbols actually defined
+// by OpenGL/ES includes
+#ifndef GL_FRAMEBUFFER_SRGB_CAPABLE_EXT
+#define GL_FRAMEBUFFER_SRGB_CAPABLE_EXT 0x8DBA
+#endif
+
 /*
     Returns the GL extensions for the current context.
 */
@@ -4804,8 +4859,8 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
         glExtensions |= BGRATextureFormat;
 
     {
-        GLboolean srgbCapableFramebuffers;
-        glGetBooleanv(FRAMEBUFFER_SRGB_CAPABLE_EXT, &srgbCapableFramebuffers);
+        GLboolean srgbCapableFramebuffers = false;
+        glGetBooleanv(GL_FRAMEBUFFER_SRGB_CAPABLE_EXT, &srgbCapableFramebuffers);
         if (srgbCapableFramebuffers)
             glExtensions |= SRGBFrameBuffer;
     }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -64,6 +64,7 @@ private slots:
 #endif
     void isClean_data();
     void isClean();
+    void defaultCtor();
 };
 
 #if defined(Q_OS_WIN)
@@ -169,10 +170,16 @@ void tst_QFileSystemEntry::getSetCheck_data()
     QTest::addColumn<QString>("completeSuffix");
     QTest::addColumn<bool>("absolute");
 
+    QTest::newRow("empty")
+        << QByteArray()
+        << QString()
+        << QString() << QString() << QString() << QString() << QString() << false;
+
     QTest::newRow("simple")
         << QByteArray("/home/qt/in/a/dir.tar.gz")
         << "/home/qt/in/a/dir.tar.gz"
         << "dir.tar.gz" << "dir" << "dir.tar" << "gz" << "tar.gz" << true;
+
     QTest::newRow("relative")
         << QByteArray("in/a/dir.tar.gz")
         << "in/a/dir.tar.gz"
@@ -235,6 +242,7 @@ void tst_QFileSystemEntry::suffix_data()
     QTest::addColumn<QString>("file");
     QTest::addColumn<QString>("expected");
 
+    QTest::newRow("empty") << QString() << QString();
     QTest::newRow("noextension0") << "file" << "";
     QTest::newRow("noextension1") << "/path/to/file" << "";
     QTest::newRow("data0") << "file.tar" << "tar";
@@ -273,6 +281,7 @@ void tst_QFileSystemEntry::completeSuffix_data()
     QTest::addColumn<QString>("file");
     QTest::addColumn<QString>("expected");
 
+    QTest::newRow("empty") << QString() << QString();
     QTest::newRow("noextension0") << "file" << "";
     QTest::newRow("noextension1") << "/path/to/file" << "";
     QTest::newRow("data0") << "file.tar" << "tar";
@@ -302,6 +311,7 @@ void tst_QFileSystemEntry::baseName_data()
     QTest::addColumn<QString>("file");
     QTest::addColumn<QString>("expected");
 
+    QTest::newRow("empty") << QString() << QString();
     QTest::newRow("data0") << "file.tar" << "file";
     QTest::newRow("data1") << "file.tar.gz" << "file";
     QTest::newRow("data2") << "/path/file/file.tar.gz" << "file";
@@ -330,6 +340,7 @@ void tst_QFileSystemEntry::completeBaseName_data()
     QTest::addColumn<QString>("file");
     QTest::addColumn<QString>("expected");
 
+    QTest::newRow("empty") << QString() << QString();
     QTest::newRow("data0") << "file.tar" << "file";
     QTest::newRow("data1") << "file.tar.gz" << "file.tar";
     QTest::newRow("data2") << "/path/file/file.tar.gz" << "file.tar";
@@ -360,6 +371,7 @@ void tst_QFileSystemEntry::absoluteOrRelative_data()
     QTest::addColumn<bool>("isAbsolute");
     QTest::addColumn<bool>("isRelative");
 
+    QTest::newRow("empty") << QString() << false << true;
     QTest::newRow("data0") << "file.tar" << false << true;
     QTest::newRow("data1") << "/path/file/file.tar.gz" << false << false;
     QTest::newRow("data1") << "C:path/file/file.tar.gz" << false << false;
@@ -384,6 +396,7 @@ void tst_QFileSystemEntry::isClean_data()
     QTest::addColumn<QString>("path");
     QTest::addColumn<bool>("isClean");
 
+    QTest::newRow("empty") << QString() << true;
     QTest::newRow("simple") << "foo" << true;
     QTest::newRow("complex") << "/foo/bar/bz" << true;
     QTest::newRow(".file") << "/foo/.file" << true;
@@ -407,6 +420,34 @@ void tst_QFileSystemEntry::isClean()
 
     QFileSystemEntry fi(path);
     QCOMPARE(fi.isClean(), isClean);
+}
+
+void tst_QFileSystemEntry::defaultCtor()
+{
+    QFileSystemEntry entry;
+
+    QVERIFY(entry.filePath().isNull());
+    QVERIFY(entry.nativeFilePath().isNull());
+
+    QVERIFY(entry.fileName().isNull());
+    QCOMPARE(entry.path(), QString("."));
+
+    QVERIFY(entry.baseName().isNull());
+    QVERIFY(entry.completeBaseName().isNull());
+    QVERIFY(entry.suffix().isNull());
+    QVERIFY(entry.completeSuffix().isNull());
+
+    QVERIFY(!entry.isAbsolute());
+    QVERIFY(entry.isRelative());
+
+    QVERIFY(entry.isClean());
+
+#if defined(Q_OS_WIN)
+    QVERIFY(!entry.isDriveRoot());
+#endif
+    QVERIFY(!entry.isRoot());
+
+    QVERIFY(entry.isEmpty());
 }
 
 QTEST_MAIN(tst_QFileSystemEntry)

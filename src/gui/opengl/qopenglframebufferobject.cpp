@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -70,6 +70,32 @@ QT_BEGIN_NAMESPACE
 #else
 #define QT_RESET_GLERROR() {}
 #define QT_CHECK_GLERROR() {}
+#endif
+
+// ####TODO Properly #ifdef this class to use #define symbols actually defined
+// by OpenGL/ES includes
+#ifndef GL_MAX_SAMPLES
+#define GL_MAX_SAMPLES 0x8D57
+#endif
+
+#ifndef GL_RENDERBUFFER_SAMPLES
+#define GL_RENDERBUFFER_SAMPLES 0x8CAB
+#endif
+
+#ifndef GL_DEPTH24_STENCIL8
+#define GL_DEPTH24_STENCIL8 0x88F0
+#endif
+
+#ifndef GL_DEPTH_COMPONENT24
+#define GL_DEPTH_COMPONENT24 0x81A6
+#endif
+
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
 #endif
 
 /*!
@@ -338,21 +364,31 @@ bool QOpenGLFramebufferObjectPrivate::checkFramebufferStatus(QOpenGLContext *ctx
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, duplicate attachment.");
         break;
 #endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS
     case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, attached images must have same dimensions.");
         break;
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_FORMATS
     case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, attached images must have same format.");
         break;
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER
     case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, missing draw buffer.");
         break;
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER
     case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, missing read buffer.");
         break;
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE
     case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
         qDebug("QOpenGLFramebufferObject: Framebuffer incomplete, attachments must have same number of samples per pixel.");
         break;
+#endif
     default:
         qDebug() <<"QOpenGLFramebufferObject: An undefined error has occurred: "<< status;
         break;
@@ -1139,7 +1175,7 @@ QOpenGLFramebufferObject::Attachment QOpenGLFramebufferObject::attachment() cons
 }
 
 /*!
-    Sets the attachments of the framebuffer object.
+    Sets the attachments of the framebuffer object to \a attachment.
 
     This can be used to free or reattach the depth and stencil buffer
     attachments as needed.

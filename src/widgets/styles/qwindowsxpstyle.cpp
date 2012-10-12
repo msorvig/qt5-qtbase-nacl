@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1170,7 +1170,7 @@ void QWindowsXPStylePrivate::drawBackgroundThruNativeBuffer(XPThemeData &themeDa
     sizeFromContents(), are documented here.
 
     \image qwindowsxpstyle.png
-    \sa QMacStyle, QWindowsStyle, QPlastiqueStyle, QCDEStyle, QMotifStyle
+    \sa QMacStyle, QWindowsStyle, QPlastiqueStyle
 */
 
 /*!
@@ -3274,6 +3274,63 @@ void QWindowsXPStyle::drawComplexControl(ComplexControl cc, const QStyleOptionCo
         }
         break;
 
+#ifndef QT_NO_MDIAREA
+    case CC_MdiControls:
+        {
+            QRect buttonRect;
+            XPThemeData theme(widget, p, QWindowsXPStylePrivate::WindowTheme, WP_MDICLOSEBUTTON, CBS_NORMAL);
+
+            if (option->subControls & SC_MdiCloseButton) {
+                buttonRect = proxy()->subControlRect(CC_MdiControls, option, SC_MdiCloseButton, widget);
+                if (theme.isValid()) {
+                    theme.partId = WP_MDICLOSEBUTTON;
+                    theme.rect = buttonRect;
+                    if (!(flags & State_Enabled))
+                        theme.stateId = CBS_INACTIVE;
+                    else if (flags & State_Sunken && (option->activeSubControls & SC_MdiCloseButton))
+                        theme.stateId = CBS_PUSHED;
+                    else if (flags & State_MouseOver && (option->activeSubControls & SC_MdiCloseButton))
+                        theme.stateId = CBS_HOT;
+                    else
+                        theme.stateId = CBS_NORMAL;
+                    d->drawBackground(theme);
+                }
+            }
+            if (option->subControls & SC_MdiNormalButton) {
+                buttonRect = proxy()->subControlRect(CC_MdiControls, option, SC_MdiNormalButton, widget);
+                if (theme.isValid()) {
+                    theme.partId = WP_MDIRESTOREBUTTON;
+                    theme.rect = buttonRect;
+                    if (!(flags & State_Enabled))
+                        theme.stateId = CBS_INACTIVE;
+                    else if (flags & State_Sunken && (option->activeSubControls & SC_MdiNormalButton))
+                        theme.stateId = CBS_PUSHED;
+                    else if (flags & State_MouseOver && (option->activeSubControls & SC_MdiNormalButton))
+                        theme.stateId = CBS_HOT;
+                    else
+                        theme.stateId = CBS_NORMAL;
+                    d->drawBackground(theme);
+                }
+            }
+            if (option->subControls & QStyle::SC_MdiMinButton) {
+                buttonRect = proxy()->subControlRect(CC_MdiControls, option, SC_MdiMinButton, widget);
+                if (theme.isValid()) {
+                    theme.partId = WP_MDIMINBUTTON;
+                    theme.rect = buttonRect;
+                    if (!(flags & State_Enabled))
+                        theme.stateId = CBS_INACTIVE;
+                    else if (flags & State_Sunken && (option->activeSubControls & SC_MdiMinButton))
+                        theme.stateId = CBS_PUSHED;
+                    else if (flags & State_MouseOver && (option->activeSubControls & SC_MdiMinButton))
+                        theme.stateId = CBS_HOT;
+                    else
+                        theme.stateId = CBS_NORMAL;
+                    d->drawBackground(theme);
+                }
+            }
+        }
+        break;
+#endif //QT_NO_MDIAREA
 #ifndef QT_NO_DIAL
     case CC_Dial:
         if (const QStyleOptionSlider *dial = qstyleoption_cast<const QStyleOptionSlider *>(option))
@@ -3661,6 +3718,44 @@ QRect QWindowsXPStyle::subControlRect(ComplexControl cc, const QStyleOptionCompl
             }
         }
         break;
+#ifndef QT_NO_MDIAREA
+    case CC_MdiControls:
+    {
+        int numSubControls = 0;
+        if (option->subControls & SC_MdiCloseButton)
+            ++numSubControls;
+        if (option->subControls & SC_MdiMinButton)
+            ++numSubControls;
+        if (option->subControls & SC_MdiNormalButton)
+            ++numSubControls;
+        if (numSubControls == 0)
+            break;
+
+        int buttonWidth = option->rect.width() / numSubControls;
+        int offset = 0;
+        switch (subControl) {
+        case SC_MdiCloseButton:
+            // Only one sub control, no offset needed.
+            if (numSubControls == 1)
+                break;
+            offset += buttonWidth;
+            //FALL THROUGH
+        case SC_MdiNormalButton:
+            // No offset needed if
+            // 1) There's only one sub control
+            // 2) We have a close button and a normal button (offset already added in SC_MdiClose)
+            if (numSubControls == 1 || (numSubControls == 2 && !(option->subControls & SC_MdiMinButton)))
+                break;
+            if (option->subControls & SC_MdiNormalButton)
+                offset += buttonWidth;
+            break;
+        default:
+            break;
+        }
+        rect = QRect(offset, 0, buttonWidth, option->rect.height());
+        break;
+    }
+#endif // QT_NO_MDIAREA
 
     default:
         rect = visualRect(option->direction, option->rect,
@@ -3881,14 +3976,14 @@ QPixmap QWindowsXPStyle::standardPixmap(StandardPixmap standardPixmap, const QSt
 }
 
 /*!
-    \internal
+    \reimp
 */
-QIcon QWindowsXPStyle::standardIconImplementation(StandardPixmap standardIcon,
-                                                  const QStyleOption *option,
-                                                  const QWidget *widget) const
+QIcon QWindowsXPStyle::standardIcon(StandardPixmap standardIcon,
+                                    const QStyleOption *option,
+                                    const QWidget *widget) const
 {
     if (!QWindowsXPStylePrivate::useXP()) {
-        return QWindowsStyle::standardIconImplementation(standardIcon, option, widget);
+        return QWindowsStyle::standardIcon(standardIcon, option, widget);
     }
 
     QWindowsXPStylePrivate *d = const_cast<QWindowsXPStylePrivate*>(d_func());
@@ -4006,7 +4101,7 @@ QIcon QWindowsXPStyle::standardIconImplementation(StandardPixmap standardIcon,
         break;
     }
 
-    return QWindowsStyle::standardIconImplementation(standardIcon, option, widget);
+    return QWindowsStyle::standardIcon(standardIcon, option, widget);
 }
 
 /*!

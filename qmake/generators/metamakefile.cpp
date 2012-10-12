@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -70,7 +70,7 @@ private:
     };
     QList<Build *> makefiles;
     void clearBuilds();
-    MakefileGenerator *processBuild(const QString &);
+    MakefileGenerator *processBuild(const ProString &);
 
 public:
 
@@ -104,7 +104,7 @@ BuildsMetaMakefileGenerator::init()
         return false;
     init_flag = true;
 
-    const QStringList &builds = project->values("BUILDS");
+    const ProStringList &builds = project->values("BUILDS");
     bool use_single_build = builds.isEmpty();
     if(builds.count() > 1 && Option::output.fileName() == "-") {
         use_single_build = true;
@@ -115,7 +115,7 @@ BuildsMetaMakefileGenerator::init()
     }
     if(!use_single_build) {
         for(int i = 0; i < builds.count(); i++) {
-            QString build = builds[i];
+            ProString build = builds[i];
             MakefileGenerator *makefile = processBuild(build);
             if(!makefile)
                 return false;
@@ -128,7 +128,7 @@ BuildsMetaMakefileGenerator::init()
                 Build *b = new Build;
                 b->name = name;
                 if(builds.count() != 1)
-                    b->build += build;
+                    b->build = build.toQString();
                 b->makefile = makefile;
                 makefiles += b;
             }
@@ -180,7 +180,7 @@ BuildsMetaMakefileGenerator::write(const QString &oldpwd)
                 } else {
                     if(Option::output.fileName().isEmpty() &&
                        Option::qmake_mode == Option::QMAKE_GENERATE_MAKEFILE)
-                        Option::output.setFileName(project->first("QMAKE_MAKEFILE"));
+                        Option::output.setFileName(project->first("QMAKE_MAKEFILE").toQString());
                     Option::output_dir = oldpwd;
                     QString build_name = build->name;
                     if(!build->build.isEmpty()) {
@@ -219,25 +219,23 @@ BuildsMetaMakefileGenerator::write(const QString &oldpwd)
 }
 
 MakefileGenerator
-*BuildsMetaMakefileGenerator::processBuild(const QString &build)
+*BuildsMetaMakefileGenerator::processBuild(const ProString &build)
 {
     if(project) {
         debug_msg(1, "Meta Generator: Parsing '%s' for build [%s].",
                   project->projectFile().toLatin1().constData(),build.toLatin1().constData());
 
         //initialize the base
-        QHash<QString, QStringList> basevars;
-        QStringList basecfgs;
-        if(!project->isEmpty(build + ".CONFIG"))
-            basecfgs = project->values(build + ".CONFIG");
+        ProValueMap basevars;
+        ProStringList basecfgs = project->values(ProKey(build + ".CONFIG"));
         basecfgs += build;
         basecfgs += "build_pass";
-        basevars["BUILD_PASS"] = QStringList(build);
-        QStringList buildname = project->values(build + ".name");
-        basevars["BUILD_NAME"] = (buildname.isEmpty() ? QStringList(build) : buildname);
+        basevars["BUILD_PASS"] = ProStringList(build);
+        ProStringList buildname = project->values(ProKey(build + ".name"));
+        basevars["BUILD_NAME"] = (buildname.isEmpty() ? ProStringList(build) : buildname);
 
         //create project
-        QMakeProject *build_proj = new QMakeProject(project->properties());
+        QMakeProject *build_proj = new QMakeProject;
         build_proj->setExtraVars(basevars);
         build_proj->setExtraConfigs(basecfgs);
 
@@ -291,18 +289,22 @@ SubdirsMetaMakefileGenerator::init()
         QString thispwd = oldpwd;
         if(!thispwd.endsWith('/'))
            thispwd += '/';
-        const QStringList &subdirs = project->values("SUBDIRS");
+        const ProStringList &subdirs = project->values("SUBDIRS");
         static int recurseDepth = -1;
         ++recurseDepth;
         for(int i = 0; i < subdirs.size(); ++i) {
             Subdir *sub = new Subdir;
             sub->indent = recurseDepth;
 
-            QFileInfo subdir(subdirs.at(i));
-            if(!project->isEmpty(subdirs.at(i) + ".file"))
-                subdir = project->first(subdirs.at(i) + ".file");
-            else if(!project->isEmpty(subdirs.at(i) + ".subdir"))
-                subdir = project->first(subdirs.at(i) + ".subdir");
+            QFileInfo subdir(subdirs.at(i).toQString());
+            const ProKey fkey(subdirs.at(i) + ".file");
+            if (!project->isEmpty(fkey)) {
+                subdir = project->first(fkey).toQString();
+            } else {
+                const ProKey skey(subdirs.at(i) + ".subdir");
+                if (!project->isEmpty(skey))
+                    subdir = project->first(skey).toQString();
+            }
             QString sub_name;
             if(subdir.isDir())
                 subdir = QFileInfo(subdir.filePath() + "/" + subdir.fileName() + Option::pro_ext);
@@ -315,7 +317,7 @@ SubdirsMetaMakefileGenerator::init()
             }
 
             //handle sub project
-            QMakeProject *sub_proj = new QMakeProject(project->properties());
+            QMakeProject *sub_proj = new QMakeProject;
             for (int ind = 0; ind < sub->indent; ++ind)
                 printf(" ");
             sub->input_dir = subdir.absolutePath();
@@ -332,7 +334,7 @@ SubdirsMetaMakefileGenerator::init()
             if (!sub_proj->isEmpty("QMAKE_FAILED_REQUIREMENTS")) {
                 fprintf(stderr, "Project file(%s) not recursed because all requirements not met:\n\t%s\n",
                         subdir.fileName().toLatin1().constData(),
-                        sub_proj->values("QMAKE_FAILED_REQUIREMENTS").join(" ").toLatin1().constData());
+                        sub_proj->values("QMAKE_FAILED_REQUIREMENTS").join(' ').toLatin1().constData());
                 delete sub;
                 delete sub_proj;
                 Option::output_dir = old_output_dir;
@@ -439,7 +441,7 @@ MetaMakefileGenerator::createMakefileGenerator(QMakeProject *proj, bool noIO)
         return mkfile;
     }
 
-    QString gen = proj->first("MAKEFILE_GENERATOR");
+    ProString gen = proj->first("MAKEFILE_GENERATOR");
     if(gen.isEmpty()) {
         fprintf(stderr, "MAKEFILE_GENERATOR variable not set as a result of parsing : %s. Possibly qmake was not able to find files included using \"include(..)\" - enable qmake debugging to investigate more.\n",
                 proj->projectFile().toLatin1().constData());

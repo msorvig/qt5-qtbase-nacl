@@ -1,45 +1,45 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-#include <QMetaObject>
+#include <qobjectdefs.h>
 #include "codemarker.h"
 #include "config.h"
 #include "node.h"
@@ -273,7 +273,7 @@ QString CodeMarker::taggedNode(const Node* node)
     case Node::Property:
         tag = QLatin1String("@property");
         break;
-    case Node::Fake:
+    case Node::Document:
         /*
           Remove the "QML:" prefix, if present.
           There shouldn't be any of these "QML:"
@@ -464,7 +464,7 @@ void CodeMarker::insert(FastSection& fastSection,
 
     bool inheritedMember = false;
     InnerNode* parent = node->parent();
-    if (parent && (parent->type() == Node::Fake) &&
+    if (parent && (parent->type() == Node::Document) &&
             (parent->subType() == Node::QmlPropertyGroup)) {
         parent = parent->parent();
     }
@@ -476,7 +476,7 @@ void CodeMarker::insert(FastSection& fastSection,
             fastSection.memberMap.insert(key, node);
     }
     else {
-        if ((parent->type() == Node::Fake) && (parent->subType() == Node::QmlClass)) {
+        if ((parent->type() == Node::Document) && (parent->subType() == Node::QmlClass)) {
             if (fastSection.inherited.isEmpty()
                     || fastSection.inherited.last().first != parent) {
                 QPair<InnerNode*, int> p(parent, 0);
@@ -605,7 +605,7 @@ QStringList CodeMarker::macRefsForNode(Node *node)
         return stringList;
     }
     case Node::Namespace:
-    case Node::Fake:
+    case Node::Document:
     default:
         return QStringList();
     }
@@ -625,26 +625,16 @@ QString CodeMarker::macName(const Node *node, const QString &name)
         return QLatin1Char('/') + protect(myName);
     }
     else {
-        return plainFullName(node) + QLatin1Char('/') + protect(myName);
+        return node->plainFullName() + QLatin1Char('/') + protect(myName);
     }
 }
 
 /*!
-  Get the list of documentation sections for the children of
-  the specified QmlClassNode.
+  Returns an empty list of documentation sections.
  */
-QList<Section> CodeMarker::qmlSections(const QmlClassNode* ,
-                                       SynopsisStyle )
+QList<Section> CodeMarker::qmlSections(const QmlClassNode* , SynopsisStyle )
 {
     return QList<Section>();
-}
-
-const Node* CodeMarker::resolveTarget(const QString& /* target */,
-                                      const Tree* ,
-                                      const Node* ,
-                                      const Node* )
-{
-    return 0;
 }
 
 QT_END_NAMESPACE

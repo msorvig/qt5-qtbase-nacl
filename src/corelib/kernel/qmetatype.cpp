@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -88,14 +88,14 @@ struct DefinedTypesFilter {
 } // namespace
 
 /*!
-    \macro Q_DECLARE_OPAQUE_POINTER(Pointer)
+    \macro Q_DECLARE_OPAQUE_POINTER(PointerType)
     \relates QMetaType
 
-    This macro enables pointers to forward-declared types to be registered with
-    QMetaType using either Q_DECLARE_METATYPE() or qRegisterMetaType().
+    This macro enables pointers to forward-declared types (\a PointerType)
+    to be registered with QMetaType using either Q_DECLARE_METATYPE()
+    or qRegisterMetaType().
 
     \sa Q_DECLARE_METATYPE(), qRegisterMetaType()
-
 */
 
 /*!
@@ -165,7 +165,6 @@ struct DefinedTypesFilter {
     \value UChar \c{unsigned char}
     \value Float \c float
     \value QObjectStar QObject *
-    \value QWidgetStar QWidget *
     \value QVariant QVariant
 
     \value QCursor QCursor
@@ -217,6 +216,8 @@ struct DefinedTypesFilter {
     \value QJsonObject QJsonObject
     \value QJsonArray QJsonArray
     \value QJsonDocument QJsonDocument
+    \value QModelIndex QModelIndex
+    \value QUuid QUuid
 
     \value User  Base value for user types
     \value UnknownType This is an invalid type id. It is returned from QMetaType for types that are not registered
@@ -234,10 +235,16 @@ struct DefinedTypesFilter {
     \value NeedsConstruction This type has non-trivial constructors. If the flag is not set instances can be safely initialized with memset to 0.
     \value NeedsDestruction This type has a non-trivial destructor. If the flag is not set calls to the destructor are not necessary before discarding objects.
     \value MovableType An instance of a type having this attribute can be safely moved by memcpy.
+    \omitvalue SharedPointerToQObject
+    \omitvalue IsEnumeration
+    \omitvalue PointerToQObject
+    \omitvalue WeakPointerToQObject
+    \omitvalue TrackingPointerToQObject
 */
 
 /*!
     \class QMetaType
+    \inmodule QtCore
     \brief The QMetaType class manages named types in the meta-object system.
 
     \ingroup objectmodel
@@ -266,6 +273,117 @@ struct DefinedTypesFilter {
     operators.
 
     \sa Q_DECLARE_METATYPE(), QVariant::setValue(), QVariant::value(), QVariant::fromValue()
+*/
+
+/*!
+    \fn bool QMetaType::isValid() const
+    \since 5.0
+
+    Returns true if this QMetaType object contains valid
+    information about a type, false otherwise.
+*/
+
+/*!
+    \fn bool QMetaType::isRegistered() const
+    \since 5.0
+
+    Returns true if this QMetaType object contains valid
+    information about a type, false otherwise.
+*/
+
+/*!
+    \fn bool QMetaType::sizeOf() const
+    \since 5.0
+
+    Returns the size of the type in bytes (i.e. sizeof(T),
+    where T is the actual type for which this QMetaType instance
+    was constructed for).
+
+    This function is typically used together with construct()
+    to perform low-level management of the memory used by a type.
+
+    \sa QMetaType::construct(void *where, const void *copy), QMetaType::sizeOf(int)
+*/
+
+/*!
+    \fn TypeFlags QMetaType::flags() const
+    \since 5.0
+
+    Returns flags of the type for which this QMetaType instance was constructed.
+
+    \sa QMetaType::TypeFlags, QMetaType::typeFlags(int type)
+*/
+
+/*!
+    \fn const QMetaObject *QMetaType::metaObject() const
+    \since 5.0
+    \internal
+*/
+
+/*!
+    \fn void *QMetaType::create(const void *copy = 0) const
+    \since 5.0
+
+    Returns a copy of \a copy, assuming it is of the type that this
+    QMetaType instance was created for. If \a copy is null, creates
+    a default constructed instance.
+
+    \sa QMetaType::destroy(void*)
+*/
+
+/*!
+    \fn void QMetaType::destroy(void *data) const
+    \since 5.0
+
+    Destroys the \a data, assuming it is of the type that this
+    QMetaType instance was created for.
+
+    \sa QMetaType::create(const void *)
+*/
+
+/*!
+    \fn void *QMetaType::construct(void *where, const void *copy = 0) const
+    \since 5.0
+
+    Constructs a value of the type that this QMetaType instance
+    was constructed for in the existing memory addressed by \a where,
+    that is a copy of \a copy, and returns \a where. If \a copy is
+    zero, the value is default constructed.
+
+    This is a low-level function for explicitly managing the memory
+    used to store the type. Consider calling create() if you don't
+    need this level of control (that is, use "new" rather than
+    "placement new").
+
+    You must ensure that \a where points to a location where the new
+    value can be stored and that \a where is suitably aligned.
+    The type's size can be queried by calling sizeOf().
+
+    The rule of thumb for alignment is that a type is aligned to its
+    natural boundary, which is the smallest power of 2 that is bigger
+    than the type, unless that alignment is larger than the maximum
+    useful alignment for the platform. For practical purposes,
+    alignment larger than 2 * sizeof(void*) is only necessary for
+    special hardware instructions (e.g., aligned SSE loads and stores
+    on x86).
+*/
+
+/*!
+    \fn void QMetaType::destruct(void *data) const
+    \since 5.0
+
+    Destructs the value, located at \a data, assuming that it is
+    of the type for which this QMetaType instance was constructed for.
+
+    Unlike destroy(), this function only invokes the type's
+    destructor, it doesn't invoke the delete operator.
+    \sa QMetaType::construct()
+*/
+
+/*!
+    \fn QMetaType::~QMetaType()
+
+    Destructs this object.
 */
 
 #define QT_ADD_STATIC_METATYPE(MetaTypeName, MetaTypeId, RealName) \
@@ -314,7 +432,8 @@ Q_GLOBAL_STATIC(QVector<QCustomTypeInfo>, customTypes)
 Q_GLOBAL_STATIC(QReadWriteLock, customTypesLock)
 
 #ifndef QT_NO_DATASTREAM
-/*! \internal
+/*!
+    \internal
 */
 void QMetaType::registerStreamOperators(const char *typeName, SaveOperator saveOp,
                                         LoadOperator loadOp)
@@ -322,7 +441,8 @@ void QMetaType::registerStreamOperators(const char *typeName, SaveOperator saveO
     registerStreamOperators(type(typeName), saveOp, loadOp);
 }
 
-/*! \internal
+/*!
+    \internal
 */
 void QMetaType::registerStreamOperators(int idx, SaveOperator saveOp,
                                         LoadOperator loadOp)
@@ -382,7 +502,8 @@ const char *QMetaType::typeName(int typeId)
     return result;
 }
 
-/*! \internal
+/*!
+    \internal
     Similar to QMetaType::type(), but only looks in the static set of types.
 */
 static inline int qMetaTypeStaticType(const char *typeName, int length)
@@ -395,7 +516,8 @@ static inline int qMetaTypeStaticType(const char *typeName, int length)
     return types[i].type;
 }
 
-/*! \internal
+/*!
+    \internal
     Similar to QMetaType::type(), but only looks in the custom set of
     types, and doesn't lock the mutex.
 */
@@ -417,7 +539,8 @@ static int qMetaTypeCustomType_unlocked(const char *typeName, int length)
     return QMetaType::UnknownType;
 }
 
-/*! \internal
+/*!
+    \internal
 
     This function is needed until existing code outside of qtbase
     has been changed to call the new version of registerType().
@@ -425,10 +548,13 @@ static int qMetaTypeCustomType_unlocked(const char *typeName, int length)
 int QMetaType::registerType(const char *typeName, Deleter deleter,
                             Creator creator)
 {
-    return registerType(typeName, deleter, creator, qMetaTypeDestructHelper<void>, qMetaTypeConstructHelper<void>, 0, TypeFlags(), 0);
+    return registerType(typeName, deleter, creator,
+                        QtMetaTypePrivate::QMetaTypeFunctionHelper<void>::Destruct,
+                        QtMetaTypePrivate::QMetaTypeFunctionHelper<void>::Construct, 0, TypeFlags(), 0);
 }
 
-/*! \internal
+/*!
+    \internal
     \since 5.0
 
     Registers a user type for marshalling, with \a typeName, a \a
@@ -452,7 +578,8 @@ int QMetaType::registerType(const char *typeName, Deleter deleter,
 }
 
 
-/*! \internal
+/*!
+    \internal
     \since 5.0
 
     Registers a user type for marshalling, with \a normalizedTypeName, a \a
@@ -528,7 +655,8 @@ int QMetaType::registerNormalizedType(const NS(QByteArray) &normalizedTypeName, 
     return idx;
 }
 
-/*! \internal
+/*!
+    \internal
     \since 4.7
 
     Registers a user type for marshalling, as an alias of another type (typedef)
@@ -544,7 +672,8 @@ int QMetaType::registerTypedef(const char* typeName, int aliasId)
     return registerNormalizedTypedef(normalizedTypeName, aliasId);
 }
 
-/*! \internal
+/*!
+    \internal
     \since 5.0
 
     Registers a user type for marshalling, as an alias of another type (typedef).
@@ -607,6 +736,7 @@ bool QMetaType::isRegistered(int type)
 }
 
 /*!
+    \fn int qMetaTypeTypeImpl(const char *typeName)
     \internal
 
     Implementation of QMetaType::type().
@@ -684,7 +814,6 @@ bool QMetaType::save(QDataStream &stream, int type, const void *data)
     case QMetaType::Void:
     case QMetaType::VoidStar:
     case QMetaType::QObjectStar:
-    case QMetaType::QWidgetStar:
     case QMetaType::QModelIndex:
     case QMetaType::QJsonValue:
     case QMetaType::QJsonObject:
@@ -902,7 +1031,6 @@ bool QMetaType::load(QDataStream &stream, int type, void *data)
     case QMetaType::Void:
     case QMetaType::VoidStar:
     case QMetaType::QObjectStar:
-    case QMetaType::QWidgetStar:
     case QMetaType::QModelIndex:
     case QMetaType::QJsonValue:
     case QMetaType::QJsonObject:
@@ -1107,7 +1235,7 @@ class TypeCreator {
     struct CreatorImpl {
         static void *Create(const int /* type */, const void *copy)
         {
-            // Using qMetaTypeCreateHelper<T> adds function call cost, even if it is a template (gcc).
+            // Using QMetaTypeFunctionHelper<T>::Create adds function call cost, even if it is a template (gcc).
             // This "copy" check is moved out from the switcher by compiler (at least by gcc)
             return copy ? new T(*static_cast<const T*>(copy)) : new T();
         }
@@ -1158,7 +1286,7 @@ private:
 
 /*!
     Returns a copy of \a copy, assuming it is of type \a type. If \a
-    copy is zero, creates a default type.
+    copy is zero, creates a default constructed instance.
 
     \sa destroy(), isRegistered(), Type
 */
@@ -1172,7 +1300,7 @@ namespace {
 class TypeDestroyer {
     template<typename T, bool IsAcceptedType = DefinedTypesFilter::Acceptor<T>::IsAccepted>
     struct DestroyerImpl {
-        static void Destroy(const int /* type */, void *where) { qMetaTypeDeleteHelper<T>(where); }
+        static void Destroy(const int /* type */, void *where) { QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Delete(where); }
     };
     template<typename T>
     struct DestroyerImpl<T, /* IsAcceptedType = */ false> {
@@ -1238,7 +1366,7 @@ namespace {
 class TypeConstructor {
     template<typename T, bool IsAcceptedType = DefinedTypesFilter::Acceptor<T>::IsAccepted>
     struct ConstructorImpl {
-        static void *Construct(const int /*type*/, void *where, const void *copy) { return qMetaTypeConstructHelper<T>(where, copy); }
+        static void *Construct(const int /*type*/, void *where, const void *copy) { return QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Construct(where, copy); }
     };
     template<typename T>
     struct ConstructorImpl<T, /* IsAcceptedType = */ false> {
@@ -1326,7 +1454,7 @@ namespace {
 class TypeDestructor {
     template<typename T, bool IsAcceptedType = DefinedTypesFilter::Acceptor<T>::IsAccepted>
     struct DestructorImpl {
-        static void Destruct(const int /* type */, void *where) { qMetaTypeDestructHelper<T>(where); }
+        static void Destruct(const int /* type */, void *where) { QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Destruct(where); }
     };
     template<typename T>
     struct DestructorImpl<T, /* IsAcceptedType = */ false> {
@@ -1443,7 +1571,7 @@ private:
 /*!
     \since 5.0
 
-    Returns the size of the given \a type in bytes (i.e., sizeof(T),
+    Returns the size of the given \a type in bytes (i.e. sizeof(T),
     where T is the actual type identified by the \a type argument).
 
     This function is typically used together with construct()
@@ -1513,7 +1641,7 @@ private:
 
     Returns flags of the given \a type.
 
-    \sa TypeFlags()
+    \sa QMetaType::TypeFlags
 */
 QMetaType::TypeFlags QMetaType::typeFlags(int type)
 {
@@ -1598,7 +1726,7 @@ const QMetaObject *QMetaType::metaObjectForType(int type)
 */
 
 /*!
-    \fn int qRegisterMetaTypeStreamOperators(const char *typeName)
+    \fn void qRegisterMetaTypeStreamOperators(const char *typeName)
     \relates QMetaType
     \threadsafe
 
@@ -1638,7 +1766,7 @@ const QMetaObject *QMetaType::metaObjectForType(int type)
 */
 
 /*!
-    \fn int qRegisterMetaType()
+    \fn int qRegisterMetaType(const char *typeName)
     \relates QMetaType
     \threadsafe
     \since 4.2
@@ -1663,7 +1791,8 @@ const QMetaObject *QMetaType::metaObjectForType(int type)
     \sa Q_DECLARE_METATYPE()
  */
 
-/*! \fn int qMetaTypeId()
+/*!
+    \fn int qMetaTypeId()
     \relates QMetaType
     \threadsafe
     \since 4.1
@@ -1740,6 +1869,10 @@ private:
 };
 } // namespace
 
+/*!
+    \fn QMetaType QMetaType::typeInfo(const int type)
+    \internal
+*/
 QMetaType QMetaType::typeInfo(const int type)
 {
     TypeInfo typeInfo(type);
@@ -1759,6 +1892,12 @@ QMetaType QMetaType::typeInfo(const int type)
                 : QMetaType(UnknownType);
 }
 
+/*!
+     \fn QMetaType::QMetaType(const int typeId)
+     \since 5.0
+
+     Constructs a QMetaType object that contains all information about type \a typeId.
+*/
 QMetaType::QMetaType(const int typeId)
     : m_typeId(typeId)
 {
@@ -1776,6 +1915,12 @@ QMetaType::QMetaType(const int typeId)
     }
 }
 
+/*!
+     \fn QMetaType::QMetaType(const QMetaType &other)
+     \since 5.0
+
+     Copy constructs a QMetaType object.
+*/
 QMetaType::QMetaType(const QMetaType &other)
     : m_creator(other.m_creator)
     , m_deleter(other.m_deleter)
@@ -1808,6 +1953,14 @@ QMetaType &QMetaType::operator =(const QMetaType &other)
     return *this;
 }
 
+/*!
+    \fn void QMetaType::ctor(const QMetaTypeInterface *info)
+    \internal
+
+    Method used for future binary compatible extensions.  The function may be
+    called from within QMetaType's constructor to force a library call from
+    inlined code.
+*/
 void QMetaType::ctor(const QMetaTypeInterface *info)
 {
     // Special case for Void type, the type is valid but not constructible.
@@ -1818,20 +1971,49 @@ void QMetaType::ctor(const QMetaTypeInterface *info)
     m_extensionFlags = CreateEx | DestroyEx | ConstructEx | DestructEx;
 }
 
+/*!
+    \fn void QMetaType::dtor()
+    \internal
+
+    Method used for future binary compatible extensions.  The function may be
+    called from within QMetaType's destructor to force a library call from
+    inlined code.
+*/
 void QMetaType::dtor()
 {}
 
+/*!
+    \fn void *QMetaType::createExtended(const void *copy) const
+    \internal
+
+    Method used for future binary compatible extensions. The function may be called
+    during QMetaType::create to force library call from inlined code.
+*/
 void *QMetaType::createExtended(const void *copy) const
 {
     Q_UNUSED(copy);
     return 0;
 }
 
+/*!
+    \fn void QMetaType::destroyExtended(void *data) const
+    \internal
+
+    Method used for future binary compatible extensions. The function may be called
+    during QMetaType::destroy to force library call from inlined code.
+*/
 void QMetaType::destroyExtended(void *data) const
 {
     Q_UNUSED(data);
 }
 
+/*!
+    \fn void *QMetaType::constructExtended(void *where, const void *copy) const
+    \internal
+
+    Method used for future binary compatible extensions. The function may be called
+    during QMetaType::construct to force library call from inlined code.
+*/
 void *QMetaType::constructExtended(void *where, const void *copy) const
 {
     Q_UNUSED(where);
@@ -1839,21 +2021,52 @@ void *QMetaType::constructExtended(void *where, const void *copy) const
     return 0;
 }
 
+/*!
+    \fn void QMetaType::destructExtended(void *data) const
+    \internal
+
+    Method used for future binary compatible extensions. The function may be called
+    during QMetaType::destruct to force library call from inlined code.
+*/
 void QMetaType::destructExtended(void *data) const
 {
     Q_UNUSED(data);
 }
 
+/*!
+    \fn uint QMetaType::sizeExtended() const
+    \internal
+
+    Method used for future binary compatible extensions. The function may be
+    called from within QMetaType::size to force a library call from
+    inlined code.
+*/
 uint QMetaType::sizeExtended() const
 {
     return 0;
 }
 
+/*!
+    \fn QMetaType::TypeFlags QMetaType::flagsExtended() const
+    \internal
+
+    Method used for future binary compatible extensions.  The function may be
+    called from within QMetaType::flags to force a library call from
+    inlined code.
+*/
 QMetaType::TypeFlags QMetaType::flagsExtended() const
 {
     return 0;
 }
 
+/*!
+    \brief QMetaType::metaObjectExtended
+    \internal
+
+    Method used for future binary compatible extensions. The function may be
+    called from within QMetaType::metaObject to force a library call from
+    inlined code.
+*/
 const QMetaObject *QMetaType::metaObjectExtended() const
 {
     return 0;

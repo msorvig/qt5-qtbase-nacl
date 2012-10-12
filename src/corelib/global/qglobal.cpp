@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -86,6 +86,7 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
 
 /*!
     \class QFlag
+    \inmodule QtCore
     \brief The QFlag class is a helper data type for QFlags.
 
     It is equivalent to a plain \c int, except with respect to
@@ -109,6 +110,7 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
 
 /*!
     \class QFlags
+    \inmodule QtCore
     \brief The QFlags class provides a type-safe way of storing
     OR-combinations of enum values.
 
@@ -129,7 +131,7 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
     Qt::Alignment type is simply a typedef for
     QFlags<Qt::AlignmentFlag>. QLabel::setAlignment() takes a
     Qt::Alignment parameter, which means that any combination of
-    Qt::AlignmentFlag values,or 0, is legal:
+    Qt::AlignmentFlag values, or 0, is legal:
 
     \snippet code/src_corelib_global_qglobal.cpp 0
 
@@ -167,6 +169,15 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
     (e.g., \c AlignmentFlag).
 
     \sa QFlag
+*/
+
+/*!
+    \typedef QFlags::Int
+    \since 5.0
+
+    Typedef for the integer type used for storage as well as for
+    implicit conversion. Either \c int or \c{unsigned int}, depending
+    on whether the enum's underlying type is signed or unsigned.
 */
 
 /*!
@@ -259,9 +270,11 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
 */
 
 /*!
-    \fn QFlags::operator int() const
+    \fn QFlags::operator Int() const
 
     Returns the value stored in the QFlags object as an integer.
+
+    \sa Int
 */
 
 /*!
@@ -738,7 +751,7 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
     \sa quint64, qlonglong
 */
 
-/*! \fn const T &qAbs(const T &value)
+/*! \fn T qAbs(const T &value)
     \relates <QtGlobal>
 
     Compares \a value to the 0 of type T and returns the absolute
@@ -858,12 +871,12 @@ Q_CORE_EXPORT void *qMemSet(void *dest, int c, size_t n);
     \sa QT_VERSION_STR
 */
 
-const char *qVersion()
+const char *qVersion() Q_DECL_NOTHROW
 {
     return QT_VERSION_STR;
 }
 
-bool qSharedBuild()
+bool qSharedBuild() Q_DECL_NOTHROW
 {
 #ifdef QT_SHARED
     return true;
@@ -878,6 +891,7 @@ bool qSharedBuild()
 
 /*!
     \class QSysInfo
+    \inmodule QtCore
     \brief The QSysInfo class provides information about the system.
 
     \list
@@ -967,6 +981,7 @@ bool qSharedBuild()
     \value WV_2003  Windows Server 2003, Windows Server 2003 R2, Windows Home Server, Windows XP Professional x64 Edition (operating system version 5.2)
     \value WV_VISTA Windows Vista, Windows Server 2008 (operating system version 6.0)
     \value WV_WINDOWS7 Windows 7, Windows Server 2008 R2 (operating system version 6.1)
+    \value WV_WINDOWS8 Windows 8 (operating system version 6.2)
 
     Alternatively, you may use the following macros which correspond directly to the Windows operating system version number:
 
@@ -976,6 +991,7 @@ bool qSharedBuild()
     \value WV_5_2   Operating system version 5.2, corresponds to Windows Server 2003, Windows Server 2003 R2, Windows Home Server, and Windows XP Professional x64 Edition
     \value WV_6_0   Operating system version 6.0, corresponds to Windows Vista and Windows Server 2008
     \value WV_6_1   Operating system version 6.1, corresponds to Windows 7 and Windows Server 2008 R2
+    \value WV_6_2   Operating system version 6.2, corresponds to Windows 8
 
     CE-based versions:
 
@@ -1011,6 +1027,7 @@ bool qSharedBuild()
     \value MV_10_5     Mac OS X 10.5
     \value MV_10_6     Mac OS X 10.6
     \value MV_10_7     Mac OS X 10.7
+    \value MV_10_8     Mac OS X 10.8
     \value MV_Unknown  An unknown and currently unsupported platform
 
     \value MV_CHEETAH  Apple codename for MV_10_0
@@ -1904,7 +1921,8 @@ void qt_check_pointer(const char *n, int l)
     qFatal("In file %s, line %d: Out of memory", n, l);
 }
 
-/* \internal
+/*
+   \internal
    Allows you to throw an exception without including <new>
    Called internally from Q_CHECK_PTR on certain OS combinations
 */
@@ -1913,7 +1931,9 @@ void qBadAlloc()
     QT_THROW(std::bad_alloc());
 }
 
-/* \internal
+#ifndef QT_NO_EXCEPTIONS
+/*
+   \internal
    Allows you to call std::terminate() without including <exception>.
    Called internally from QT_TERMINATE_ON_EXCEPTION
 */
@@ -1921,6 +1941,7 @@ Q_NORETURN void qTerminate() Q_DECL_NOTHROW
 {
     std::terminate();
 }
+#endif
 
 //#include <QObject>
 //#include <QString>
@@ -2054,7 +2075,7 @@ namespace {
     //    indicating success or not
     // b) the GNU version, which returns a char*, which may or may not
     //    be the beginning of the buffer we used
-    // The GNU libc manpage for strerror_r says you should use the the XSI
+    // The GNU libc manpage for strerror_r says you should use the XSI
     // version in portable code. However, it's impossible to do that if
     // _GNU_SOURCE is defined so we use C++ overloading to decide what to do
     // depending on the return type
@@ -2233,6 +2254,9 @@ bool qputenv(const char *varName, const QByteArray& value)
 {
 #if defined(_MSC_VER) && _MSC_VER >= 1400
     return _putenv_s(varName, value.constData()) == 0;
+#elif defined(_POSIX_VERSION) && (_POSIX_VERSION-0) >= 200112L
+    // POSIX.1-2001 has setenv
+    return setenv(varName, value.constData(), true) == 0;
 #else
     QByteArray buffer(varName);
     buffer += '=';
@@ -3028,10 +3052,9 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the debug message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the console, if it is a
-    console application; otherwise, it is sent to the debugger. This
-    function does nothing if \c QT_NO_DEBUG_OUTPUT was defined
-    during compilation.
-
+    console application; otherwise, it is sent to the debugger. On Blackberry the
+    message is sent to slogger2. This function does nothing if \c QT_NO_DEBUG_OUTPUT
+    was defined during compilation.
 
     If you pass the function a format string and a list of arguments,
     it works in similar way to the C printf() function. The format
@@ -3064,7 +3087,8 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
 
     Calls the message handler with the warning message \a message. If no
     message handler has been installed, the message is printed to
-    stderr. Under Windows, the message is sent to the debugger. This
+    stderr. Under Windows, the message is sent to the debugger.
+    On Blackberry the message is sent to slogger2. This
     function does nothing if \c QT_NO_WARNING_OUTPUT was defined
     during compilation; it exits if the environment variable \c
     QT_FATAL_WARNINGS is defined.
@@ -3098,6 +3122,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the critical message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the debugger.
+    On Blackberry the message is sent to slogger2.
 
     This function takes a format string and a list of arguments,
     similar to the C printf() function. The format should be a Latin-1
@@ -3128,6 +3153,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the fatal message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the debugger.
+    On Blackberry the message is sent to slogger2.
 
     If you are using the \b{default message handler} this function will
     abort on Unix systems to create a core dump. On Windows, for debug builds,
@@ -3195,7 +3221,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     semantics) or to
     \code
     try { expr; } catch(...) { qTerminate(); }
-    \endocde
+    \endcode
     otherwise.
 
     Since this macro expands to just \c expr if the compiler supports
@@ -3248,6 +3274,62 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Q_DECL_NOTHROW instead.
 
     \sa Q_DECL_NOTHROW, Q_DECL_NOEXCEPT_EXPR
+*/
+
+/*!
+    \macro Q_DECL_OVERRIDE
+    \since 5.0
+    \relates <QtGlobal>
+
+    This macro can be used to declare an overriding virtual
+    function. Use of this markup will allow the compiler to generate
+    an error if the overriding virtual function does not in fact
+    override anything.
+
+    It expands to "override" if your compiler supports that C++11
+    contextual keyword, or to nothing otherwise.
+
+    The macro goes at the end of the function, usually after the
+    \c{const}, if any:
+    \code
+    // generate error if this doesn't actually override anything:
+    virtual void MyWidget::paintEvent(QPaintEvent*) Q_DECL_OVERRIDE;
+    \endcode
+
+    \sa Q_DECL_FINAL
+*/
+
+/*!
+    \macro Q_DECL_FINAL
+    \since 5.0
+    \relates <QtGlobal>
+
+    This macro can be used to declare an overriding virtual or a class
+    as "final", with Java semantics. Further-derived classes can then
+    no longer override this virtual function, or inherit from this
+    class, respectively.
+
+    It expands to "final" if your compiler supports that C++11
+    contextual keyword, or something non-standard if your compiler
+    supports something close enough to the C++11 semantics, or to
+    nothing otherwise.
+
+    The macro goes at the end of the function, usually after the
+    \c{const}, if any:
+    \code
+    // more-derived classes no longer permitted to override this:
+    virtual void MyWidget::paintEvent(QPaintEvent*) Q_DECL_FINAL;
+    \endcode
+
+    For classes, it goes in front of the \c{:} in the class
+    definition, if any:
+    \code
+    class QRect Q_DECL_FINAL { // cannot be derived from
+        // ...
+    };
+    \endcode
+
+    \sa Q_DECL_OVERRIDE
 */
 
 QT_END_NAMESPACE

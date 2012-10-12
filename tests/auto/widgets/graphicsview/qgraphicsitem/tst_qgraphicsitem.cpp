@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -65,12 +65,15 @@
 #include <QLineEdit>
 #include <QGraphicsLinearLayout>
 #include <float.h>
+#include <QStyleHints>
 
 Q_DECLARE_METATYPE(QList<int>)
 Q_DECLARE_METATYPE(QList<QRectF>)
 Q_DECLARE_METATYPE(QPainterPath)
 Q_DECLARE_METATYPE(QPointF)
 Q_DECLARE_METATYPE(QRectF)
+
+#include "../../../platformquirks.h"
 
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
 #include <windows.h>
@@ -88,8 +91,6 @@ Q_DECLARE_METATYPE(QRectF)
 #else
 #define COMPARE_REGIONS QTRY_COMPARE
 #endif
-
-#include "../../../platformquirks.h"
 
 static QGraphicsRectItem staticItem; //QTBUG-7629, we should not crash at exit.
 
@@ -5067,11 +5068,7 @@ void tst_QGraphicsItem::paint()
     scene.addItem(&paintTester);
 
     QGraphicsView view(&scene);
-
-    if(PlatformQuirks::isAutoMaximizing())
-        view.showFullScreen();
-    else
-        view.show();
+    view.show();
     QVERIFY(QTest::qWaitForWindowExposed(&view));
     QApplication::processEvents();
 #ifdef Q_OS_WIN32
@@ -6706,10 +6703,7 @@ void tst_QGraphicsItem::opacity2()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    if(PlatformQuirks::isAutoMaximizing())
-        view.showFullScreen();
-    else
-        view.show();
+    view.show();
     QVERIFY(QTest::qWaitForWindowActive(&view));
     QTRY_VERIFY(view.repaints >= 1);
 
@@ -8064,7 +8058,7 @@ void tst_QGraphicsItem::sorting_data()
 
 void tst_QGraphicsItem::sorting()
 {
-    if (PlatformQuirks::isAutoMaximizing())
+    if (qGuiApp->styleHints()->showIsFullScreen())
         QSKIP("Skipped because Platform is auto maximizing");
 
     _paintedItems.clear();
@@ -10853,10 +10847,7 @@ void tst_QGraphicsItem::QTBUG_6738_missingUpdateWithSetParent()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    if(PlatformQuirks::isAutoMaximizing())
-        view.showFullScreen();
-    else
-        view.show();
+    view.show();
     qApp->setActiveWindow(&view);
     QVERIFY(QTest::qWaitForWindowActive(&view));
     QTRY_VERIFY(view.repaints > 0);
@@ -10905,10 +10896,7 @@ void tst_QGraphicsItem::QT_2653_fullUpdateDiscardingOpacityUpdate()
     // ItemIgnoresTransformations, ItemClipsChildrenToShape, ItemIsSelectable
     parentGreen->setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
-    if (PlatformQuirks::isAutoMaximizing())
-        view.showFullScreen();
-    else
-        view.show();
+    view.show();
     QVERIFY(QTest::qWaitForWindowActive(&view));
     view.reset();
 
@@ -11093,10 +11081,7 @@ void tst_QGraphicsItem::doNotMarkFullUpdateIfNotInScene()
     item3->setParentItem(item2);
     item2->setParentItem(item);
     scene.addItem(item);
-    if(PlatformQuirks::isAutoMaximizing())
-        view.showFullScreen();
-    else
-        view.show();
+    view.show();
     QTest::qWaitForWindowActive(view.windowHandle());
     view.activateWindow();
     QTRY_VERIFY(view.isActiveWindow());

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -115,7 +115,7 @@ QThreadData *QThreadData::current()
         }
         threadData->deref();
         threadData->isAdopted = true;
-        threadData->threadId = (Qt::HANDLE)GetCurrentThreadId();
+        threadData->threadId = reinterpret_cast<Qt::HANDLE>(GetCurrentThreadId());
 
         if (!QCoreApplicationPrivate::theMainThread) {
             QCoreApplicationPrivate::theMainThread = threadData->thread;
@@ -130,7 +130,7 @@ QThreadData *QThreadData::current()
                     FALSE,
                     DUPLICATE_SAME_ACCESS);
 #else
-                        realHandle = (HANDLE)GetCurrentThreadId();
+                        realHandle = reinterpret_cast<HANDLE>(GetCurrentThreadId());
 #endif
             qt_watch_adopted_thread(realHandle, threadData->thread);
         }
@@ -150,7 +150,8 @@ static QMutex qt_adopted_thread_watcher_mutex;
 static DWORD qt_adopted_thread_watcher_id = 0;
 static HANDLE qt_adopted_thread_wakeup = 0;
 
-/*! \internal
+/*!
+    \internal
     Adds an adopted thread to the list of threads that Qt watches to make sure
     the thread data is properly cleaned up. This function starts the watcher
     thread if necessary.
@@ -218,7 +219,7 @@ DWORD WINAPI qt_adopted_thread_watcher_function(LPVOID)
             } while (ret == WAIT_TIMEOUT);
         }
 
-        if (ret == WAIT_FAILED || !(ret >= WAIT_OBJECT_0 && ret < WAIT_OBJECT_0 + uint(count))) {
+        if (ret == WAIT_FAILED || ret >= WAIT_OBJECT_0 + uint(count)) {
             qWarning("QThread internal error while waiting for adopted threads: %d", int(GetLastError()));
             continue;
         }
@@ -313,7 +314,7 @@ unsigned int __stdcall QT_ENSURE_STACK_ALIGNED_FOR_SSE QThreadPrivate::start(voi
 
     qt_create_tls();
     TlsSetValue(qt_current_thread_data_tls_index, data);
-    data->threadId = (Qt::HANDLE)GetCurrentThreadId();
+    data->threadId = reinterpret_cast<Qt::HANDLE>(GetCurrentThreadId());
 
     QThread::setTerminationEnabled(false);
 
@@ -389,12 +390,12 @@ void QThreadPrivate::finish(void *arg, bool lockAnyway)
  ** QThread
  *************************************************************************/
 
-Qt::HANDLE QThread::currentThreadId()
+Qt::HANDLE QThread::currentThreadId() Q_DECL_NOTHROW
 {
-    return (Qt::HANDLE)GetCurrentThreadId();
+    return reinterpret_cast<Qt::HANDLE>(GetCurrentThreadId());
 }
 
-int QThread::idealThreadCount()
+int QThread::idealThreadCount() Q_DECL_NOTHROW
 {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);

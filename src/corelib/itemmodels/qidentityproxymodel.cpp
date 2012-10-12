@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2011 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author Stephen Kelly <stephen.kelly@kdab.com>
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -77,8 +77,8 @@ class QIdentityProxyModelPrivate : public QAbstractProxyModelPrivate
     void _q_sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     void _q_sourceHeaderDataChanged(Qt::Orientation orientation, int first, int last);
 
-    void _q_sourceLayoutAboutToBeChanged();
-    void _q_sourceLayoutChanged();
+    void _q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint);
+    void _q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint);
     void _q_sourceModelAboutToBeReset();
     void _q_sourceModelReset();
 
@@ -87,10 +87,10 @@ class QIdentityProxyModelPrivate : public QAbstractProxyModelPrivate
 /*!
     \since 4.8
     \class QIdentityProxyModel
+    \inmodule QtCore
     \brief The QIdentityProxyModel class proxies its source model unmodified
 
     \ingroup model-view
-    \inmodule QtCore
 
     QIdentityProxyModel can be used to forward the structure of a source model exactly, with no sorting, filtering or other transformation.
     This is similar in concept to an identity matrix where A.I = A.
@@ -117,7 +117,8 @@ QIdentityProxyModel::QIdentityProxyModel(QObject* parent)
 
 }
 
-/*! \internal
+/*!
+    \internal
  */
 QIdentityProxyModel::QIdentityProxyModel(QIdentityProxyModelPrivate &dd, QObject* parent)
   : QAbstractProxyModel(dd, parent)
@@ -365,10 +366,10 @@ void QIdentityProxyModel::setSourceModel(QAbstractItemModel* newSourceModel)
                    this, SLOT(_q_sourceDataChanged(QModelIndex,QModelIndex)));
         disconnect(sourceModel(), SIGNAL(headerDataChanged(Qt::Orientation,int,int)),
                    this, SLOT(_q_sourceHeaderDataChanged(Qt::Orientation,int,int)));
-        disconnect(sourceModel(), SIGNAL(layoutAboutToBeChanged()),
-                   this, SLOT(_q_sourceLayoutAboutToBeChanged()));
-        disconnect(sourceModel(), SIGNAL(layoutChanged()),
-                   this, SLOT(_q_sourceLayoutChanged()));
+        disconnect(sourceModel(), SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+                   this, SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
+        disconnect(sourceModel(), SIGNAL(layoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+                   this, SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
     }
 
     QAbstractProxyModel::setSourceModel(newSourceModel);
@@ -406,10 +407,10 @@ void QIdentityProxyModel::setSourceModel(QAbstractItemModel* newSourceModel)
                 SLOT(_q_sourceDataChanged(QModelIndex,QModelIndex)));
         connect(sourceModel(), SIGNAL(headerDataChanged(Qt::Orientation,int,int)),
                 SLOT(_q_sourceHeaderDataChanged(Qt::Orientation,int,int)));
-        connect(sourceModel(), SIGNAL(layoutAboutToBeChanged()),
-                SLOT(_q_sourceLayoutAboutToBeChanged()));
-        connect(sourceModel(), SIGNAL(layoutChanged()),
-                SLOT(_q_sourceLayoutChanged()));
+        connect(sourceModel(), SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+                SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
+        connect(sourceModel(), SIGNAL(layoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+                SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
     }
 
     endResetModel();
@@ -484,7 +485,7 @@ void QIdentityProxyModelPrivate::_q_sourceHeaderDataChanged(Qt::Orientation orie
     q->headerDataChanged(orientation, first, last);
 }
 
-void QIdentityProxyModelPrivate::_q_sourceLayoutAboutToBeChanged()
+void QIdentityProxyModelPrivate::_q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint)
 {
     Q_Q(QIdentityProxyModel);
 
@@ -496,10 +497,22 @@ void QIdentityProxyModelPrivate::_q_sourceLayoutAboutToBeChanged()
         layoutChangePersistentIndexes << srcPersistentIndex;
     }
 
-    q->layoutAboutToBeChanged();
+    QList<QPersistentModelIndex> parents;
+    parents.reserve(sourceParents.size());
+    foreach (const QPersistentModelIndex &parent, sourceParents) {
+        if (!parent.isValid()) {
+            parents << QPersistentModelIndex();
+            continue;
+        }
+        const QModelIndex mappedParent = q->mapFromSource(parent);
+        Q_ASSERT(mappedParent.isValid());
+        parents << mappedParent;
+    }
+
+    q->layoutAboutToBeChanged(parents, hint);
 }
 
-void QIdentityProxyModelPrivate::_q_sourceLayoutChanged()
+void QIdentityProxyModelPrivate::_q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint)
 {
     Q_Q(QIdentityProxyModel);
 
@@ -510,7 +523,19 @@ void QIdentityProxyModelPrivate::_q_sourceLayoutChanged()
     layoutChangePersistentIndexes.clear();
     proxyIndexes.clear();
 
-    q->layoutChanged();
+    QList<QPersistentModelIndex> parents;
+    parents.reserve(sourceParents.size());
+    foreach (const QPersistentModelIndex &parent, sourceParents) {
+        if (!parent.isValid()) {
+            parents << QPersistentModelIndex();
+            continue;
+        }
+        const QModelIndex mappedParent = q->mapFromSource(parent);
+        Q_ASSERT(mappedParent.isValid());
+        parents << mappedParent;
+    }
+
+    q->layoutChanged(parents, hint);
 }
 
 void QIdentityProxyModelPrivate::_q_sourceModelAboutToBeReset()

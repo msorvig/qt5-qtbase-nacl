@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -41,15 +41,22 @@
 
 #include "qdir.h"
 #include "qfile.h"
-#include "qconfig.h"
 #include "qsettings.h"
 #include "qlibraryinfo.h"
 #include "qscopedpointer.h"
 
 #ifdef QT_BUILD_QMAKE
 QT_BEGIN_NAMESPACE
-extern QString qmake_libraryInfoFile();
+extern QString qt_libraryInfoFile();
 QT_END_NAMESPACE
+#elif defined(QT_BOOTSTRAPPED)
+QString qt_libraryInfoFile()
+{
+    QString qmakeAbsoluteLocation = QLatin1String(QT_QMAKE_LOCATION);
+    if (!qmakeAbsoluteLocation.isEmpty())
+        return QDir(QFileInfo(qmakeAbsoluteLocation).absolutePath()).filePath(QLatin1String("qt.conf"));
+    return QString();
+}
 #else
 # include "qcoreapplication.h"
 #endif
@@ -70,7 +77,7 @@ struct QLibrarySettings
 {
     QLibrarySettings();
     QScopedPointer<QSettings> settings;
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
     bool haveEffectivePaths;
     bool havePaths;
 #endif
@@ -81,7 +88,7 @@ class QLibraryInfoPrivate
 {
 public:
     static QSettings *findConfiguration();
-#ifndef QT_BUILD_QMAKE
+#ifndef QT_BOOTSTRAPPED
     static void cleanup()
     {
         QLibrarySettings *ls = qt_library_settings();
@@ -106,7 +113,7 @@ public:
 QLibrarySettings::QLibrarySettings()
     : settings(QLibraryInfoPrivate::findConfiguration())
 {
-#ifndef QT_BUILD_QMAKE
+#ifndef QT_BOOTSTRAPPED
     qAddPostRoutine(QLibraryInfoPrivate::cleanup);
     bool haveEffectivePaths;
     bool havePaths;
@@ -118,7 +125,7 @@ QLibrarySettings::QLibrarySettings()
         haveEffectivePaths = children.contains(QLatin1String("EffectivePaths"));
         // Backwards compat: an existing but empty file is claimed to contain the Paths section.
         havePaths = !haveEffectivePaths || children.contains(QLatin1String("Paths"));
-#ifndef QT_BUILD_QMAKE
+#ifndef QT_BOOTSTRAPPED
         if (!havePaths)
             settings.reset(0);
 #else
@@ -132,9 +139,9 @@ QLibrarySettings::QLibrarySettings()
 QSettings *QLibraryInfoPrivate::findConfiguration()
 {
     QString qtconfig = QStringLiteral(":/qt/etc/qt.conf");
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
     if(!QFile::exists(qtconfig))
-        qtconfig = qmake_libraryInfoFile();
+        qtconfig = qt_libraryInfoFile();
 #else
     if (!QFile::exists(qtconfig) && QCoreApplication::instance()) {
 #ifdef Q_OS_MAC
@@ -166,6 +173,7 @@ QSettings *QLibraryInfoPrivate::findConfiguration()
 
 /*!
     \class QLibraryInfo
+    \inmodule QtCore
     \brief The QLibraryInfo class provides information about the Qt library.
 
     Many pieces of information are established when Qt is configured and built.
@@ -181,9 +189,10 @@ QSettings *QLibraryInfoPrivate::findConfiguration()
     \sa QSysInfo, {Using qt.conf}
 */
 
-#ifndef QT_BUILD_QMAKE
+#ifndef QT_BOOTSTRAPPED
 
-/*! \internal
+/*!
+    \internal
 
    You cannot create a QLibraryInfo, instead only the static functions are available to query
    information.
@@ -241,11 +250,12 @@ QLibraryInfo::isDebugBuild()
 {
 #ifdef QT_DEBUG
     return true;
-#endif
+#else
     return false;
+#endif
 }
 
-#endif // QT_BUILD_QMAKE
+#endif // QT_BOOTSTRAPPED
 
 static const struct {
     char key[14], value[13];
@@ -261,7 +271,7 @@ static const struct {
     { "Translations", "translations" },
     { "Examples", "examples" },
     { "Tests", "tests" },
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
     { "Sysroot", "" },
     { "HostPrefix", "" },
     { "HostBinaries", "bin" },
@@ -276,7 +286,7 @@ static const struct {
 QString
 QLibraryInfo::location(LibraryLocation loc)
 {
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
     QString ret = rawLocation(loc, FinalPaths);
 
     // Automatically prepend the sysroot to target paths
@@ -300,7 +310,7 @@ QLibraryInfo::rawLocation(LibraryLocation loc, PathGroup group)
 # define group dummy
 #endif
     QString ret;
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
     // Logic for choosing the right data source: if EffectivePaths are requested
     // and qt.conf with that section is present, use it, otherwise fall back to
     // FinalPaths. For FinalPaths, use qt.conf if present and contains not only
@@ -344,14 +354,14 @@ QLibraryInfo::rawLocation(LibraryLocation loc, PathGroup group)
         if(!key.isNull()) {
             QSettings *config = QLibraryInfoPrivate::configuration();
             config->beginGroup(QLatin1String(
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
                    group == EffectivePaths ? "EffectivePaths" :
 #endif
                                              "Paths"));
 
             ret = config->value(key, defaultValue).toString();
 
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
             if (ret.isEmpty() && loc == HostPrefixPath)
                 ret = config->value(QLatin1String(qtConfEntries[PrefixPath].key),
                                     QLatin1String(qtConfEntries[PrefixPath].value)).toString();
@@ -376,12 +386,12 @@ QLibraryInfo::rawLocation(LibraryLocation loc, PathGroup group)
 
     if (!ret.isEmpty() && QDir::isRelativePath(ret)) {
         QString baseDir;
-#ifdef QT_BUILD_QMAKE
+#ifdef QT_BOOTSTRAPPED
         if (loc == HostPrefixPath || loc == PrefixPath || loc == SysrootPath) {
             // We make the prefix/sysroot path absolute to the executable's directory.
             // loc == PrefixPath while a sysroot is set would make no sense here.
             // loc == SysrootPath only makes sense if qmake lives inside the sysroot itself.
-            baseDir = QFileInfo(qmake_libraryInfoFile()).absolutePath();
+            baseDir = QFileInfo(qt_libraryInfoFile()).absolutePath();
         } else if (loc > SysrootPath && loc <= LastHostPath) {
             // We make any other host path absolute to the host prefix directory.
             baseDir = rawLocation(HostPrefixPath, group);
@@ -450,8 +460,8 @@ extern "C" void qt_core_boilerplate();
 void qt_core_boilerplate()
 {
     printf("This is the QtCore library version " QT_VERSION_STR "\n"
-           "Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).\n"
-           "Contact: http://www.qt-project.org/\n"
+           "Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).\n"
+           "Contact: http://www.qt-project.org/legal\n"
            "\n"
            "Build date:          %s\n"
            "Installation prefix: %s\n"

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -62,7 +62,9 @@
 
 #include <qabstracttextdocumentlayout.h>
 #include <qtextdocumentfragment.h>
+#include <qsyntaxhighlighter.h>
 
+#include "../../../shared/platformclipboard.h"
 #include "../../../shared/platforminputcontext.h"
 #include <private/qinputmethod_p.h>
 
@@ -74,23 +76,6 @@ Q_DECLARE_METATYPE(pairListType);
 Q_DECLARE_METATYPE(keyPairType);
 Q_DECLARE_METATYPE(QList<bool>);
 Q_DECLARE_METATYPE(QList<int>);
-
-#ifdef Q_OS_MAC
-#include <Carbon/Carbon.h>
-#endif
-
-bool nativeClipboardWorking()
-{
-#ifdef Q_OS_MAC
-    PasteboardRef pasteboard;
-    OSStatus status = PasteboardCreate(0, &pasteboard);
-    if (status == noErr)
-        CFRelease(pasteboard);
-    return status == noErr;
-#endif
-    return true;
-}
-
 
 QT_FORWARD_DECLARE_CLASS(QTextEdit)
 
@@ -186,13 +171,17 @@ private slots:
     void wordWrapProperty();
     void lineWrapProperty();
     void selectionChanged();
+#ifndef QT_NO_CLIPBOARD
     void copyPasteBackgroundImage();
+#endif
     void setText();
+    void cursorRect();
+#ifdef QT_BUILD_INTERNAL
     void fullWidthSelection_data();
     void fullWidthSelection();
     void fullWidthSelection2();
-    void cursorRect();
     void setDocumentPreservesPalette();
+#endif
     void pasteFromQt3RichText();
     void noWrapBackgrounds();
     void preserveCharFormatAfterUnchangingSetPosition();
@@ -212,10 +201,11 @@ private slots:
     void inputMethodQueryImHints_data();
     void inputMethodQueryImHints();
 
+    void highlightLongLine();
+
 private:
     void createSelection();
     int blockCount() const;
-    bool nativeClipboardWorking();
     void compareWidgetAndImage(QTextEdit &widget, const QString &imageFileName);
 
     QTextEdit *ed;
@@ -223,18 +213,6 @@ private:
     PlatformInputContext m_platformInputContext;
     const QString m_fullWidthSelectionImagesFolder;
 };
-
-bool tst_QTextEdit::nativeClipboardWorking()
-{
-#ifdef Q_OS_MAC
-    PasteboardRef pasteboard;
-    OSStatus status = PasteboardCreate(0, &pasteboard);
-    if (status == noErr)
-        CFRelease(pasteboard);
-    return status == noErr;
-#endif
-    return true;
-}
 
 // Testing get/set functions
 void tst_QTextEdit::getSetCheck()
@@ -520,7 +498,7 @@ void tst_QTextEdit::createSelection()
 #ifndef QT_NO_CLIPBOARD
 void tst_QTextEdit::clearMustNotChangeClipboard()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
     ed->textCursor().insertText("Hello World");
     QString txt("This is different text");
@@ -809,7 +787,7 @@ void tst_QTextEdit::setTextCursor()
 #ifndef QT_NO_CLIPBOARD
 void tst_QTextEdit::undoAvailableAfterPaste()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     QSignalSpy spy(ed->document(), SIGNAL(undoAvailable(bool)));
@@ -1030,7 +1008,7 @@ void tst_QTextEdit::preserveCharFormatInAppend()
 #ifndef QT_NO_CLIPBOARD
 void tst_QTextEdit::copyAndSelectAllInReadonly()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     ed->setReadOnly(true);
@@ -1576,7 +1554,7 @@ void tst_QTextEdit::selectWordsFromStringsContainingSeparators()
 #ifndef QT_NO_CLIPBOARD
 void tst_QTextEdit::canPaste()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     QApplication::clipboard()->setText(QString());
@@ -1875,10 +1853,10 @@ void tst_QTextEdit::selectionChanged()
     QCOMPARE(selectionChangedSpy.count(), 4);
 }
 
+#ifndef QT_NO_CLIPBOARD
 void tst_QTextEdit::copyPasteBackgroundImage()
 {
-#ifndef QT_NO_CLIPBOARD
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
 
     QImage foo(16, 16, QImage::Format_ARGB32_Premultiplied);
@@ -1918,8 +1896,8 @@ void tst_QTextEdit::copyPasteBackgroundImage()
     QVERIFY(ba.textureImage().cacheKey() == bb.textureImage().cacheKey() ||
             ba.texture().cacheKey() == bb.texture().cacheKey());
     QFile::remove(QLatin1String("foo.png"));
-#endif
 }
+#endif
 
 void tst_QTextEdit::setText()
 {
@@ -1936,6 +1914,7 @@ QT_BEGIN_NAMESPACE
 extern void qt_setQtEnableTestFont(bool value);
 QT_END_NAMESPACE
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QTextEdit::fullWidthSelection_data()
 {
     QTest::addColumn<int>("cursorFrom");
@@ -1955,7 +1934,9 @@ void tst_QTextEdit::fullWidthSelection_data()
     QTest::newRow("single full width line")
        << 20 << 30 << (m_fullWidthSelectionImagesFolder + QStringLiteral("/single-full-width-line.png"));
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QTextEdit::fullWidthSelection()
 {
     QFETCH(int, cursorFrom);
@@ -2021,7 +2002,9 @@ void tst_QTextEdit::fullWidthSelection()
 
     compareWidgetAndImage(widget, imageFileName);
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QTextEdit::fullWidthSelection2()
 {
     QPalette myPalette;
@@ -2057,6 +2040,7 @@ void tst_QTextEdit::fullWidthSelection2()
 
     compareWidgetAndImage(widget, "fullWidthSelection/nowrap_long.png");
 }
+#endif
 
 void tst_QTextEdit::compareWidgetAndImage(QTextEdit &widget, const QString &imageFileName)
 {
@@ -2117,9 +2101,9 @@ void tst_QTextEdit::cursorRect()
     QCOMPARE(ed->cursorRect().width(), 10);
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QTextEdit::setDocumentPreservesPalette()
 {
-#ifdef QT_BUILD_INTERNAL
     QWidgetTextControl *control = qFindChild<QWidgetTextControl *>(ed);
     QVERIFY(control);
 
@@ -2140,8 +2124,8 @@ void tst_QTextEdit::setDocumentPreservesPalette()
     QVERIFY(control->document() == newDoc);
     QVERIFY(whitePal.color(QPalette::Active, QPalette::Text)
             == control->palette().color(QPalette::Active, QPalette::Text));
-#endif
 }
+#endif
 
 class PublicTextEdit : public QTextEdit
 {
@@ -2482,6 +2466,39 @@ void tst_QTextEdit::inputMethodQueryImHints()
     QVariant value = ed->inputMethodQuery(Qt::ImHints);
     QCOMPARE(static_cast<Qt::InputMethodHints>(value.toInt()), hints);
 }
+
+void tst_QTextEdit::highlightLongLine()
+{
+    QTextEdit edit;
+    edit.setAcceptRichText(false);
+    edit.setWordWrapMode(QTextOption::NoWrap);
+
+    QString singeLongLine;
+    for (int i = 0; i < 10000; ++i)
+        singeLongLine += "0123456789";
+    edit.setPlainText(singeLongLine);
+
+    class NumHighlighter : public QSyntaxHighlighter {
+    public:
+        explicit NumHighlighter(QTextDocument*doc) : QSyntaxHighlighter(doc) {};
+        virtual void highlightBlock(const QString& text) {
+            // odd number in bold
+            QTextCharFormat format;
+            format.setFontWeight(QFont::Bold);
+            for (int i = 0; i < text.size(); ++i) {
+                if (text.at(i).unicode() % 2)
+                    setFormat(i, 1, format);
+            }
+        }
+    };
+    NumHighlighter nh(edit.document());
+    edit.show();
+    QTest::qWaitForWindowActive(edit.windowHandle());
+    QCoreApplication::processEvents();
+    //If there is a quadratic behaviour, this would take forever.
+    QVERIFY(true);
+}
+
 
 QTEST_MAIN(tst_QTextEdit)
 #include "tst_qtextedit.moc"

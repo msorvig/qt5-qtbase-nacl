@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -456,6 +456,7 @@ static QString defaultTemplateName()
 
 /*!
     \class QTemporaryFile
+    \inmodule QtCore
     \reentrant
     \brief The QTemporaryFile class is an I/O device that operates on temporary files.
 
@@ -699,6 +700,21 @@ void QTemporaryFile::setFileTemplate(const QString &name)
 /*!
   \fn QTemporaryFile *QTemporaryFile::createLocalFile(const QString &fileName)
   \overload
+  \obsolete
+
+  Use QTemporaryFile::createNativeFile(const QString &fileName) instead.
+*/
+
+/*!
+  \fn QTemporaryFile *QTemporaryFile::createLocalFile(QFile &file)
+  \obsolete
+
+  Use QTemporaryFile::createNativeFile(QFile &file) instead.
+*/
+
+/*!
+  \fn QTemporaryFile *QTemporaryFile::createNativeFile(const QString &fileName)
+  \overload
 
   Works on the given \a fileName rather than an existing QFile
   object.
@@ -706,16 +722,27 @@ void QTemporaryFile::setFileTemplate(const QString &name)
 
 
 /*!
-  If \a file is not on a local disk, a temporary file is created
-  on a local disk, \a file is copied into the temporary local file,
-  and a pointer to the temporary local file is returned. If \a file
-  is already on a local disk, a copy is not created and 0 is returned.
+  If \a file is not already a native file then a QTemporaryFile is created
+  in the tempPath() and \a file is copied into the temporary file, then a
+  pointer to the temporary file is returned. If \a file is already a native
+  file, a QTemporaryFile is not created, no copy is made and 0 is returned.
+
+  For example:
+
+  QFile f(":/resources/file.txt");
+  QTemporaryFile::createNativeFile(f); // Returns a pointer to a temporary file
+
+  QFile f("/users/qt/file.txt");
+  QTemporaryFile::createNativeFile(f); // Returns 0
+
+  \sa QFileInfo::isNativePath()
 */
-QTemporaryFile *QTemporaryFile::createLocalFile(QFile &file)
+
+QTemporaryFile *QTemporaryFile::createNativeFile(QFile &file)
 {
     if (QAbstractFileEngine *engine = file.d_func()->engine()) {
         if(engine->fileFlags(QAbstractFileEngine::FlagsMask) & QAbstractFileEngine::LocalDiskFlag)
-            return 0; //local already
+            return 0; //native already
         //cache
         bool wasOpen = file.isOpen();
         qint64 old_off = 0;

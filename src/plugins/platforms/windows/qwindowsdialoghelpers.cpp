@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -70,7 +70,9 @@
 
 // #define USE_NATIVE_COLOR_DIALOG /* Testing purposes only */
 
-#if defined(Q_CC_MINGW) && __MINGW64_VERSION_MAJOR < 3  /* Add missing declarations for MinGW */
+#ifdef Q_CC_MINGW  /* Add missing declarations for MinGW */
+
+#ifndef __IShellLibrary_FWD_DEFINED__
 
 /* Constants obtained by running the below stream operator for
  * CLSID, IID on the constants in the Windows SDK libraries. */
@@ -201,9 +203,13 @@ typedef struct {
     int           iImage;
 } qt_BROWSEINFO;
 
-DECLARE_INTERFACE(IFileDialogEvents);
+#endif // __IShellLibrary_FWD_DEFINED__
 
-#ifndef __MINGW64_VERSION_MAJOR
+#ifndef __IFileDialogEvents_FWD_DEFINED__
+DECLARE_INTERFACE(IFileDialogEvents);
+#endif
+
+#ifndef __IShellItem_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IShellItem, IUnknown)
 {
     STDMETHOD(BindToHandler)(THIS_ IBindCtx *pbc, REFGUID bhid, REFIID riid, void **ppv) PURE;
@@ -214,12 +220,15 @@ DECLARE_INTERFACE_(IShellItem, IUnknown)
 };
 #endif
 
+#ifndef __IShellItemFilter_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IShellItemFilter, IUnknown)
 {
     STDMETHOD(IncludeItem)(THIS_ IShellItem *psi) PURE;
     STDMETHOD(GetEnumFlagsForItem)(THIS_ IShellItem *psi, DWORD *pgrfFlags) PURE;
 };
+#endif
 
+#ifndef __IShellEnumItems_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IEnumShellItems, IUnknown)
 {
     STDMETHOD(Next)(THIS_ ULONG celt, IShellItem **rgelt, ULONG *pceltFetched) PURE;
@@ -227,7 +236,9 @@ DECLARE_INTERFACE_(IEnumShellItems, IUnknown)
     STDMETHOD(Reset)(THIS_) PURE;
     STDMETHOD(Clone)(THIS_ IEnumShellItems **ppenum) PURE;
 };
+#endif
 
+#ifndef __IShellItemArray_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IShellItemArray, IUnknown)
 {
     STDMETHOD(BindToHandler)(THIS_ IBindCtx *pbc, REFGUID rbhid, REFIID riid, void **ppvOut) PURE;
@@ -238,14 +249,16 @@ DECLARE_INTERFACE_(IShellItemArray, IUnknown)
     STDMETHOD(GetItemAt)(THIS_ DWORD dwIndex, IShellItem **ppsi) PURE;
     STDMETHOD(EnumItems)(THIS_ IEnumShellItems **ppenumShellItems) PURE;
 };
+#endif
 
-#ifndef __MINGW64_VERSION_MAJOR
+#ifndef __IModalWindow_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IModalWindow, IUnknown)
 {
     STDMETHOD(Show)(THIS_ HWND hwndParent) PURE;
 };
 #endif
 
+#ifndef __IFileDialog_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IFileDialog, IModalWindow)
 {
     STDMETHOD(SetFileTypes)(THIS_ UINT cFileTypes, const COMDLG_FILTERSPEC *rgFilterSpec) PURE;
@@ -272,7 +285,9 @@ DECLARE_INTERFACE_(IFileDialog, IModalWindow)
     STDMETHOD(ClearClientData)(THIS_) PURE;
     STDMETHOD(SetFilter)(THIS_ IShellItemFilter *pFilter) PURE;
 };
+#endif
 
+#ifndef __IFileDialogEvents_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IFileDialogEvents, IUnknown)
 {
     STDMETHOD(OnFileOk)(THIS_ IFileDialog *pfd) PURE;
@@ -283,18 +298,25 @@ DECLARE_INTERFACE_(IFileDialogEvents, IUnknown)
     STDMETHOD(OnTypeChange)(THIS_ IFileDialog *pfd) PURE;
     STDMETHOD(OnOverwrite)(THIS_ IFileDialog *pfd, IShellItem *psi, FDE_OVERWRITE_RESPONSE *pResponse) PURE;
 };
+#endif
 
+#ifndef __IFileOpenDialog_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IFileOpenDialog, IFileDialog)
 {
     STDMETHOD(GetResults)(THIS_ IShellItemArray **ppenum) PURE;
     STDMETHOD(GetSelectedItems)(THIS_ IShellItemArray **ppsai) PURE;
 };
+#endif
 
-#if !defined(__MINGW64_VERSION_MAJOR) || (__MINGW64_VERSION_MAJOR < 2)
+#ifndef __IPropertyStore_FWD_DEFINED__
 typedef IUnknown IPropertyStore;
 #endif
-typedef IUnknown IFileOperationProgressSink;
 
+#ifndef __IFileOperationProgressSink_FWD_DEFINED__
+typedef IUnknown IFileOperationProgressSink;
+#endif
+
+#ifndef __IFileSaveDialog_INTERFACE_DEFINED__
 DECLARE_INTERFACE_(IFileSaveDialog, IFileDialog)
 {
 public:
@@ -304,8 +326,9 @@ public:
     STDMETHOD(GetProperties)(THIS_ IPropertyStore **ppStore) PURE;
     STDMETHOD(ApplyProperties)(THIS_ IShellItem *psi, IPropertyStore *pStore, HWND hwnd, IFileOperationProgressSink *pSink) PURE;
 };
+#endif
 
-#endif // defined(Q_CC_MINGW) && __MINGW64_VERSION_MAJOR < 3
+#endif // Q_CC_MINGW
 
 QT_BEGIN_NAMESPACE
 
@@ -610,7 +633,7 @@ IFileDialogEvents *QWindowsNativeFileDialogEventHandler::create(QWindowsNativeFi
     IFileDialogEvents *result;
     QWindowsNativeFileDialogEventHandler *eventHandler = new QWindowsNativeFileDialogEventHandler(nativeFileDialog);
     if (FAILED(eventHandler->QueryInterface(IID_IFileDialogEvents, reinterpret_cast<void **>(&result)))) {
-        qErrnoWarning("%s: Unable to obtain IFileDialogEvents");
+        qErrnoWarning("Unable to obtain IFileDialogEvents");
         return 0;
     }
     eventHandler->Release();
@@ -704,7 +727,7 @@ bool QWindowsNativeFileDialogBase::init(const CLSID &clsId, const IID &iid)
     HRESULT hr = CoCreateInstance(clsId, NULL, CLSCTX_INPROC_SERVER,
                                   iid, reinterpret_cast<void **>(&m_fileDialog));
     if (FAILED(hr)) {
-        qErrnoWarning("%s: CoCreateInstance failed");
+        qErrnoWarning("CoCreateInstance failed");
         return false;
     }
     m_dialogEvents = QWindowsNativeFileDialogEventHandler::create(this);
@@ -713,7 +736,7 @@ bool QWindowsNativeFileDialogBase::init(const CLSID &clsId, const IID &iid)
     // Register event handler
     hr = m_fileDialog->Advise(m_dialogEvents, &m_cookie);
     if (FAILED(hr)) {
-        qErrnoWarning("%s: IFileDialog::Advise failed");
+        qErrnoWarning("IFileDialog::Advise failed");
         return false;
     }
     if (QWindowsContext::verboseDialogs)
@@ -861,7 +884,7 @@ void QWindowsNativeFileDialogBase::setNameFilters(const QStringList &filters)
     QScopedArrayPointer<COMDLG_FILTERSPEC> comFilterSpec(new COMDLG_FILTERSPEC[size]);
 
     const QString matchesAll = QStringLiteral(" (*)");
-    const QRegExp filterSeparatorRE(QStringLiteral("; *"));
+    const QRegExp filterSeparatorRE(QStringLiteral("[;\\s]+"));
     const QString separator = QStringLiteral(";");
     Q_ASSERT(filterSeparatorRE.isValid());
 
@@ -1002,6 +1025,26 @@ public:
     virtual QStringList selectedFiles() const;
 };
 
+// Append a suffix from the name filter "Foo files (*.foo;*.bar)"
+// unless the file name already has one.
+static inline QString appendSuffix(const QString &fileName, const QString &filter)
+{
+    const int lastDot = fileName.lastIndexOf(QLatin1Char('.'));
+    const int lastSlash = fileName.lastIndexOf(QLatin1Char('/'));
+    if (lastDot >= 0 && (lastSlash == -1 || lastDot > lastSlash))
+        return fileName;
+    int suffixPos = filter.indexOf(QLatin1String("(*."));
+    if (suffixPos < 0)
+        return fileName;
+    suffixPos += 3;
+    int endPos = filter.indexOf(QLatin1Char(';'), suffixPos + 1);
+    if (endPos < 0)
+        endPos = filter.indexOf(QLatin1Char(')'), suffixPos + 1);
+    if (endPos < 0)
+        return fileName;
+    return fileName + QLatin1Char('.') + filter.mid(suffixPos, endPos - suffixPos);
+}
+
 QPlatformDialogHelper::DialogCode QWindowsNativeSaveFileDialog::fileResult(QStringList *result /* = 0 */) const
 {
     if (result)
@@ -1011,7 +1054,7 @@ QPlatformDialogHelper::DialogCode QWindowsNativeSaveFileDialog::fileResult(QStri
     if (FAILED(hr) || !item)
         return QPlatformDialogHelper::Rejected;
     if (result)
-        result->push_back(QWindowsNativeFileDialogBase::itemPath(item));
+        result->push_back(appendSuffix(QWindowsNativeFileDialogBase::itemPath(item), selectedNameFilter()));
     return QPlatformDialogHelper::Accepted;
 }
 

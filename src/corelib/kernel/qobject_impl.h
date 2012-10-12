@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -99,6 +99,109 @@ namespace QtPrivate {
     template <typename... Args> struct ConnectionTypes<List<Args...>, true>
     { static const int *types() { static const int t[sizeof...(Args) + 1] = { (QtPrivate::QMetaTypeIdHelper<Args>::qt_metatype_id())..., 0 }; return t; } };
 #endif
+
+    // internal base class (interface) containing functions required to call a slot managed by a pointer to function.
+    class QSlotObjectBase {
+        QAtomicInt m_ref;
+        // don't use virtual functions here; we don't want the
+        // compiler to create tons of per-polymorphic-class stuff that
+        // we'll never need. We just use one function pointer.
+        typedef void (*ImplFn)(int which, QSlotObjectBase* this_, QObject *receiver, void **args, bool *ret);
+        const ImplFn m_impl;
+    protected:
+        enum Operation {
+            Destroy,
+            Call,
+            Compare,
+
+            NumOperations
+        };
+    public:
+        explicit QSlotObjectBase(ImplFn fn) : m_ref(1), m_impl(fn) {}
+
+        inline int ref() Q_DECL_NOTHROW { return m_ref.ref(); }
+        inline void destroyIfLastRef() Q_DECL_NOTHROW
+        { if (!m_ref.deref()) m_impl(Destroy, this, 0, 0, 0); }
+
+        inline bool compare(void **a) { bool ret; m_impl(Compare, this, 0, a, &ret); return ret; }
+        inline void call(QObject *r, void **a)  { m_impl(Call,    this, r, a, 0); }
+    protected:
+        ~QSlotObjectBase() {}
+    };
+    // implementation of QSlotObjectBase for which the slot is a pointer to member function of a QObject
+    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
+    template<typename Func, typename Args, typename R> class QSlotObject : public QSlotObjectBase
+    {
+        typedef QtPrivate::FunctionPointer<Func> FuncType;
+        Func function;
+        static void impl(int which, QSlotObjectBase *this_, QObject *r, void **a, bool *ret)
+        {
+            switch (which) {
+            case Destroy:
+                delete static_cast<QSlotObject*>(this_);
+                break;
+            case Call:
+                FuncType::template call<Args, R>(static_cast<QSlotObject*>(this_)->function, static_cast<typename FuncType::Object *>(r), a);
+                break;
+            case Compare:
+                *ret = *reinterpret_cast<Func *>(a) == static_cast<QSlotObject*>(this_)->function;
+                break;
+            case NumOperations: ;
+            }
+        }
+    public:
+        explicit QSlotObject(Func f) : QSlotObjectBase(&impl), function(f) {}
+    };
+    // implementation of QSlotObjectBase for which the slot is a static function
+    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
+    template<typename Func, typename Args, typename R> class QStaticSlotObject : public QSlotObjectBase
+    {
+        typedef QtPrivate::FunctionPointer<Func> FuncType;
+        Func function;
+        static void impl(int which, QSlotObjectBase *this_, QObject *r, void **a, bool *ret)
+        {
+            switch (which) {
+            case Destroy:
+                delete static_cast<QStaticSlotObject*>(this_);
+                break;
+            case Call:
+                FuncType::template call<Args, R>(static_cast<QStaticSlotObject*>(this_)->function, r, a);
+                break;
+            case Compare:
+                *ret = false; // not implemented
+                break;
+            case NumOperations: ;
+            }
+        }
+    public:
+        explicit QStaticSlotObject(Func f) : QSlotObjectBase(&impl), function(f) {}
+    };
+    // implementation of QSlotObjectBase for which the slot is a functor (or lambda)
+    // N is the number of arguments
+    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
+    template<typename Func, int N, typename Args, typename R> class QFunctorSlotObject : public QSlotObjectBase
+    {
+        typedef QtPrivate::Functor<Func, N> FuncType;
+        Func function;
+        static void impl(int which, QSlotObjectBase *this_, QObject *r, void **a, bool *ret)
+        {
+            switch (which) {
+            case Destroy:
+                delete static_cast<QFunctorSlotObject*>(this_);
+                break;
+            case Call:
+                FuncType::template call<Args, R>(static_cast<QFunctorSlotObject*>(this_)->function, r, a);
+                break;
+            case Compare:
+                *ret = false; // not implemented
+                break;
+            case NumOperations: ;
+            }
+        }
+    public:
+        explicit QFunctorSlotObject(const Func &f) : QSlotObjectBase(&impl), function(f) {}
+    };
+
 }
 
 

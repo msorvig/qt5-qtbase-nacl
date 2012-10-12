@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -53,13 +53,36 @@
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #endif
+#ifdef QT_USE_SLOG2
+#include <slog2.h>
+#endif
 
 #include <stdio.h>
 
 QT_BEGIN_NAMESPACE
 
+#if !defined(Q_CC_MSVC)
+Q_NORETURN
+#endif
+static void qt_message_fatal(QtMsgType, const QMessageLogContext &context, const QString &message);
+static void qt_message_print(QtMsgType, const QMessageLogContext &context, const QString &message);
+
+static bool isFatal(QtMsgType msgType)
+{
+    if (msgType == QtFatalMsg)
+        return true;
+
+    if (msgType == QtWarningMsg) {
+        static bool fatalWarnings = qEnvironmentVariableIsSet("QT_FATAL_WARNINGS");
+        return fatalWarnings;
+    }
+
+    return false;
+}
+
 /*!
     \class QMessageLogContext
+    \inmodule QtCore
     \relates <QtGlobal>
     \brief The QMessageLogContext class provides additional information about a log message.
     \since 5.0
@@ -72,6 +95,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QMessageLogger
+    \inmodule QtCore
     \relates <QtGlobal>
     \brief The QMessageLogger class generates log messages.
     \since 5.0
@@ -93,6 +117,20 @@ QT_BEGIN_NAMESPACE
 extern bool usingWinMain;
 #endif
 
+static inline void convert_to_wchar_t_elided(wchar_t *d, size_t space, const char *s) Q_DECL_NOEXCEPT
+{
+    size_t len = qstrlen(s);
+    if (len + 1 > space) {
+        const size_t skip = len - space + 4; // 4 for "..." + '\0'
+        s += skip;
+        for (int i = 0; i < 3; ++i)
+          *d++ = L'.';
+    }
+    while (*s)
+        *d++ = *s++;
+    *d++ = 0;
+}
+
 #if !defined(QT_NO_EXCEPTIONS)
 /*!
     \internal
@@ -103,22 +141,27 @@ extern bool usingWinMain;
 static void qEmergencyOut(QtMsgType msgType, const char *msg, va_list ap) Q_DECL_NOEXCEPT
 {
     char emergency_buf[256] = { '\0' };
-    emergency_buf[255] = '\0';
+    emergency_buf[sizeof emergency_buf - 1] = '\0';
+#if defined(Q_OS_WIN) && defined(QT_BUILD_CORE_LIB) && defined(Q_OS_WINCE) \
+    || defined(Q_CC_MSVC) && defined(QT_DEBUG) && defined(_DEBUG) && defined(_CRT_ERROR)
+    wchar_t emergency_bufL[sizeof emergency_buf];
+#endif
+
     if (msg)
-        qvsnprintf(emergency_buf, 255, msg, ap);
+        qvsnprintf(emergency_buf, sizeof emergency_buf - 1, msg, ap);
 
 #if defined(Q_OS_WIN) && defined(QT_BUILD_CORE_LIB)
-#ifdef Q_OS_WINCE
-    OutputDebugStringW(reinterpret_cast<const wchar_t *> (
-                            QString::fromLatin1(emergency_buf).utf16()));
-#else
+# ifdef Q_OS_WINCE
+    convert_to_wchar_t_elided(emergency_bufL, sizeof emergency_buf, emergency_buf);
+    OutputDebugStringW(emergency_bufL);
+# else
     if (usingWinMain) {
         OutputDebugStringA(emergency_buf);
     } else {
         fprintf(stderr, "%s", emergency_buf);
         fflush(stderr);
     }
-#endif
+# endif
 #else
     fprintf(stderr, "%s", emergency_buf);
     fflush(stderr);
@@ -126,15 +169,17 @@ static void qEmergencyOut(QtMsgType msgType, const char *msg, va_list ap) Q_DECL
 
     if (msgType == QtFatalMsg
             || (msgType == QtWarningMsg
-                && (!qgetenv("QT_FATAL_WARNINGS").isNull())) ) {
+                && qEnvironmentVariableIsSet("QT_FATAL_WARNINGS"))) {
 #if defined(Q_CC_MSVC) && defined(QT_DEBUG) && defined(_DEBUG) && defined(_CRT_ERROR)
         // get the current report mode
         int reportMode = _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_WNDW);
         _CrtSetReportMode(_CRT_ERROR, reportMode);
+# ifndef Q_OS_WINCE // otherwise already converted to wchar_t above
+        convert_to_wchar_t_elided(emergency_bufL, sizeof emergency_buf, emergency_buf);
+# endif
         int ret = _CrtDbgReportW(_CRT_ERROR, _CRT_WIDE(__FILE__), __LINE__,
                                  _CRT_WIDE(QT_VERSION_STR),
-                                 reinterpret_cast<const wchar_t *> (
-                                     QString::fromLatin1(msg).utf16()));
+                                 emergency_bufL);
         if (ret == 1)
             _CrtDbgBreak();
 #endif
@@ -152,7 +197,7 @@ static void qEmergencyOut(QtMsgType msgType, const char *msg, va_list ap) Q_DECL
     \internal
 */
 static void qt_message(QtMsgType msgType, const QMessageLogContext &context, const char *msg,
-                       va_list ap)
+                       va_list ap, QString &buf)
 {
 #if !defined(QT_NO_EXCEPTIONS)
     if (std::uncaught_exception()) {
@@ -160,7 +205,6 @@ static void qt_message(QtMsgType msgType, const QMessageLogContext &context, con
         return;
     }
 #endif
-    QString buf;
     if (msg) {
         QT_TRY {
             buf = QString().vsprintf(msg, ap);
@@ -172,21 +216,37 @@ static void qt_message(QtMsgType msgType, const QMessageLogContext &context, con
 #endif
         }
     }
-    qt_message_output(msgType, context, buf);
+    qt_message_print(msgType, context, buf);
 }
 
 #undef qDebug
-void QMessageLogger::debug(const char *msg, ...)
+/*!
+    Logs a debug message specified with format \a msg. Additional
+    parameters, specified by \a msg, may be used.
+
+    \sa qDebug()
+*/
+void QMessageLogger::debug(const char *msg, ...) const
 {
+    QString message;
+
     va_list ap;
     va_start(ap, msg); // use variable arg list
-    qt_message(QtDebugMsg, context, msg, ap);
+    qt_message(QtDebugMsg, context, msg, ap, message);
     va_end(ap);
+
+    if (isFatal(QtDebugMsg))
+        qt_message_fatal(QtDebugMsg, context, message);
 }
 
 #ifndef QT_NO_DEBUG_STREAM
 
-QDebug QMessageLogger::debug()
+/*!
+    Logs a debug message using a QDebug stream
+
+    \sa qDebug(), QDebug
+*/
+QDebug QMessageLogger::debug() const
 {
     QDebug dbg = QDebug(QtDebugMsg);
     QMessageLogContext &ctxt = dbg.stream->context;
@@ -194,7 +254,14 @@ QDebug QMessageLogger::debug()
     return dbg;
 }
 
-QNoDebug QMessageLogger::noDebug()
+/*!
+    \internal
+
+    Returns a QNoDebug object, which is used to ignore debugging output.
+
+    \sa QNoDebug, qDebug()
+*/
+QNoDebug QMessageLogger::noDebug() const Q_DECL_NOTHROW
 {
     return QNoDebug();
 }
@@ -202,16 +269,32 @@ QNoDebug QMessageLogger::noDebug()
 #endif
 
 #undef qWarning
-void QMessageLogger::warning(const char *msg, ...)
+/*!
+    Logs a warning message specified with format \a msg. Additional
+    parameters, specified by \a msg, may be used.
+
+    \sa qWarning()
+*/
+void QMessageLogger::warning(const char *msg, ...) const
 {
+    QString message;
+
     va_list ap;
     va_start(ap, msg); // use variable arg list
-    qt_message(QtWarningMsg, context, msg, ap);
+    qt_message(QtWarningMsg, context, msg, ap, message);
     va_end(ap);
+
+    if (isFatal(QtWarningMsg))
+        qt_message_fatal(QtWarningMsg, context, message);
 }
 
 #ifndef QT_NO_DEBUG_STREAM
-QDebug QMessageLogger::warning()
+/*!
+    Logs a debug message using a QDebug stream
+
+    \sa qWarning(), QDebug
+*/
+QDebug QMessageLogger::warning() const
 {
     QDebug dbg = QDebug(QtWarningMsg);
     QMessageLogContext &ctxt = dbg.stream->context;
@@ -221,16 +304,33 @@ QDebug QMessageLogger::warning()
 #endif
 
 #undef qCritical
-void QMessageLogger::critical(const char *msg, ...)
+
+/*!
+    Logs a critical message specified with format \a msg. Additional
+    parameters, specified by \a msg, may be used.
+
+    \sa qCritical()
+*/
+void QMessageLogger::critical(const char *msg, ...) const
 {
+    QString message;
+
     va_list ap;
     va_start(ap, msg); // use variable arg list
-    qt_message(QtCriticalMsg, context, msg, ap);
+    qt_message(QtCriticalMsg, context, msg, ap, message);
     va_end(ap);
+
+    if (isFatal(QtCriticalMsg))
+        qt_message_fatal(QtCriticalMsg, context, message);
 }
 
 #ifndef QT_NO_DEBUG_STREAM
-QDebug QMessageLogger::critical()
+/*!
+    Logs a critical message using a QDebug stream
+
+    \sa qCritical(), QDebug
+*/
+QDebug QMessageLogger::critical() const
 {
     QDebug dbg = QDebug(QtCriticalMsg);
     QMessageLogContext &ctxt = dbg.stream->context;
@@ -240,15 +340,22 @@ QDebug QMessageLogger::critical()
 #endif
 
 #undef qFatal
-void QMessageLogger::fatal(const char *msg, ...) Q_DECL_NOTHROW
+/*!
+    Logs a fatal message specified with format \a msg. Additional
+    parameters, specified by \a msg, may be used.
+
+    \sa qFatal()
+*/
+void QMessageLogger::fatal(const char *msg, ...) const Q_DECL_NOTHROW
 {
+    QString message;
+
     va_list ap;
     va_start(ap, msg); // use variable arg list
-    QT_TERMINATE_ON_EXCEPTION(qt_message(QtFatalMsg, context, msg, ap));
-#ifndef Q_CC_MSVC
-    Q_UNREACHABLE();
-#endif
+    QT_TERMINATE_ON_EXCEPTION(qt_message(QtFatalMsg, context, msg, ap, message));
     va_end(ap);
+
+    qt_message_fatal(QtFatalMsg, context, message);
 }
 
 /*!
@@ -556,6 +663,56 @@ void QMessagePattern::setPattern(const QString &pattern)
     memcpy(literals, literalsVar.constData(), literalsVar.size() * sizeof(const char*));
 }
 
+#if defined(QT_USE_SLOG2)
+#ifndef QT_LOG_CODE
+#define QT_LOG_CODE 9000
+#endif
+
+extern char *__progname;
+
+static void slog2_default_handler(QtMsgType msgType, const char *message)
+{
+    if (slog2_set_default_buffer((slog2_buffer_t)-1) == 0) {
+        slog2_buffer_set_config_t buffer_config;
+        slog2_buffer_t buffer_handle;
+
+        buffer_config.buffer_set_name = __progname;
+        buffer_config.num_buffers = 1;
+        buffer_config.verbosity_level = SLOG2_INFO;
+        buffer_config.buffer_config[0].buffer_name = "default";
+        buffer_config.buffer_config[0].num_pages = 8;
+
+        if (slog2_register(&buffer_config, &buffer_handle, 0) == -1) {
+            fprintf(stderr, "Error registering slogger2 buffer!\n");
+            fprintf(stderr, "%s", message);
+            fflush(stderr);
+            return;
+        }
+
+        // Set as the default buffer
+        slog2_set_default_buffer(buffer_handle);
+    }
+    int severity;
+    //Determines the severity level
+    switch (msgType) {
+    case QtDebugMsg:
+        severity = SLOG2_INFO;
+        break;
+    case QtWarningMsg:
+        severity = SLOG2_NOTICE;
+        break;
+    case QtCriticalMsg:
+        severity = SLOG2_WARNING;
+        break;
+    case QtFatalMsg:
+        severity = SLOG2_ERROR;
+        break;
+    }
+    //writes to the slog2 buffer
+    slog2c(NULL, QT_LOG_CODE, severity, message);
+}
+#endif // QT_USE_SLOG2
+
 Q_GLOBAL_STATIC(QMessagePattern, qMessagePattern)
 
 /*!
@@ -639,15 +796,17 @@ static void qDefaultMessageHandler(QtMsgType type, const QMessageLogContext &con
     if (usingWinMain)
 #endif
     {
-        // OutputDebugString is not threadsafe.
-        static QBasicMutex outputDebugStringMutex;
-        QMutexLocker locker(&outputDebugStringMutex);
         OutputDebugString(reinterpret_cast<const wchar_t *>(logMessage.utf16()));
         return;
     }
 #endif // Q_OS_WIN
+
+#if defined(QT_USE_SLOG2)
+    slog2_default_handler(type, logMessage.toLocal8Bit().constData());
+#else
     fprintf(stderr, "%s", logMessage.toLocal8Bit().constData());
     fflush(stderr);
+#endif
 }
 
 /*!
@@ -659,10 +818,7 @@ static void qDefaultMsgHandler(QtMsgType type, const char *buf)
     qDefaultMessageHandler(type, emptyContext, QLatin1String(buf));
 }
 
-/*!
-    \internal
-*/
-void qt_message_output(QtMsgType msgType, const QMessageLogContext &context, const QString &message)
+static void qt_message_print(QtMsgType msgType, const QMessageLogContext &context, const QString &message)
 {
     if (!msgHandler)
         msgHandler = qDefaultMsgHandler;
@@ -676,33 +832,50 @@ void qt_message_output(QtMsgType msgType, const QMessageLogContext &context, con
     } else {
         (*msgHandler)(msgType, message.toLocal8Bit().constData());
     }
+}
 
-    if (msgType == QtFatalMsg
-            || (msgType == QtWarningMsg
-                && (!qgetenv("QT_FATAL_WARNINGS").isNull())) ) {
-
+static void qt_message_fatal(QtMsgType, const QMessageLogContext &context, const QString &message)
+{
 #if defined(Q_CC_MSVC) && defined(QT_DEBUG) && defined(_DEBUG) && defined(_CRT_ERROR)
-        // get the current report mode
-        int reportMode = _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_WNDW);
-        _CrtSetReportMode(_CRT_ERROR, reportMode);
+        wchar_t contextFileL[256];
+        // we probably should let the compiler do this for us, by
+        // declaring QMessageLogContext::file to be const wchar_t * in
+        // the first place, but the #ifdefery above is very complex
+        // and we wouldn't be able to change it later on...
+        convert_to_wchar_t_elided(contextFileL, sizeof contextFileL / sizeof *contextFileL, context.file);
+    // get the current report mode
+    int reportMode = _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_WNDW);
+    _CrtSetReportMode(_CRT_ERROR, reportMode);
 
-        int ret = _CrtDbgReportW(_CRT_ERROR, reinterpret_cast<const wchar_t *> (
-                                     QString::fromLatin1(context.file).utf16()),
-                                 context.line, _CRT_WIDE(QT_VERSION_STR),
-                                 reinterpret_cast<const wchar_t *> (
-                                     message.utf16()));
-        if (ret == 0  && reportMode & _CRTDBG_MODE_WNDW)
-            return; // ignore
-        else if (ret == 1)
-            _CrtDbgBreak();
+        int ret = _CrtDbgReportW(_CRT_ERROR, contextFileL,
+                             context.line, _CRT_WIDE(QT_VERSION_STR),
+                             reinterpret_cast<const wchar_t *> (
+                                 message.utf16()));
+    if (ret == 0  && reportMode & _CRTDBG_MODE_WNDW)
+        return; // ignore
+    else if (ret == 1)
+        _CrtDbgBreak();
+#else
+    Q_UNUSED(context);
+    Q_UNUSED(message);
 #endif
 
 #if (defined(Q_OS_UNIX) || defined(Q_CC_MINGW))
-        abort(); // trap; generates core dump
+    abort(); // trap; generates core dump
 #else
-        exit(1); // goodbye cruel world
+    exit(1); // goodbye cruel world
 #endif
-    }
+}
+
+
+/*!
+    \internal
+*/
+void qt_message_output(QtMsgType msgType, const QMessageLogContext &context, const QString &message)
+{
+    qt_message_print(msgType, context, message);
+    if (isFatal(msgType))
+        qt_message_fatal(msgType, context, message);
 }
 
 void qErrnoWarning(const char *msg, ...)
@@ -807,7 +980,7 @@ void qErrnoWarning(int code, const char *msg, ...)
     Installs a Qt message \a handler which has been defined
     previously. This method is deprecated, use qInstallMessageHandler
     instead.
-    \sa QtMsgHandler, qInstallMessageHandler
+    \sa QtMsgHandler, qInstallMessageHandler()
 */
 /*!
     \fn void qSetMessagePattern(const QString &pattern)
@@ -832,15 +1005,15 @@ void qErrnoWarning(int code, const char *msg, ...)
     \row \li \c %{type} \li "debug", "warning", "critical" or "fatal"
     \endtable
 
-    The default pattern is "%{message}".
+    The default \a pattern is "%{message}".
 
-    The pattern can also be changed at runtime by setting the QT_MESSAGE_PATTERN
+    The \a pattern can also be changed at runtime by setting the QT_MESSAGE_PATTERN
     environment variable; if both qSetMessagePattern() is called and QT_MESSAGE_PATTERN is
     set, the environment variable takes precedence.
 
     qSetMessagePattern() has no effect if a custom message handler is installed.
 
-    \sa qInstallMessageHandler, {Debugging Techniques}
+    \sa qInstallMessageHandler(), {Debugging Techniques}
  */
 
 QtMessageHandler qInstallMessageHandler(QtMessageHandler h)
@@ -871,6 +1044,10 @@ void qSetMessagePattern(const QString &pattern)
         qMessagePattern()->setPattern(pattern);
 }
 
+/*!
+    Copies context information from \a logContext into this QMessageLogContext
+    \internal
+*/
 void QMessageLogContext::copy(const QMessageLogContext &logContext)
 {
     this->category = logContext.category;
@@ -878,5 +1055,49 @@ void QMessageLogContext::copy(const QMessageLogContext &logContext)
     this->line = logContext.line;
     this->function = logContext.function;
 }
+
+/*!
+    \fn QMessageLogger::QMessageLogger()
+
+    Constructs a default QMessageLogger. See the other constructors to specify
+    context information.
+*/
+
+/*!
+    \fn QMessageLogger::QMessageLogger(const char *file, int line, const char *function)
+
+    Constructs a QMessageLogger to record log messages for \a file at \a line
+    in \a function. The is equivalent to QMessageLogger(file, line, function, "default")
+*/
+/*!
+    \fn QMessageLogger::QMessageLogger(const char *file, int line, const char *function, const char *category)
+
+    Constructs a QMessageLogger to record \a category messages for \a file at \a line
+    in \a function.
+*/
+
+/*!
+    \fn void QMessageLogger::noDebug(const char *, ...) const
+    \internal
+
+    Ignores logging output
+
+    \sa QNoDebug, qDebug()
+*/
+
+/*!
+    \fn QMessageLogContext::QMessageLogContext()
+    \internal
+
+    Constructs a QMessageLogContext
+*/
+
+/*!
+    \fn QMessageLogContext::QMessageLogContext(const char *fileName, int lineNumber, const char *functionName, const char *categoryName)
+    \internal
+
+    Constructs a QMessageLogContext with for file \a fileName at line
+    \a lineNumber, in function \a functionName, and category \a CategoryName.
+*/
 
 QT_END_NAMESPACE

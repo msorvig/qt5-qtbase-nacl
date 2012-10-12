@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -562,12 +562,21 @@ static HGLRC createContext(const QOpenGLStaticContext &staticContext,
     int attributes[attribSize];
     int attribIndex = 0;
     qFill(attributes, attributes + attribSize, int(0));
-    const int requestedVersion = (format.majorVersion() << 8) + format.minorVersion();
+
+    // We limit the requested version by the version of the static context as
+    // wglCreateContextAttribsARB fails and returns NULL if the requested context
+    // version is not supported. This means that we will get the closest supported
+    // context format that that which was requested and is supported by the driver
+    const int requestedVersion = qMin((format.majorVersion() << 8) + format.minorVersion(),
+                                      staticContext.defaultFormat.version);
+    const int majorVersion = requestedVersion >> 8;
+    const int minorVersion = requestedVersion & 0xFF;
+
     if (requestedVersion > 0x0101) {
         attributes[attribIndex++] = WGL_CONTEXT_MAJOR_VERSION_ARB;
-        attributes[attribIndex++] = format.majorVersion();
+        attributes[attribIndex++] = majorVersion;
         attributes[attribIndex++] = WGL_CONTEXT_MINOR_VERSION_ARB;
-        attributes[attribIndex++] = format.minorVersion();
+        attributes[attribIndex++] = minorVersion;
     }
     if (requestedVersion >= 0x0300) {
         attributes[attribIndex++] = WGL_CONTEXT_FLAGS_ARB;
@@ -575,7 +584,7 @@ static HGLRC createContext(const QOpenGLStaticContext &staticContext,
         if (format.testOption(QSurfaceFormat::DeprecatedFunctions))
              attributes[attribIndex] |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
         if (format.testOption(QSurfaceFormat::DebugContext))
-            attributes[attribIndex++] |= WGL_CONTEXT_DEBUG_BIT_ARB;
+            attributes[attribIndex] |= WGL_CONTEXT_DEBUG_BIT_ARB;
         attribIndex++;
     }
     if (requestedVersion >= 0x0302) {
@@ -594,7 +603,7 @@ static HGLRC createContext(const QOpenGLStaticContext &staticContext,
     }
     if (QWindowsContext::verboseGL)
         qDebug("%s: Creating context version %d.%d with %d attributes",
-               __FUNCTION__,  format.majorVersion(), format.minorVersion(), attribIndex / 2);
+               __FUNCTION__,  majorVersion, minorVersion, attribIndex / 2);
 
     const HGLRC result =
         staticContext.wglCreateContextAttribsARB(hdc, shared, attributes);
@@ -807,8 +816,8 @@ QOpenGLStaticContext::QOpenGLStaticContext() :
     wglSwapInternalExt((WglSwapInternalExt)wglGetProcAddress("wglSwapIntervalEXT")),
     wglGetSwapInternalExt((WglGetSwapInternalExt)wglGetProcAddress("wglGetSwapIntervalEXT"))
 {
-    if (extensionNames.startsWith(SAMPLE_BUFFER_EXTENSION" ")
-            || extensionNames.indexOf(" "SAMPLE_BUFFER_EXTENSION" ") != -1)
+    if (extensionNames.startsWith(SAMPLE_BUFFER_EXTENSION " ")
+            || extensionNames.indexOf(" " SAMPLE_BUFFER_EXTENSION " ") != -1)
         extensions |= SampleBuffers;
 }
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -651,7 +651,6 @@ public:
         SH_DrawMenuBarSeparator,
         SH_TitleBar_ModifyNotification,
         SH_Button_FocusPolicy,
-        SH_MenuBar_DismissOnSecondClick,
         SH_MessageBox_UseBorderForButtonSpacing,
         SH_TitleBar_AutoRaise,
         SH_ToolButton_PopupDelay,
@@ -784,8 +783,8 @@ public:
     virtual QPixmap standardPixmap(StandardPixmap standardPixmap, const QStyleOption *opt = 0,
                                    const QWidget *widget = 0) const = 0;
 
-    QIcon standardIcon(StandardPixmap standardIcon, const QStyleOption *option = 0,
-                       const QWidget *widget = 0) const;
+    virtual QIcon standardIcon(StandardPixmap standardIcon, const QStyleOption *option = 0,
+                               const QWidget *widget = 0) const = 0;
 
     virtual QPixmap generatedIconPixmap(QIcon::Mode iconMode, const QPixmap &pixmap,
                                         const QStyleOption *opt) const = 0;
@@ -802,23 +801,14 @@ public:
     static QRect alignedRect(Qt::LayoutDirection direction, Qt::Alignment alignment,
                              const QSize &size, const QRect &rectangle);
 
-    int layoutSpacing(QSizePolicy::ControlType control1,
-                      QSizePolicy::ControlType control2, Qt::Orientation orientation,
-                      const QStyleOption *option = 0, const QWidget *widget = 0) const;
+    virtual int layoutSpacing(QSizePolicy::ControlType control1,
+                              QSizePolicy::ControlType control2, Qt::Orientation orientation,
+                              const QStyleOption *option = 0, const QWidget *widget = 0) const = 0;
     int combinedLayoutSpacing(QSizePolicy::ControlTypes controls1,
                               QSizePolicy::ControlTypes controls2, Qt::Orientation orientation,
                               QStyleOption *option = 0, QWidget *widget = 0) const;
 
     const QStyle * proxy() const;
-
-protected Q_SLOTS:
-    QIcon standardIconImplementation(StandardPixmap standardIcon, const QStyleOption *opt = 0,
-                                     const QWidget *widget = 0) const;
-    int layoutSpacingImplementation(QSizePolicy::ControlType control1,
-                                    QSizePolicy::ControlType control2,
-                                    Qt::Orientation orientation,
-                                    const QStyleOption *option = 0,
-                                    const QWidget *widget = 0) const;
 
 private:
     Q_DISABLE_COPY(QStyle)

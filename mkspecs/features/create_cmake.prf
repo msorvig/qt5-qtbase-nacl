@@ -64,6 +64,9 @@ macx {
     !isEmpty(CMAKE_STATIC_TYPE) {
         CMAKE_LIB_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}_debug.a
         CMAKE_LIB_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.a
+
+        CMAKE_PRL_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}_debug.prl
+        CMAKE_PRL_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.prl
     } else {
         CONFIG(qt_framework, qt_framework|qt_no_framework) {
             CMAKE_LIB_FILE_LOCATION_DEBUG = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.framework/Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}
@@ -77,7 +80,6 @@ macx {
 } else:win32 {
     CMAKE_WINDOWS_BUILD = "true"
     CMAKE_FIND_OTHER_LIBRARY_BUILD = "true"
-    CMAKE_BIN_SUFFIX = ".exe"
 
     CMAKE_LIB_FILE_LOCATION_DEBUG = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d$$eval(QT.$${MODULE}.MAJOR_VERSION).dll
     CMAKE_LIB_FILE_LOCATION_RELEASE = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}$$eval(QT.$${MODULE}.MAJOR_VERSION).dll
@@ -87,8 +89,12 @@ macx {
         CMAKE_WINMAIN_FILE_LOCATION_RELEASE = libqtmain$${QT_LIBINFIX}.a
 
         !isEmpty(CMAKE_STATIC_TYPE) {
+            CMAKE_STATIC_WINDOWS_BUILD = "true"
             CMAKE_IMPLIB_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d.a
             CMAKE_IMPLIB_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.a
+
+            CMAKE_PRL_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d.prl
+            CMAKE_PRL_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.prl
         } else {
             CMAKE_IMPLIB_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d$$eval(QT.$${MODULE}.MAJOR_VERSION).a
             CMAKE_IMPLIB_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}$$eval(QT.$${MODULE}.MAJOR_VERSION).a
@@ -98,8 +104,12 @@ macx {
         CMAKE_WINMAIN_FILE_LOCATION_RELEASE = qtmain$${QT_LIBINFIX}.lib
 
         !isEmpty(CMAKE_STATIC_TYPE) {
+            CMAKE_STATIC_WINDOWS_BUILD = "true"
             CMAKE_IMPLIB_FILE_LOCATION_DEBUG = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d.lib
             CMAKE_IMPLIB_FILE_LOCATION_RELEASE = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.lib
+
+            CMAKE_PRL_FILE_LOCATION_DEBUG = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d.prl
+            CMAKE_PRL_FILE_LOCATION_RELEASE = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.prl
         } else {
             CMAKE_IMPLIB_FILE_LOCATION_DEBUG = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}d$$eval(QT.$${MODULE}.MAJOR_VERSION).lib
             CMAKE_IMPLIB_FILE_LOCATION_RELEASE = Qt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}$$eval(QT.$${MODULE}.MAJOR_VERSION).lib
@@ -109,6 +119,8 @@ macx {
     !isEmpty(CMAKE_STATIC_TYPE) {
         CMAKE_LIB_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.a
         CMAKE_LIB_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.a
+        CMAKE_PRL_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.prl
+        CMAKE_PRL_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.prl
     } else {
         CMAKE_LIB_FILE_LOCATION_DEBUG = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.so.$$eval(QT.$${MODULE}.VERSION)
         CMAKE_LIB_FILE_LOCATION_RELEASE = libQt$${CMAKE_MODULE_NAME}$${QT_LIBINFIX}.so.$$eval(QT.$${MODULE}.VERSION)
@@ -133,6 +145,7 @@ CMAKE_RELEASE_TYPE =
 #   true, and 'make release' is subsequently invoked, CMake is only aware of
 #   the debug libraries at build time.
 
+equals(QMAKE_HOST.os, Windows): CMAKE_BIN_SUFFIX = ".exe"
 if (build_all|CONFIG(debug, debug|release)):CMAKE_DEBUG_TYPE = debug
 if (build_all|CONFIG(release, debug|release)):CMAKE_RELEASE_TYPE = release
 
@@ -144,7 +157,7 @@ cmake_config_file.output = $$DESTDIR/cmake/Qt5$${CMAKE_MODULE_NAME}/Qt5$${CMAKE_
 cmake_config_version_file.input = $$PWD/../cmake/Qt5ConfigVersion.cmake.in
 cmake_config_version_file.output = $$DESTDIR/cmake/Qt5$${CMAKE_MODULE_NAME}/Qt5$${CMAKE_MODULE_NAME}ConfigVersion.cmake
 
-QMAKE_SUBSTITUTES += \
+!build_pass:QMAKE_SUBSTITUTES += \
     cmake_config_file \
     cmake_config_version_file
 
@@ -158,7 +171,7 @@ exists($$cmake_extras_file.input) {
     CMAKE_MODULE_EXTRAS = "true"
     cmake_extras_file.output = $$DESTDIR/cmake/Qt5$${CMAKE_MODULE_NAME}/Qt5$${CMAKE_MODULE_NAME}ConfigExtras.cmake
 
-    QMAKE_SUBSTITUTES += cmake_extras_file
+    !build_pass:QMAKE_SUBSTITUTES += cmake_extras_file
 
     cmake_qt5_module_files.files += \
         $$cmake_extras_file.output
@@ -171,7 +184,7 @@ exists($$cmake_macros_file.input) {
     cmake_macros_file.output = $$DESTDIR/cmake/Qt5$${CMAKE_MODULE_NAME}/Qt5$${CMAKE_MODULE_NAME}Macros.cmake
     cmake_macros_file.CONFIG = verbatim
 
-    QMAKE_SUBSTITUTES += cmake_macros_file
+    !build_pass:QMAKE_SUBSTITUTES += cmake_macros_file
 
     cmake_qt5_module_files.files += $$cmake_macros_file.output
 }

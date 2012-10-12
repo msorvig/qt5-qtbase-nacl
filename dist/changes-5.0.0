@@ -41,6 +41,9 @@ information about a particular change.
 - QCoreApplication::translate() will no longer return the source text when
   the translation is empty. Use lrelease -removeidentical for optimization.
 
+- QTranslator subclasses need to adjust the signature of the virtual method
+  translate() in order to add the "int n = -1" argument.
+
 - QString and QByteArray constructors that take a size argument will now treat
   negative sizes to indicate nul-terminated strings (a nul-terminated array of
   QChar, in the case of QString). In Qt 4, negative sizes were ignored and
@@ -59,9 +62,20 @@ information about a particular change.
 
 - qIsDetached<> has been removed without replacement.
 
+- The return type of QFlags<Enum>::operator int() now matches the Enum's underlying
+  type in signedness instead of always being 'int'. This was done in order to allow
+  QFlags over enums whose underlying type is unsigned (Qt::MouseButton is one such
+  enum).
+
 - QMetaType:
   * QMetaType::construct() has been renamed to QMetaType::create().
   * QMetaType::unregisterType() has been removed.
+  * QMetaType now records if the type argument inherits QObject. This
+    can be used in scripting APIs, so that custom QObject subclasses
+    are treated as QObject pointers. In QtScript for example, this can
+    mean that QScriptValue.isQObject can be true where it was false before.
+  * QMetaType::QWidgetStar has been removed. Use qMetaTypeId<QWidget*>()
+    or QVariant::canConvert<QWidget*>() as appropriate.
 
 - QMetaMethod:
   * QMetaMethod::signature() has been renamed to QMetaMethod::methodSignature(),
@@ -78,6 +92,10 @@ information about a particular change.
     instance was removed. Code constructing such variants can be migrated by
     explicitly calling QColor constructor. For example from "QVariant(Qt::red)"
     to "QVariant(QColor(Qt::red))"
+  * Similarly, implicit creation of QVariants from enum values Qt::BrushStyle,
+    Qt::PenStyle, and Qt::CursorShape have been removed. Create objects explicitly
+    or use static_cast<int>(Qt::SolidLine) to create a QVariant of type int with
+    the same value as the enum.
 
 - QTestLib:
   * The plain-text, xml and lightxml test output formats have been changed to
@@ -111,6 +129,18 @@ information about a particular change.
     like SkipSingle -- skipping a non-data-driven test function or skipping
     only the current data row of a data-driven test function.  Every skipped
     data row is now reported in the test log.
+  * The qCompare() function template was both overloaded and specialised, which
+    made it almost impossible to specialise the correct primary template and
+    could lead to indecipherable error messages or surprising overload resolution
+    (such as going via qCompare(QFlags<void*>,int) to satisfy a request for
+    qCompare<void*>()). Now, specialisation has been replaced by overloading.
+    As a consquence, code such as qCompare<QString>(l, r) will no longer use the
+    QString-specific implementation and may fail to compile. We recommend you
+    replace specialisations with overloading, too. Also, don't pass explicit
+    template arguments to qCompare (e.g. qCompare<QString>(l, r)), but let
+    overload resolution pick the correct one, and cast arguments in case of
+    ambiguous overloads (e.g. qCompare(QString(l), r)). The resulting code will
+    continue to work against older QtTestlib versions.
 
 - The QSsl::TlsV1 enum value was renamed to QSsl::TlsV1_0 .
 
@@ -176,6 +206,15 @@ information about a particular change.
 
   * The signature of the createEditor and valuePropertyName methods
     have been changed to take arguments of type int instead of QVariant::Type.
+
+- QModelIndex/QAbstractItemModel
+
+  * The integer value that can be stored in a QModelIndex is now of type
+    quintptr to match the size of the internal storage location.
+  * The createIndex() method now only provides the void* and quintptr
+    overloads, making calls with a literal 0 (createIndex(row, col, 0))
+    ambiguous. Either cast (quintptr(0)) or omit the third argument
+    (to get the void* overload).
 
 - QWindowSystemInterface:
 
@@ -282,6 +321,8 @@ information about a particular change.
 - QPageSetupDialog has had the PageSetupDialogOption enum and the api to
   set and get the enum removed as none of the Options are used any more.
 
+- QAbstractPageSetupDialog has been removed.
+
 ****************************************************************************
 *                           General                                        *
 ****************************************************************************
@@ -299,6 +340,9 @@ General Improvements
   'contains(QT_CONFIG,c++11):CONFIG+=c++11'. This will enable C++11 support
   only if Qt was built with C++11 support.
 
+- The Unicode Data and Algorithms has been updated to match the
+  Unicode Standard of version 6.2. For more information see http://www.unicode.org/
+
 Third party components
 ----------------------
 
@@ -313,13 +357,21 @@ the 3rdparty directory.
 
 QtCore
 ------
-* drop a bogus QChar::NoCategory enum value; the proper QChar::Other_NotAssigned
+* [QTBUG-12144], [QTBUG-18360] The QChar methods are now able to handle the full range
+  of Unicode codepoints defined by the Unicode Standard of version 6.2.
+  QChar::isPrint() will no longer return a false positives for
+  the Unicode format characters, surrogates, and private use characters.
+
+* Drop a bogus QChar::NoCategory enum value; the proper QChar::Other_NotAssigned
   value is returned for an unassigned codepoints now.
 
 * layoutAboutToBeChanged is no longer emitted by QAbstractItemModel::beginMoveRows.
   layoutChanged is no longer emitted by QAbstractItemModel::endMoveRows. Proxy models
   should now also connect to (and disconnect from) the rowsAboutToBeMoved and
   rowsMoved signals.
+
+* The QAbstractItemModel::sibling method was made virtual, allowing implementations
+  to optimize based on internal data.
 
 * The default value of the property QSortFilterProxyModel::dynamicSortFilter was
   changed from false to true.
@@ -401,6 +453,23 @@ QtCore
   attacks exploiting algorithmic complexity, by supporting two-arguments overloads
   of the qHash() hashing function.
 
+* [QTBUG-4844] QObject::disconnectNotify() is now called when a receiver is destroyed.
+
+* QStateMachine
+  - [QTBUG-15430] Added a QStateMachine constructor that takes a ChildMode parameter.
+  - [QTBUG-17975] Delayed event posting now works from secondary threads.
+  - [QTBUG-19789] Signal transitions now work correctly when the sender is in a different thread.
+  - [QTBUG-20362] Property assignments now work as expected with nested, parallel states.
+  - [QTBUG-22931] The root state can now be a parallel state group.
+  - [QTBUG-24307] The initial state is now entered before the started() signal is emitted.
+  - [QTBUG-25959] State entry and exit order is now SCXML spec-compliant.
+
+* qDebug(), qWarning(), qCritical(), and qFatal() were changed to macros that track the origin
+  of the message in source code. Whether this and other meta-information is printed can be
+  configured  (for the default message handler) by setting the new QT_MESSAGE_PATTERN environment
+  variable. qInstallMsgHandler() has been deprecated, and should be replaced with
+  qInstallMessageHandler().
+
 QtGui
 -----
 * Accessibility has been refactored. The hierachy of accessible objects is implemented via
@@ -421,12 +490,26 @@ QtGui
 * QOpenGLPaintDevice has been added to be able to use QPainter to render into
   the currently bound context.
 
+* Behavioral change in QImage::fill() on an image with format Format_RGB888:
+  For consistency with RGB32 and other 32-bit formats, function now expects
+  image data in RGB layout as opposed to BGR layout.
+
+* Behavioral change in QImage and QPixmap load()/loadFromData() on a non-null image:
+  If load() or loadFromData() fails to load the image (returns false) then
+  the existent image data will be invalidated, so that isNull() is guaranteed
+  to return true in this case.
+
 QtWidgets
 ---------
 * QInputContext removed as well as related getters and setters on QWidget and QApplication.
   Input contexts are now platform specific.
 
 * QInputDialog::getInteger() has been obsoleted. Use QInputDialog::getInt() instead.
+
+* In Qt 4, QStyle::standardIconImplementation() and layoutSpacingImplementation()
+  were introduced instead of making the corresponding methods virtual due to binary
+  compatibility reasons. QStyle::standardIcon() and layoutSpacing() have been made
+  (pure) virtual in Qt 5.
 
 * In Qt 4, many QStyleOption subclasses were introduced in order to keep
   binary compatibility -- QStyleOption was designed to be extended this way,
@@ -466,6 +549,14 @@ QtWidgets
 * QAbstractItemView and derived classes only emit the clicked() signal on left click now,
   instead of on all mouse clicks.
 
+* QProxyModel has been removed. It is deprecated since early Qt 4 versions and replaced
+  by QAbstractProxyModel and related classes. A copy of QProxyModel is available
+  in the UiHelpers library.
+
+* [QTBUG-20503] QFileSystemModel no longer masks out write permissions from the permissions
+  returned from permissions() or data(FilePermissions), even if in read-only mode
+  (QFileSystemModel::isReadOnly()).
+
 QtNetwork
 ---------
 * QHostAddress::isLoopback() API added. Returns true if the address is
@@ -486,6 +577,17 @@ QtDBus
 * QtDBus error codes have been updated to be on the org.qtproject.QtDBus.Error
   namespace.
 
+QtConcurrent
+------------
+
+* QtConcurrent is no longer in QtCore, but forms its own library now.
+  QMake-based projects can use
+    QT += concurrent
+  to include the new library.
+
+* QtConcurrent::Exception has been renamed to QException, and is still in QtCore.
+  Ditto QtConcurrent::UnhandledException.
+
 QtOpenGL
 --------
 
@@ -493,10 +595,39 @@ QtOpenGL
   now have equivalents in QtGui, along with the naming change QGL -> QOpenGL.
   The classes in QtOpenGL that have equivalents in QtGui can now be considered
   deprecated.
+* QGLPixelBuffer is now deprecated and implemented in terms of a hidden
+  QGLWidget and a QOpenGLFramebufferObject. It is recommended that applications
+  using QGLPixelBuffer for offscreen rendering to a texture switch to using
+  QOpenGLFramebufferObject directly instead, for improved performance.
 
 QtScript
 --------
-
+* [QTBUG-2124]  Added default conversion for long and unsigned long.
+* [QTBUG-6133]  Fixed QScriptContextInfo::functionMetaIndex() for overloaded
+  slots.
+* [QTBUG-15213] Doc: Added missing properties to the ECMAScript reference.
+* [QTBUG-15956] Doc: Removed wrong information about Error .stack properties.
+* [QTBUG-17915] Fixed a crash when a JS property descriptor was only partially
+  defined.
+* [QTBUG-18188] Fixed a regression that caused contexts created by
+  QScriptEngine::pushContext() to inherit the parent context's scope.
+* [QTBUG-18201] Suppressed 'LEAK' messages on stderr at application exit.
+* [QTBUG-20378] Fixed QtScriptTools compilation when some features are disabled.
+* [QTBUG-20845] Fixed a precision bug in the calculator example.
+* [QTBUG-21548] Fixed a crash in QScriptEngineDebugger when the QScriptEngine
+  being debugged was deleted.
+* [QTBUG-21760] Fixed a crash when accessing QObject properties through an
+  activation object.
+* [QTBUG-21896] Fixed a crash when converting an invalid JS value to a string.
+* [QTBUG-21993] Fixed a bug that caused QObject wrapper objects created with
+  the PreferExistingWrapperObject option to not be garbage collected, even if
+  the object was not referenced anywhere in the scripting environment.
+* [QTBUG-22152] Fixed build issue on Solaris.
+* [QTBUG-23871] Fixed a JIT crash on x86-64 caused by out-of-range branch
+  instructions.
+* [QTBUG-26261] Fixed a crash when a queued signal handler no longer existed.
+* [QTBUG-26590] Fixed a bug that caused QObjects with script connections to
+  not be garbage collected as expected.
 
 QTestLib
 --------

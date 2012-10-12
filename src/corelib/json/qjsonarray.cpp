@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,7 +42,6 @@
 #include <qjsonobject.h>
 #include <qjsonvalue.h>
 #include <qjsonarray.h>
-#include <qjsonvalue.h>
 #include <qstringlist.h>
 #include <qvariant.h>
 #include <qdebug.h>
@@ -54,6 +53,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QJsonArray
+    \inmodule QtCore
     \ingroup json
     \reentrant
     \since 5.0
@@ -306,7 +306,7 @@ QJsonValue QJsonArray::last() const
 /*!
     Inserts \a value at the beginning of the array.
 
-    This is the same as \c{insert(0, \a value)}.
+    This is the same as \c{insert(0, value)} and will prepend \a value to the array.
 
     \sa append(), insert()
  */
@@ -327,7 +327,7 @@ void QJsonArray::append(const QJsonValue &value)
 
 /*!
     Removes the value at index position \a i. \a i must be a valid
-    index position in the array (i.e., \c{0 <= \a i < size()}).
+    index position in the array (i.e., \c{0 <= i < size()}).
 
     \sa insert(), replace()
  */
@@ -365,7 +365,7 @@ void QJsonArray::removeAt(int i)
 
 /*!
     Removes the item at index position \a i and returns it. \a i must
-    be a valid index position in the array (i.e., \c{0 <= \a i < size()}).
+    be a valid index position in the array (i.e., \c{0 <= i < size()}).
 
     If you don't use the return value, removeAt() is more efficient.
 
@@ -376,13 +376,8 @@ QJsonValue QJsonArray::takeAt(int i)
     if (!a || i < 0 || i >= (int)a->length)
         return QJsonValue(QJsonValue::Undefined);
 
-    detach();
-
     QJsonValue v(d, a, a->at(i));
-    v.detach();
-
-    removeAt(i);
-
+    removeAt(i); // detaches
     return v;
 }
 
@@ -435,7 +430,7 @@ void QJsonArray::insert(int i, const QJsonValue &value)
 
 /*!
     Replaces the item at index position \a i with \a value. \a i must
-    be a valid index position in the array (i.e., \c{0 <= \a i < size()}).
+    be a valid index position in the array (i.e., \c{0 <= i < size()}).
 
     \sa operator[](), removeAt()
  */
@@ -481,7 +476,7 @@ bool QJsonArray::contains(const QJsonValue &value) const
 
 /*!
     Returns the value at index position \a i as a modifiable reference.
-    \a i must be a valid index position in the array (i.e., \c{0 <= \a i <
+    \a i must be a valid index position in the array (i.e., \c{0 <= i <
     size()}).
 
     The return value is of type QJsonValueRef, a helper class for QJsonArray
@@ -583,13 +578,13 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
 /*! \fn void QJsonArray::push_back(const QJsonValue &value)
 
     This function is provided for STL compatibility. It is equivalent
-    to \l{QJsonArray::append()}{append(\a value)}.
+    to \l{QJsonArray::append()}{append(value)} and will append \a value to the array.
 */
 
 /*! \fn void QJsonArray::push_front(const QJsonValue &value)
 
     This function is provided for STL compatibility. It is equivalent
-    to \l{QJsonArray::prepend()}{prepend(\a value)}.
+    to \l{QJsonArray::prepend()}{prepend(value)} and will prepend \a value to the array.
 */
 
 /*! \fn void QJsonArray::pop_front()
@@ -613,6 +608,7 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
 */
 
 /*! \class QJsonArray::iterator
+    \inmodule QtCore
     \brief The QJsonArray::iterator class provides an STL-style non-const iterator for QJsonArray.
 
     QJsonArray::iterator allows you to iterate over a QJsonArray
@@ -672,6 +668,10 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
     \sa QJsonArray::begin(), QJsonArray::end()
 */
 
+/*! \fn QJsonArray::iterator::iterator(QJsonArray *array, int index)
+    \internal
+*/
+
 /*! \fn QJsonValueRef QJsonArray::iterator::operator*() const
 
     Returns a modifiable reference to the current item.
@@ -688,7 +688,8 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
 
 /*! \fn QJsonValueRef QJsonArray::iterator::operator[](int j) const
 
-    Returns a modifiable reference to the item at position \c{*this + j}.
+    Returns a modifiable reference to the item at offset \a j from the
+    item pointed to by this iterator (the item at position \c{*this + j}).
 
     This function is provided to make QJsonArray iterators behave like C++
     pointers.
@@ -831,6 +832,7 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
 */
 
 /*! \class QJsonArray::const_iterator
+    \inmodule QtCore
     \brief The QJsonArray::const_iterator class provides an STL-style const iterator for QJsonArray.
 
     QJsonArray::const_iterator allows you to iterate over a
@@ -867,6 +869,10 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
     to it before using it.
 
     \sa QJsonArray::constBegin(), QJsonArray::constEnd()
+*/
+
+/*! \fn QJsonArray::const_iterator::const_iterator(const QJsonArray *array, int index)
+    \internal
 */
 
 /*! \typedef QJsonArray::const_iterator::iterator_category
@@ -907,7 +913,8 @@ bool QJsonArray::operator!=(const QJsonArray &other) const
 
 /*! \fn QJsonValue QJsonArray::const_iterator::operator[](int j) const
 
-    Returns the item at position \c{*this + j}.
+    Returns the item at offset \a j from the item pointed to by this iterator (the item at
+    position \c{*this + j}).
 
     This function is provided to make QJsonArray iterators behave like C++
     pointers.

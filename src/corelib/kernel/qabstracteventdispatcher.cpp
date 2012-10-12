@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -56,7 +56,7 @@ struct QtTimerIdFreeListConstants : public QFreeListDefaultConstants
     enum
     {
         InitialNextValue = 1,
-        BlockCount = 6,
+        BlockCount = 6
     };
 
     static const int Sizes[BlockCount];
@@ -105,6 +105,7 @@ void QAbstractEventDispatcherPrivate::releaseTimerId(int timerId)
 
 /*!
     \class QAbstractEventDispatcher
+    \inmodule QtCore
     \brief The QAbstractEventDispatcher class provides an interface to manage Qt's event queue.
 
     \ingroup events
@@ -135,10 +136,7 @@ void QAbstractEventDispatcherPrivate::releaseTimerId(int timerId)
     values to control which events should be delivered.
 
     QAbstractEventDispatcher also allows the integration of an
-    external event loop with the Qt event loop. For example, the
-    \l{Motif Extension}
-    includes a reimplementation of QAbstractEventDispatcher that merges Qt and
-    Motif events together.
+    external event loop with the Qt event loop.
 
     \sa QEventLoop, QCoreApplication, QThread
 */
@@ -329,16 +327,21 @@ int QAbstractEventDispatcher::registerTimer(int interval, Qt::TimerType timerTyp
 
 // ### DOC: Are these called when the _application_ starts/stops or just
 // when the current _event loop_ starts/stops?
-/*! \internal */
+/*!
+    \internal
+*/
 void QAbstractEventDispatcher::startingUp()
 { }
 
-/*! \internal */
+/*!
+    \internal
+*/
 void QAbstractEventDispatcher::closingDown()
 { }
 
 /*!
     \class QAbstractEventDispatcher::TimerInfo
+    \inmodule QtCore
 
     This struct represents information about a timer:
     \l{QAbstractEventDispatcher::TimerInfo::timerId}{timerId},
@@ -407,7 +410,7 @@ void QAbstractEventDispatcher::installNativeEventFilter(QAbstractNativeEventFilt
 }
 
 /*!
-    Removes an event filter object \a obj from this object. The
+    Removes the event filter \a filter from this object. The
     request is ignored if such an event filter has not been installed.
 
     All event filters for this object are automatically removed when
@@ -419,11 +422,11 @@ void QAbstractEventDispatcher::installNativeEventFilter(QAbstractNativeEventFilt
     \sa installNativeEventFilter(), QAbstractNativeEventFilter
     \since 5.0
 */
-void QAbstractEventDispatcher::removeNativeEventFilter(QAbstractNativeEventFilter *filterObj)
+void QAbstractEventDispatcher::removeNativeEventFilter(QAbstractNativeEventFilter *filter)
 {
     Q_D(QAbstractEventDispatcher);
     for (int i = 0; i < d->eventFilters.count(); ++i) {
-        if (d->eventFilters.at(i) == filterObj) {
+        if (d->eventFilters.at(i) == filter) {
             d->eventFilters[i] = 0;
             break;
         }
@@ -439,12 +442,14 @@ void QAbstractEventDispatcher::removeNativeEventFilter(QAbstractNativeEventFilte
     Subclasses of QAbstractEventDispatcher \e must call this function
     for \e all messages received from the system to ensure
     compatibility with any extensions that may be used in the
-    application.
+    application. The type of event \a eventType is specific to the platform
+    plugin chosen at run-time, and can be used to cast message to the right type.
+    The \a result pointer is only used on Windows, and corresponds to the LRESULT pointer.
 
     Note that the type of \a message is platform dependent. See
     QAbstractNativeEventFilter for details.
 
-    \sa installNativeEventFilter()
+    \sa installNativeEventFilter(), QAbstractNativeEventFilter::nativeEventFilter()
     \since 5.0
 */
 bool QAbstractEventDispatcher::filterNativeEvent(const QByteArray &eventType, void *message, long *result)
@@ -464,6 +469,39 @@ bool QAbstractEventDispatcher::filterNativeEvent(const QByteArray &eventType, vo
     }
     return false;
 }
+
+/*! \fn bool QAbstractEventDispatcher::filterEvent(void *message)
+    \deprecated
+
+    Calls filterNativeEvent() with an empty eventType and \a message.
+    This function returns true as soon as an
+    event filter returns true, and false otherwise to indicate that
+    the processing of the event should continue.
+*/
+
+/*! \fn bool QAbstractEventDispatcher::registerEventNotifier(QWinEventNotifier *notifier);
+
+  This pure virtual method exists on windows only and has to be reimplemented by a Windows specific
+  event dispatcher implementation. \a notifier is the QWinEventNotifier instance to be registered.
+
+  The method should return true if the registration of \a notifier was sucessful, otherwise false.
+
+  QWinEventNotifier calls this method in it's constructor and there should never be a need to call this
+  method directly.
+
+  \sa QWinEventNotifier, unregisterEventNotifier()
+*/
+
+/*! \fn bool QAbstractEventDispatcher::unregisterEventNotifier(QWinEventNotifier *notifier);
+
+  This pure virtual method exists on windows only and has to be reimplemented by a Windows specific
+  event dispatcher implementation. \a notifier is the QWinEventNotifier instance to be unregistered.
+
+  QWinEventNotifier calls this method in it's destructor and there should never be a need to call this
+  method directly.
+
+  \sa QWinEventNotifier, registerEventNotifier()
+*/
 
 /*! \fn void QAbstractEventDispatcher::awake()
 

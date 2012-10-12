@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -80,7 +80,9 @@ private slots:
     void overrideMenuAction();
     void statusTip();
     void widgetActionFocus();
+#ifndef Q_OS_WINCE
     void mouseActivation();
+#endif
     void tearOff();
     void layoutDirection();
 
@@ -91,7 +93,9 @@ private slots:
     void task250673_activeMultiColumnSubMenuPosition();
     void task256918_setFont();
     void menuSizeHint();
+#ifndef Q_OS_WINCE
     void task258920_mouseBorder();
+#endif
     void setFixedWidth();
     void deleteActionInTriggered();
     void pushButtonPopulateOnAboutToShow();
@@ -104,7 +108,6 @@ protected slots:
     void onStatusMessageChanged(const QString &);
     void onStatusTipTimer();
     void deleteAction(QAction *a) { delete a; }
-    void populateMenu();
 private:
     void createActions();
     QMenu *menus[2], *lastMenu;
@@ -238,15 +241,6 @@ void tst_QMenu::onStatusMessageChanged(const QString &s)
     statustip=s;
 }
 
-void tst_QMenu::populateMenu()
-{
-    //just adds 3 dummy actions and a separator.
-    lastMenu->addAction("Foo");
-    lastMenu->addAction("Bar");
-    lastMenu->addAction("FooBar");
-    lastMenu->addSeparator();
-}
-
 void tst_QMenu::addActionsAndClear()
 {
 #ifdef QT_SOFTKEYS_ENABLED
@@ -264,11 +258,10 @@ void tst_QMenu::addActionsAndClear()
     QCOMPARE(menus[0]->actions().count(), 0);
 }
 
+// We have a separate mouseActivation test for Windows mobile
+#ifndef Q_OS_WINCE
 void tst_QMenu::mouseActivation()
 {
-#ifdef Q_OS_WINCE_WM
-    QSKIP("We have a separate mouseActivation test for Windows mobile.");
-#endif
     QWidget topLevel;
     QMenu menu(&topLevel);
     topLevel.show();
@@ -301,6 +294,7 @@ void tst_QMenu::mouseActivation()
     QVERIFY(submenu.isVisible());
 #endif
 }
+#endif
 
 void tst_QMenu::keyboardNavigation_data()
 {
@@ -372,7 +366,7 @@ void tst_QMenu::keyboardNavigation()
 
 #ifdef Q_OS_MAC
 QT_BEGIN_NAMESPACE
-    extern bool qt_tab_all_widgets; // from qapplication.cpp
+extern bool qt_tab_all_widgets(); // from qapplication.cpp
 QT_END_NAMESPACE
 #endif
 
@@ -384,7 +378,7 @@ void tst_QMenu::focus()
     menu.addAction("Three");
 
 #ifdef Q_OS_MAC
-    if (!qt_tab_all_widgets)
+    if (!qt_tab_all_widgets())
         QSKIP("Computer is currently set up to NOT tab to all widgets,"
              " this test assumes you can tab to all widgets");
 #endif
@@ -556,7 +550,7 @@ void tst_QMenu::tearOff()
     widget.activateWindow();
     QVERIFY(QTest::qWaitForWindowActive(&widget));
     menu->popup(QPoint(0,0));
-    QTest::qWait(50);
+    QVERIFY(QTest::qWaitForWindowActive(menu));
     QVERIFY(!menu->isTearOffMenuVisible());
 
     QTest::mouseClick(menu, Qt::LeftButton, 0, QPoint(3, 3), 10);
@@ -773,11 +767,10 @@ public:
     bool painted;
 };
 
+// Mouse move related signals for Windows Mobile unavailable
+#ifndef Q_OS_WINCE
 void tst_QMenu::task258920_mouseBorder()
 {
-#ifdef Q_OS_WINCE_WM
-    QSKIP("Mouse move related signals for Windows Mobile unavailable");
-#endif
     Menu258920 menu;
     // For styles which inherit from QWindowsStyle, styleHint(QStyle::SH_Menu_MouseTracking) is true.
     menu.setMouseTracking(true);
@@ -791,13 +784,14 @@ void tst_QMenu::task258920_mouseBorder()
     QTest::qWait(30);
     QTest::mouseMove(&menu, actionRect.center() + QPoint(10, 0));
     QTest::qWait(30);
-    QCOMPARE(action, menu.activeAction());
+    QTRY_COMPARE(action, menu.activeAction());
     menu.painted = false;
     QTest::mouseMove(&menu, QPoint(actionRect.center().x(), actionRect.bottom() + 1));
     QTest::qWait(30);
-    QCOMPARE(static_cast<QAction*>(0), menu.activeAction());
-    QVERIFY(menu.painted);
+    QTRY_COMPARE(static_cast<QAction*>(0), menu.activeAction());
+    QTRY_VERIFY(menu.painted);
 }
+#endif
 
 void tst_QMenu::setFixedWidth()
 {
@@ -819,14 +813,37 @@ void tst_QMenu::deleteActionInTriggered()
     QVERIFY(!a);
 }
 
+class PopulateOnAboutToShowTestMenu : public QMenu {
+    Q_OBJECT
+public:
+    explicit PopulateOnAboutToShowTestMenu(QWidget *parent = 0);
+
+public slots:
+    void populateMenu();
+};
+
+PopulateOnAboutToShowTestMenu::PopulateOnAboutToShowTestMenu(QWidget *parent) : QMenu(parent)
+{
+    connect(this, SIGNAL(aboutToShow()), this, SLOT(populateMenu()));
+}
+
+void PopulateOnAboutToShowTestMenu::populateMenu()
+{
+    // just adds 3 dummy actions and a separator.
+    addAction("Foo");
+    addAction("Bar");
+    addAction("FooBar");
+    addSeparator();
+}
+
 void tst_QMenu::pushButtonPopulateOnAboutToShow()
 {
     QPushButton b("Test PushButton");
     b.setWindowFlags(Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint);
-    lastMenu = new QMenu;
-    b.setMenu(lastMenu);
+
+    QMenu *buttonMenu= new PopulateOnAboutToShowTestMenu(&b);
+    b.setMenu(buttonMenu);
     const int scrNumber = QApplication::desktop()->screenNumber(&b);
-    connect(lastMenu, SIGNAL(aboutToShow()), this, SLOT(populateMenu()));
     b.show();
     const QRect screen = QApplication::desktop()->screenGeometry(scrNumber);
 
@@ -846,17 +863,17 @@ void tst_QMenu::pushButtonPopulateOnAboutToShow()
         QSKIP("Your window manager won't allow a window against the bottom of the screen");
     }
 
-    QTimer::singleShot(300,lastMenu, SLOT(hide()));
+    QTimer::singleShot(300, buttonMenu, SLOT(hide()));
     QTest::mouseClick(&b, Qt::LeftButton, Qt::NoModifier, b.rect().center());
-    QVERIFY(!lastMenu->geometry().intersects(b.geometry()));
+    QVERIFY(!buttonMenu->geometry().intersects(b.geometry()));
 
     // note: we're assuming that, if we previously got the desired geometry, we'll get it here too
-    b.move(10, screen.bottom()-lastMenu->height()-5);
-    QTimer::singleShot(300,lastMenu, SLOT(hide()));
+    b.move(10, screen.bottom()-buttonMenu->height()-5);
+    QTimer::singleShot(300, buttonMenu, SLOT(hide()));
     QTest::mouseClick(&b, Qt::LeftButton, Qt::NoModifier, b.rect().center());
-    QVERIFY(!lastMenu->geometry().intersects(b.geometry()));
-
+    QVERIFY(!buttonMenu->geometry().intersects(b.geometry()));
 }
+
 void tst_QMenu::QTBUG7907_submenus_autoselect()
 {
     QMenu menu("Test Menu");

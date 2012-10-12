@@ -1,33 +1,33 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
 /*!
     \module QtGui
-    \title The Qt GUI Module
+    \title Qt GUI C++ API
     \ingroup modules
 
     \brief The Qt GUI module provides the basic enablers for graphical
@@ -45,13 +45,13 @@
 
     \snippet code/doc_src_qtgui.pro 0
 
-    See the \l {Qt GUI Module Overview} for more details.
+    See the \l {Qt GUI} page for more details.
 
 */
 
 /*!
-    \page qtgui-overview.html
-    \title Qt GUI Module Overview
+    \page qtgui-index.html
+    \title Qt GUI
 
     The Qt GUI module provides classes for windowing system
     integration, event handling, OpenGL and OpenGL ES integration, 2D
@@ -63,7 +63,13 @@
     For application developers writing user interfaces, Qt provides
     higher level API's, like Qt Quick, that are much more suitable
     than the enablers found in the Qt GUI module. 
-    than the enablers found in the Qt GUI module.
+
+    \section1 Getting started
+
+    To include the definitions of the module's classes, use the
+    following directive:
+
+    \snippet code/doc_src_qtgui.pro 0
 
 
 
@@ -114,10 +120,19 @@
     QWindow supports rendering using desktop OpenGL, OpenGL ES 1.1 and
     OpenGL ES 2.0, depending on what the platform supports. OpenGL
     rendering is enabled by setting the QWindow's surface type to
-    QSurface::OpenGLSurface, then creating a QOpenGLContext to manage
-    the native OpenGL context.
+    QSurface::OpenGLSurface, choosing the format attributes with
+    QSurfaceFormat, and then creating a QOpenGLContext to manage
+    the native OpenGL context. In addition, Qt has QOpenGLPaintDevice,
+    which enables the use of OpenGL accelerated QPainter rendering, as well as
+    convenience classes that simplify the writing of OpenGL code and hides the
+    complexities of extension handling and the differences between OpenGL ES 2
+    and desktop OpenGL. The convenience classes include QOpenGLFunctions that
+    lets an application use all the OpenGL ES 2 functions on desktop OpenGL
+    without having to manually resolve the OpenGL function pointers and some
+    classes that wrap native OpenGL resources in a simpler Qt API:
+    QOpenGLBuffer, QOpenGLFramebufferObject, and QOpenGLShaderProgram.
 
-    For more information, see \l {OpenGL Enablers}.
+    For more information, see the \l {OpenGL Window Example}.
 
     The Qt GUI module also contains a few math classes to aid with the
     most common mathmatical operations related to 3D graphics. These
@@ -143,14 +158,23 @@
     QtGui now contains only a small set of enablers, which are generally
     useful for all graphical applications.
 
+
+
+    \section1 Reference
+    \list
+    \li \l{Qt GUI C++ API}
+        \list
+        \li \l{Event Classes}
+        \li \l{Painting Classes}
+        \li \l{Rendering in 3D}
+        \endlist
+    \endlist
  */
 
+/*!
+    \group events
+    \title Event Classes
+    \ingroup groups
 
-/*
-
-    ### DOC-TODO: link under OpenGL to hello-opengl for QWindow in
-        examples/gui/opengl/openglwindow. Idea: QWindow which draws a
-        triangle using GLES 2.0 compatible shaders. Do not care about
-        1.1 API as almost everyone has 2.0 support these days.
-
+    \brief Classes that provide UI and input events.
 */

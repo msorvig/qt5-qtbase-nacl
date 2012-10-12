@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -120,12 +120,15 @@ public:
         first.type = FirstSection;
         first.pos = -1;
         first.count = -1;
+        first.zeroesAdded = 0;
         last.type = FirstSection;
         last.pos = -1;
         last.count = -1;
+        last.zeroesAdded = 0;
         none.type = NoSection;
         none.pos = -1;
         none.count = -1;
+        none.zeroesAdded = 0;
     }
     virtual ~QDateTimeParser() {}
     enum {
@@ -151,8 +154,9 @@ public:
         MonthSection = 0x00200,
         YearSection = 0x00400,
         YearSection2Digits = 0x00800,
-        DayOfWeekSection = 0x01000,
-        DateSectionMask = (DaySection|MonthSection|YearSection|YearSection2Digits|DayOfWeekSection),
+        DayOfWeekSectionShort = 0x01000,
+        DayOfWeekSectionLong = 0x20000,
+        DateSectionMask = (DaySection|MonthSection|YearSection|YearSection2Digits|DayOfWeekSectionShort|DayOfWeekSectionLong),
         FirstSection = 0x02000|Internal,
         LastSection = 0x04000|Internal,
         CalendarPopupSection = 0x08000|Internal,
@@ -168,6 +172,7 @@ public:
         Section type;
         mutable int pos;
         int count;
+        int zeroesAdded;
     };
 
     enum State { // duplicated from QValidator
@@ -254,6 +259,19 @@ public:
 
     mutable int currentSectionIndex;
     Sections display;
+    /*
+        This stores the stores the most recently selected day.
+        It is useful when considering the following scenario:
+
+        1. Date is: 31/01/2000
+        2. User increments month: 29/02/2000
+        3. User increments month: 31/03/2000
+
+        At step 1, cachedDay stores 31. At step 2, the 31 is invalid for February, so the cachedDay is not updated.
+        At step 3, the the month is changed to March, for which 31 is a valid day. Since 29 < 31, the day is set to cachedDay.
+        This is good for when users have selected their desired day and are scrolling up or down in the month or year section
+        and do not want smaller months (or non-leap years) to alter the day that they chose.
+    */
     mutable int cachedDay;
     mutable QString text;
     QVector<SectionNode> sectionNodes;

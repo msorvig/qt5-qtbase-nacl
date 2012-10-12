@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -132,22 +132,22 @@ inline void QUrl::removeAllQueryItems(const QString &key)
 { QUrlQuery q(*this); q.removeAllQueryItems(key); }
 
 inline void QUrl::addEncodedQueryItem(const QByteArray &key, const QByteArray &value)
-{ QUrlQuery q(*this); q.addQueryItem(QString::fromUtf8(key), QString::fromUtf8(value)); setQuery(q); }
+{ QUrlQuery q(*this); q.addQueryItem(fromEncodedComponent_helper(key), fromEncodedComponent_helper(value)); setQuery(q); }
 inline bool QUrl::hasEncodedQueryItem(const QByteArray &key) const
-{ return QUrlQuery(*this).hasQueryItem(QString::fromUtf8(key)); }
+{ return QUrlQuery(*this).hasQueryItem(fromEncodedComponent_helper(key)); }
 inline QByteArray QUrl::encodedQueryItemValue(const QByteArray &key) const
-{ return QUrlQuery(*this).queryItemValue(QString::fromUtf8(key), QUrl::FullyEncoded).toLatin1(); }
+{ return QUrlQuery(*this).queryItemValue(fromEncodedComponent_helper(key), QUrl::FullyEncoded).toLatin1(); }
 inline void QUrl::removeEncodedQueryItem(const QByteArray &key)
-{ QUrlQuery q(*this); q.removeQueryItem(QString::fromUtf8(key)); setQuery(q); }
+{ QUrlQuery q(*this); q.removeQueryItem(fromEncodedComponent_helper(key)); setQuery(q); }
 inline void QUrl::removeAllEncodedQueryItems(const QByteArray &key)
-{ QUrlQuery q(*this); q.removeAllQueryItems(QString::fromUtf8(key)); }
+{ QUrlQuery q(*this); q.removeAllQueryItems(fromEncodedComponent_helper(key)); }
 
 inline void QUrl::setEncodedQueryItems(const QList<QPair<QByteArray, QByteArray> > &qry)
 {
     QUrlQuery q;
     QList<QPair<QByteArray, QByteArray> >::ConstIterator it = qry.constBegin();
     for ( ; it != qry.constEnd(); ++it)
-        q.addQueryItem(QString::fromUtf8(it->first), QString::fromUtf8(it->second));
+        q.addQueryItem(fromEncodedComponent_helper(it->first), fromEncodedComponent_helper(it->second));
     setQuery(q);
 }
 inline QList<QPair<QByteArray, QByteArray> > QUrl::encodedQueryItems() const
@@ -162,7 +162,7 @@ inline QList<QPair<QByteArray, QByteArray> > QUrl::encodedQueryItems() const
 }
 inline QList<QByteArray> QUrl::allEncodedQueryItemValues(const QByteArray &key) const
 {
-    QStringList items = QUrlQuery(*this).allQueryItemValues(QString::fromUtf8(key), QUrl::FullyEncoded);
+    QStringList items = QUrlQuery(*this).allQueryItemValues(fromEncodedComponent_helper(key), QUrl::FullyEncoded);
     QList<QByteArray> result;
     result.reserve(items.size());
     Q_FOREACH (const QString &item, items)

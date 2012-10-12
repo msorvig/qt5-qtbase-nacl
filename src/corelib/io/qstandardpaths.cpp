@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -53,6 +53,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QStandardPaths
+    \inmodule QtCore
     \brief The QStandardPaths class provides methods for accessing standard paths.
     \since 5.0
 
@@ -179,16 +180,12 @@ QStringList QStandardPaths::locateAll(StandardLocation type, const QString &file
 #ifdef Q_OS_WIN
 static QStringList executableExtensions()
 {
-    QStringList ret = QString::fromLocal8Bit(qgetenv("PATHEXT")).split(QLatin1Char(';'));
-    if (!ret.contains(QLatin1String(".exe"), Qt::CaseInsensitive)) {
-        // If %PATHEXT% does not contain .exe, it is either empty, malformed, or distorted in ways that we cannot support, anyway.
-        ret.clear();
-        ret << QLatin1String(".exe")
-            << QLatin1String(".com")
-            << QLatin1String(".bat")
-            << QLatin1String(".cmd");
-    }
-    return ret;
+    // If %PATHEXT% does not contain .exe, it is either empty, malformed, or distorted in ways that we cannot support, anyway.
+    const QStringList pathExt = QString::fromLocal8Bit(qgetenv("PATHEXT")).toLower().split(QLatin1Char(';'));
+    return pathExt.contains(QLatin1String(".exe"), Qt::CaseInsensitive) ?
+           pathExt :
+           QStringList() << QLatin1String(".exe") << QLatin1String(".com")
+                         << QLatin1String(".bat") << QLatin1String(".cmd");
 }
 #endif
 
@@ -201,6 +198,42 @@ static QString checkExecutable(const QString &path)
         return QDir::cleanPath(path);
     return QString();
 }
+
+static inline QString searchExecutable(const QStringList &searchPaths,
+                                       const QString &executableName)
+{
+    const QDir currentDir = QDir::current();
+    foreach (const QString &searchPath, searchPaths) {
+        const QString candidate = currentDir.absoluteFilePath(searchPath + QLatin1Char('/') + executableName);
+        const QString absPath = checkExecutable(candidate);
+        if (!absPath.isEmpty())
+            return absPath;
+    }
+    return QString();
+}
+
+#ifdef Q_OS_WIN
+
+// Find executable appending candidate suffixes, used for suffix-less executables
+// on Windows.
+static inline QString
+    searchExecutableAppendSuffix(const QStringList &searchPaths,
+                                 const QString &executableName,
+                                 const QStringList &suffixes)
+{
+    const QDir currentDir = QDir::current();
+    foreach (const QString &searchPath, searchPaths) {
+        const QString candidateRoot = currentDir.absoluteFilePath(searchPath + QLatin1Char('/') + executableName);
+        foreach (const QString &suffix, suffixes) {
+            const QString absPath = checkExecutable(candidateRoot + suffix);
+            if (!absPath.isEmpty())
+                return absPath;
+        }
+    }
+    return QString();
+}
+
+#endif // Q_OS_WIN
 
 /*!
   Finds the executable named \a executableName in the paths specified by \a paths,
@@ -234,33 +267,30 @@ QString QStandardPaths::findExecutable(const QString &executableName, const QStr
 #else
         const QLatin1Char pathSep(':');
 #endif
-        searchPaths = QString::fromLocal8Bit(pEnv.constData()).split(pathSep, QString::SkipEmptyParts);
-    }
-
-    QDir currentDir = QDir::current();
-    QString absPath;
-#ifdef Q_OS_WIN
-    static QStringList executable_extensions = executableExtensions();
-#endif
-
-    for (QStringList::const_iterator p = searchPaths.constBegin(); p != searchPaths.constEnd(); ++p) {
-        const QString candidate = currentDir.absoluteFilePath(*p + QLatin1Char('/') + executableName);
-#ifdef Q_OS_WIN
-        const QString extension = QLatin1Char('.') + QFileInfo(executableName).suffix();
-        if (!executable_extensions.contains(extension, Qt::CaseInsensitive)) {
-            foreach (const QString &extension, executable_extensions) {
-                absPath = checkExecutable(candidate + extension.toLower());
-                if (!absPath.isEmpty())
-                    break;
-            }
-        }
-#endif
-        absPath = checkExecutable(candidate);
-        if (!absPath.isEmpty()) {
-            break;
+        // Remove trailing slashes, which occur on Windows.
+        const QStringList rawPaths = QString::fromLocal8Bit(pEnv.constData()).split(pathSep, QString::SkipEmptyParts);
+        searchPaths.reserve(rawPaths.size());
+        foreach (const QString &rawPath, rawPaths) {
+            QString cleanPath = QDir::cleanPath(rawPath);
+            if (cleanPath.size() > 1 && cleanPath.endsWith('/'))
+                cleanPath.truncate(cleanPath.size() - 1);
+            searchPaths.push_back(cleanPath);
         }
     }
-    return absPath;
+
+#ifdef Q_OS_WIN
+    // On Windows, if the name does not have a suffix or a suffix not
+    // in PATHEXT ("xx.foo"), append suffixes from PATHEXT.
+    static const QStringList executable_extensions = executableExtensions();
+    if (executableName.contains(QLatin1Char('.'))) {
+        const QString suffix = QFileInfo(executableName).suffix();
+        if (suffix.isEmpty() || !executable_extensions.contains(QLatin1Char('.') + suffix, Qt::CaseInsensitive))
+            return searchExecutableAppendSuffix(searchPaths, executableName, executable_extensions);
+    } else {
+        return searchExecutableAppendSuffix(searchPaths, executableName, executable_extensions);
+    }
+#endif
+    return searchExecutable(searchPaths, executableName);
 }
 
 /*!
@@ -315,7 +345,8 @@ QString QStandardPaths::displayName(StandardLocation type)
 /*!
   \fn void QStandardPaths::enableTestMode(bool testMode)
 
-  Enables "test mode" in QStandardPaths, which changes writable locations
+  If \a testMode is true, this enables a special "test mode" in
+  QStandardPaths, which changes writable locations
   to point to test directories, in order to prevent auto tests from reading from
   or writing to the current user's configuration.
 

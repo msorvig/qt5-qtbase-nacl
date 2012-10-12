@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -93,6 +93,8 @@
 #else
 #define ACCEL_KEY(k) QString()
 #endif
+
+#include <algorithm>
 
 QT_BEGIN_NAMESPACE
 
@@ -1271,9 +1273,10 @@ void QWidgetTextControlPrivate::keyPressEvent(QKeyEvent *e)
     }
     else if (e == QKeySequence::Paste) {
         QClipboard::Mode mode = QClipboard::Clipboard;
-        if (QGuiApplication::platformName() == QLatin1String("xcb"))
-        if (e->modifiers() == (Qt::CTRL | Qt::SHIFT) && e->key() == Qt::Key_Insert)
-            mode = QClipboard::Selection;
+        if (QGuiApplication::clipboard()->supportsSelection()) {
+            if (e->modifiers() == (Qt::CTRL | Qt::SHIFT) && e->key() == Qt::Key_Insert)
+                mode = QClipboard::Selection;
+        }
         q->paste(mode);
     }
 #endif
@@ -1405,14 +1408,15 @@ QRectF QWidgetTextControlPrivate::rectForPosition(int position) const
     return r;
 }
 
-static inline bool firstFramePosLessThanCursorPos(QTextFrame *frame, int position)
-{
-    return frame->firstPosition() < position;
-}
-
-static inline bool cursorPosLessThanLastFramePos(int position, QTextFrame *frame)
-{
-    return position < frame->lastPosition();
+namespace {
+struct QTextFrameComparator {
+#if defined(Q_CC_MSVC) && _MSC_VER < 1600
+//The STL implementation of MSVC 2008 requires the definition
+    bool operator()(QTextFrame *frame1, QTextFrame *frame2) { return frame1->firstPosition() < frame2->firstPosition(); }
+#endif
+    bool operator()(QTextFrame *frame, int position) { return frame->firstPosition() < position; }
+    bool operator()(int position, QTextFrame *frame) { return position < frame->firstPosition(); }
+};
 }
 
 static QRectF boundingRectOfFloatsInSelection(const QTextCursor &cursor)
@@ -1421,10 +1425,10 @@ static QRectF boundingRectOfFloatsInSelection(const QTextCursor &cursor)
     QTextFrame *frame = cursor.currentFrame();
     const QList<QTextFrame *> children = frame->childFrames();
 
-    const QList<QTextFrame *>::ConstIterator firstFrame = qLowerBound(children.constBegin(), children.constEnd(),
-                                                                      cursor.selectionStart(), firstFramePosLessThanCursorPos);
-    const QList<QTextFrame *>::ConstIterator lastFrame = qUpperBound(children.constBegin(), children.constEnd(),
-                                                                     cursor.selectionEnd(), cursorPosLessThanLastFramePos);
+    const QList<QTextFrame *>::ConstIterator firstFrame = std::lower_bound(children.constBegin(), children.constEnd(),
+                                                                           cursor.selectionStart(), QTextFrameComparator());
+    const QList<QTextFrame *>::ConstIterator lastFrame = std::upper_bound(children.constBegin(), children.constEnd(),
+                                                                          cursor.selectionEnd(), QTextFrameComparator());
     for (QList<QTextFrame *>::ConstIterator it = firstFrame; it != lastFrame; ++it) {
         if ((*it)->frameFormat().position() != QTextFrameFormat::InFlow)
             r |= frame->document()->documentLayout()->frameBoundingRect(*it);
@@ -1527,7 +1531,6 @@ void QWidgetTextControlPrivate::mousePressEvent(QEvent *e, Qt::MouseButton butto
 {
     Q_Q(QWidgetTextControl);
 
-    mousePressed = (interactionFlags & Qt::TextSelectableByMouse);
     mousePressPos = pos.toPoint();
 
 #ifndef QT_NO_DRAGANDDROP
@@ -1557,6 +1560,8 @@ void QWidgetTextControlPrivate::mousePressEvent(QEvent *e, Qt::MouseButton butto
     cursorIsFocusIndicator = false;
     const QTextCursor oldSelection = cursor;
     const int oldCursorPos = cursor.position();
+
+    mousePressed = (interactionFlags & Qt::TextSelectableByMouse);
 
     commitPreedit();
 

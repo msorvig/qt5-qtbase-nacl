@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -402,6 +402,7 @@ const QString::Null QString::null = { };
 
 /*!
     \class QCharRef
+    \inmodule QtCore
     \reentrant
     \brief The QCharRef class is a helper class for QString.
 
@@ -423,6 +424,7 @@ const QString::Null QString::null = { };
 
 /*!
     \class QString
+    \inmodule QtCore
     \reentrant
 
     \brief The QString class provides a Unicode character string.
@@ -1505,6 +1507,24 @@ QString &QString::append(const QString &str)
 
 /*!
   \overload append()
+  \since 5.0
+
+  Appends \a len characters from the QChar array \a str to this string.
+*/
+QString &QString::append(const QChar *str, int len)
+{
+    if (str && len > 0) {
+        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc)
+            reallocData(uint(d->size + len) + 1u, true);
+        memcpy(d->data() + d->size, str, len * sizeof(QChar));
+        d->size += len;
+        d->data()[d->size] = '\0';
+    }
+    return *this;
+}
+
+/*!
+  \overload append()
 
   Appends the Latin-1 string \a str to this string.
 */
@@ -1732,6 +1752,10 @@ QString &QString::remove(QChar ch, Qt::CaseSensitivity cs)
   Replaces \a n characters beginning at index \a position with
   the string \a after and returns a reference to this string.
 
+  \note If the specified \a position index is within the string,
+  but \a position + \a n goes outside the strings range,
+  then \a n will be adjusted to stop at the end of the string.
+
   Example:
 
   \snippet qstring/main.cpp 40
@@ -1755,7 +1779,7 @@ QString &QString::replace(int pos, int len, const QChar *unicode, int size)
 {
     if (pos < 0 || pos > d->size)
         return *this;
-    if (pos + len > d->size)
+    if (len > d->size - pos)
         len = d->size - pos;
 
     uint index = pos;
@@ -3931,8 +3955,9 @@ QByteArray QString::toLatin1() const
 static QByteArray toLocal8Bit_helper(const QChar *data, int length)
 {
 #ifndef QT_NO_TEXTCODEC
-    if (QTextCodec::codecForLocale())
-        return QTextCodec::codecForLocale()->fromUnicode(data, length);
+    QTextCodec *localeCodec = QTextCodec::codecForLocale();
+    if (localeCodec)
+        return localeCodec->fromUnicode(data, length);
 #endif // QT_NO_TEXTCODEC
     return toLatin1_helper(data, length);
 }
@@ -3956,8 +3981,9 @@ static QByteArray toLocal8Bit_helper(const QChar *data, int length)
 QByteArray QString::toLocal8Bit() const
 {
 #ifndef QT_NO_TEXTCODEC
-    if (QTextCodec::codecForLocale())
-        return QTextCodec::codecForLocale()->fromUnicode(*this);
+    QTextCodec *localeCodec = QTextCodec::codecForLocale();
+    if (localeCodec)
+        return localeCodec->fromUnicode(*this);
 #endif // QT_NO_TEXTCODEC
     return toLatin1();
 }
@@ -6977,7 +7003,7 @@ QString QString::arg(qlonglong a, int fieldWidth, int base, QChar fillChar) cons
     QString locale_arg;
     if (d.locale_occurrences > 0) {
         QLocale locale;
-        if (!locale.numberOptions() & QLocale::OmitGroupSeparator)
+        if (!(locale.numberOptions() & QLocale::OmitGroupSeparator))
             flags |= QLocalePrivate::ThousandsGroup;
         locale_arg = locale.d->longLongToString(a, -1, base, fieldWidth, flags);
     }
@@ -7021,7 +7047,7 @@ QString QString::arg(qulonglong a, int fieldWidth, int base, QChar fillChar) con
     QString locale_arg;
     if (d.locale_occurrences > 0) {
         QLocale locale;
-        if (!locale.numberOptions() & QLocale::OmitGroupSeparator)
+        if (!(locale.numberOptions() & QLocale::OmitGroupSeparator))
             flags |= QLocalePrivate::ThousandsGroup;
         locale_arg = locale.d->unsLongLongToString(a, -1, base, fieldWidth, flags);
     }
@@ -7156,7 +7182,7 @@ QString QString::arg(double a, int fieldWidth, char fmt, int prec, QChar fillCha
     if (d.locale_occurrences > 0) {
         QLocale locale;
 
-        if (!locale.numberOptions() & QLocale::OmitGroupSeparator)
+        if (!(locale.numberOptions() & QLocale::OmitGroupSeparator))
             flags |= QLocalePrivate::ThousandsGroup;
         locale_arg = locale.d->doubleToString(a, prec, form, fieldWidth, flags);
     }
@@ -7449,6 +7475,7 @@ QString &QString::setRawData(const QChar *unicode, int size)
 }
 
 /*! \class QLatin1String
+    \inmodule QtCore
     \brief The QLatin1String class provides a thin wrapper around an US-ASCII/Latin-1 encoded string literal.
 
     \ingroup string-processing
@@ -7839,6 +7866,7 @@ QDataStream &operator>>(QDataStream &in, QString &str)
 
 /*!
     \class QStringRef
+    \inmodule QtCore
     \since 4.3
     \brief The QStringRef class provides a thin wrapper around QString substrings.
     \reentrant
@@ -9080,8 +9108,9 @@ QByteArray QStringRef::toLatin1() const
 QByteArray QStringRef::toLocal8Bit() const
 {
 #ifndef QT_NO_TEXTCODEC
-    if (QTextCodec::codecForLocale())
-        return QTextCodec::codecForLocale()->fromUnicode(unicode(), length());
+    QTextCodec *localeCodec = QTextCodec::codecForLocale();
+    if (localeCodec)
+        return localeCodec->fromUnicode(unicode(), length());
 #endif // QT_NO_TEXTCODEC
     return toLatin1();
 }

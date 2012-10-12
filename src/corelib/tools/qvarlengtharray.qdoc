@@ -1,32 +1,33 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
 /*!
     \class QVarLengthArray
+    \inmodule QtCore
     \brief The QVarLengthArray class provides a low-level variable-length array.
 
     \ingroup tools
@@ -140,6 +141,18 @@
     \overload
 */
 
+/*! \fn T& QVarLengthArray::front()
+    \since 5.0
+
+    Same as first(). Provided for STL-compatibility.
+*/
+
+/*! \fn const T& QVarLengthArray::front() const
+    \since 5.0
+
+    \overload
+*/
+
 /*! \fn T& QVarLengthArray::last()
 
     Returns a reference to the last item in the array.  The array must
@@ -154,13 +167,29 @@
     \overload
 */
 
+/*! \fn T& QVarLengthArray::back()
+    \since 5.0
 
+    Same as last(). Provided for STL-compatibility.
+*/
+
+/*! \fn const T& QVarLengthArray::back() const
+    \since 5.0
+
+    \overload
+*/
 
 /*! \fn bool QVarLengthArray::isEmpty() const
 
     Returns true if the array has size 0; otherwise returns false.
 
     \sa size(), resize()
+*/
+
+/*! \fn bool QVarLengthArray::empty() const
+    \since 5.0
+
+    Same as isEmpty(). Provided for STL-compatibility.
 */
 
 /*! \fn void QVarLengthArray::clear()
@@ -238,6 +267,12 @@
     \sa removeLast()
 */
 
+/*!
+    \fn void QVarLengthArray::push_back(const T &t)
+    \since 5.0
+
+    Same as append(). Provided for STL-compatibility.
+*/
 
 /*!
     \fn inline void QVarLengthArray::removeLast()
@@ -246,6 +281,13 @@
     Decreases the size of the array by one.  The allocated size is not changed.
 
     \sa append()
+*/
+
+/*!
+    \fn void QVarLengthArray::pop_back()
+    \since 5.0
+
+    Same as removeLast(). Provided for STL-compatibility.
 */
 
 /*!
@@ -503,7 +545,7 @@
     \sa constBegin(), end()
 */
 
-/*! \fn QVarLengthArray::iterator QVarLengthArray::erase(iterator pos)
+/*! \fn QVarLengthArray::iterator QVarLengthArray::erase(const_iterator pos)
     \since 4.8
 
     Removes the item pointed to by the iterator \a pos from the
@@ -513,7 +555,7 @@
     \sa insert(), remove()
 */
 
-/*! \fn QVarLengthArray::iterator QVarLengthArray::erase(iterator begin, iterator end)
+/*! \fn QVarLengthArray::iterator QVarLengthArray::erase(const_iterator begin, const_iterator end)
 
     \overload
     \since 4.8
@@ -548,7 +590,7 @@
     vector.
 */
 
-/*! \fn QVarLengthArray::iterator QVarLengthArray::insert(iterator before, const T &value)
+/*! \fn QVarLengthArray::iterator QVarLengthArray::insert(const_iterator before, const T &value)
 
     \overload
     \since 4.8
@@ -557,7 +599,7 @@
     \a before. Returns an iterator pointing at the inserted item.
 */
 
-/*! \fn QVarLengthArray::iterator QVarLengthArray::insert(iterator before, int count, const T &value)
+/*! \fn QVarLengthArray::iterator QVarLengthArray::insert(const_iterator before, int count, const T &value)
 
     \since 4.8
     Inserts \a count copies of \a value in front of the item pointed to

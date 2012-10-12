@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -46,14 +46,16 @@
 #include <QtCore/QDir>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
-#ifdef Q_OS_MAC
-#include <Carbon/Carbon.h>
-#endif
+#include "../../../shared/platformclipboard.h"
 
 class tst_QClipboard : public QObject
 {
     Q_OBJECT
 private slots:
+#ifdef QT_NO_CLIPBOARD
+    void initTestCase();
+    void cleanupTestCase();
+#else
     void init();
     void copy_exit_paste();
     void capabilityFunctions();
@@ -61,27 +63,26 @@ private slots:
     void testSignals();
     void setMimeData();
     void clearBeforeSetText();
-
-private:
-    bool nativeClipboardWorking();
+#endif
 };
+
+#ifdef QT_NO_CLIPBOARD
+void tst_QClipboard::initTestCase()
+{
+    QSKIP("This test requires clipboard support");
+}
+
+void tst_QClipboard::cleanupTestCase()
+{
+    QSKIP("This test requires clipboard support");
+}
+
+#else
 
 void tst_QClipboard::init()
 {
     const QString testdataDir = QFileInfo(QFINDTESTDATA("copier")).absolutePath();
     QVERIFY2(QDir::setCurrent(testdataDir), qPrintable("Could not chdir to " + testdataDir));
-}
-
-bool tst_QClipboard::nativeClipboardWorking()
-{
-#ifdef Q_OS_MAC
-    PasteboardRef pasteboard;
-    OSStatus status = PasteboardCreate(0, &pasteboard);
-    if (status == noErr)
-        CFRelease(pasteboard);
-    return status == noErr;
-#endif
-    return true;
 }
 
 Q_DECLARE_METATYPE(QClipboard::Mode)
@@ -109,7 +110,7 @@ void tst_QClipboard::modes()
 {
     QClipboard * const clipboard =  QGuiApplication::clipboard();
 
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
 
     const QString defaultMode = "default mode text;";
@@ -139,7 +140,7 @@ void tst_QClipboard::testSignals()
 {
     qRegisterMetaType<QClipboard::Mode>("QClipboard::Mode");
 
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
 
     QClipboard * const clipboard =  QGuiApplication::clipboard();
@@ -236,7 +237,7 @@ void tst_QClipboard::copy_exit_paste()
     QSKIP("This test does not make sense on X11 and embedded, copied data disappears from the clipboard when the application exits ");
     // ### It's still possible to test copy/paste - just keep the apps running
 #endif
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
     const QStringList stringArgument(QStringLiteral("Test string."));
     QByteArray errorMessage;
@@ -253,7 +254,7 @@ void tst_QClipboard::copy_exit_paste()
 
 void tst_QClipboard::setMimeData()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
     QMimeData *mimeData = new QMimeData;
     const QString TestName(QLatin1String("tst_QClipboard::setMimeData() mimeData"));
@@ -339,7 +340,7 @@ void tst_QClipboard::clearBeforeSetText()
 {
     QGuiApplication::processEvents();
 
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Native clipboard not working in this setup");
 
     const QString text = "tst_QClipboard::clearBeforeSetText()";
@@ -370,6 +371,8 @@ void tst_QClipboard::clearBeforeSetText()
     QGuiApplication::processEvents();
     QCOMPARE(QGuiApplication::clipboard()->text(), text);
 }
+
+#endif
 
 QTEST_MAIN(tst_QClipboard)
 

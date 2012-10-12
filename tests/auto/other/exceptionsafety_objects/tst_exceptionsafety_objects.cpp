@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -79,8 +79,8 @@ private slots:
     void linkedList();
 
 private:
-    static QtMsgHandler testMessageHandler;
-    static void safeMessageHandler(QtMsgType, const char *);
+    static QtMessageHandler testMessageHandler;
+    static void safeMessageHandler(QtMsgType, const QMessageLogContext&, const QString&);
 #endif
 };
 
@@ -275,15 +275,16 @@ public:
     }
 };
 
-QtMsgHandler tst_ExceptionSafety_Objects::testMessageHandler;
+QtMessageHandler tst_ExceptionSafety_Objects::testMessageHandler;
 
-void tst_ExceptionSafety_Objects::safeMessageHandler(QtMsgType type, const char *msg)
+void tst_ExceptionSafety_Objects::safeMessageHandler(QtMsgType type, const QMessageLogContext &ctxt,
+                                                     const QString &msg)
 {
     // this temporarily suspends OOM testing while handling a message
     int currentIndex = mallocFailIndex;
     AllocFailer allocFailer(0);
     allocFailer.deactivate();
-    (*testMessageHandler)(type, msg);
+    (*testMessageHandler)(type, ctxt, msg);
     allocFailer.reactivateAt(currentIndex);
 }
 
@@ -307,7 +308,7 @@ void tst_ExceptionSafety_Objects::initTestCase()
     // set handlers for bad exception cases, you might want to step in and breakpoint the default handlers too
     defaultTerminate = std::set_terminate(&debugTerminate);
     defaultUnexpected = std::set_unexpected(&debugUnexpected);
-    testMessageHandler = qInstallMsgHandler(safeMessageHandler);
+    testMessageHandler = qInstallMessageHandler(safeMessageHandler);
 
     QVERIFY(AllocFailer::initialize());
 
@@ -342,7 +343,7 @@ void tst_ExceptionSafety_Objects::initTestCase()
 
 void tst_ExceptionSafety_Objects::cleanupTestCase()
 {
-    qInstallMsgHandler(testMessageHandler);
+    qInstallMessageHandler(testMessageHandler);
 }
 
 void tst_ExceptionSafety_Objects::objects()

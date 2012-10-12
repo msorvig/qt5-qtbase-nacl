@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -274,37 +274,37 @@ public:
     QT_DEPRECATED inline void removeAllEncodedQueryItems(const QByteArray &key);
 
     QT_DEPRECATED void setEncodedUrl(const QByteArray &u, ParsingMode mode = TolerantMode)
-    { setUrl(QString::fromUtf8(u.constData(), u.size()), mode); }
+    { setUrl(fromEncodedComponent_helper(u), mode); }
 
     QT_DEPRECATED QByteArray encodedUserName() const
     { return userName(FullyEncoded).toLatin1(); }
     QT_DEPRECATED void setEncodedUserName(const QByteArray &value)
-    { setUserName(QString::fromLatin1(value)); }
+    { setUserName(fromEncodedComponent_helper(value)); }
 
     QT_DEPRECATED QByteArray encodedPassword() const
     { return password(FullyEncoded).toLatin1(); }
     QT_DEPRECATED void setEncodedPassword(const QByteArray &value)
-    { setPassword(QString::fromLatin1(value)); }
+    { setPassword(fromEncodedComponent_helper(value)); }
 
     QT_DEPRECATED QByteArray encodedHost() const
     { return host(FullyEncoded).toLatin1(); }
     QT_DEPRECATED void setEncodedHost(const QByteArray &value)
-    { setHost(QString::fromLatin1(value)); }
+    { setHost(fromEncodedComponent_helper(value)); }
 
     QT_DEPRECATED QByteArray encodedPath() const
     { return path(FullyEncoded).toLatin1(); }
     QT_DEPRECATED void setEncodedPath(const QByteArray &value)
-    { setPath(QString::fromLatin1(value)); }
+    { setPath(fromEncodedComponent_helper(value)); }
 
     QT_DEPRECATED QByteArray encodedQuery() const
     { return toLatin1_helper(query(FullyEncoded)); }
     QT_DEPRECATED void setEncodedQuery(const QByteArray &value)
-    { setQuery(value.isNull() ? QString() : QString::fromLatin1(value)); }
+    { setQuery(fromEncodedComponent_helper(value)); }
 
     QT_DEPRECATED QByteArray encodedFragment() const
     { return toLatin1_helper(fragment(FullyEncoded)); }
     QT_DEPRECATED void setEncodedFragment(const QByteArray &value)
-    { setFragment(value.isNull() ? QString() : QString::fromLatin1(value)); }
+    { setFragment(fromEncodedComponent_helper(value)); }
 
 private:
     // helper function for the encodedQuery and encodedFragment functions
@@ -315,13 +315,15 @@ private:
         return string.toLatin1();
     }
 #endif
+private:
+    static QString fromEncodedComponent_helper(const QByteArray &ba);
 
 public:
     static QString fromAce(const QByteArray &);
     static QByteArray toAce(const QString &);
     static QStringList idnWhitelist();
     static void setIdnWhitelist(const QStringList &);
-    friend Q_CORE_EXPORT uint qHash(const QUrl &url, uint seed = 0);
+    friend Q_CORE_EXPORT uint qHash(const QUrl &url, uint seed = 0) Q_DECL_NOTHROW;
 
 private:
     QUrlPrivate *d;

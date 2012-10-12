@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -65,6 +65,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QMetaObject
+    \inmodule QtCore
 
     \brief The QMetaObject class contains meta-information about Qt
     objects.
@@ -208,6 +209,7 @@ public:
     inline QList<QByteArray> parameterTypes() const;
     inline QList<QByteArray> parameterNames() const;
     inline QByteArray tag() const;
+    inline int ownMethodIndex() const;
 
 private:
     QMetaMethodPrivate();
@@ -574,7 +576,8 @@ static bool methodMatch(const QMetaObject *m, int handle,
     return true;
 }
 
-/** \internal
+/**
+* \internal
 * helper function for indexOf{Method,Slot,Signal}, returns the relative index of the method within
 * the baseObject
 * \a MethodType might be MethodSignal or MethodSlot, or 0 to match everything.
@@ -705,7 +708,8 @@ int QMetaObject::indexOfSignal(const char *signal) const
     return i;
 }
 
-/*! \internal
+/*!
+    \internal
     Same as QMetaObject::indexOfSignal, but the result is the local offset to the base object.
 
     \a baseObject will be adjusted to the enclosing QMetaObject, or 0 if the signal is not found
@@ -848,10 +852,11 @@ int QMetaObjectPrivate::signalIndex(const QMetaMethod &m)
 {
     if (!m.mobj)
         return -1;
-    return ((m.handle - priv(m.mobj->d.data)->methodData) / 5) + signalOffset(m.mobj);
+    return QMetaMethodPrivate::get(&m)->ownMethodIndex() + signalOffset(m.mobj);
 }
 
-/*! \internal
+/*!
+    \internal
     \since 5.0
 
     Returns the signal for the given meta-object \a m at \a signal_index.
@@ -1372,8 +1377,8 @@ enum { MaximumParamCount = 11 }; // up to 10 arguments + 1 return value
 
     You only need to pass the name of the signal or slot to this function,
     not the entire signature. For example, to asynchronously invoke
-    the \l{QPushButton::animateClick()}{animateClick()} slot on a
-    QPushButton, use the following code:
+    the \l{QThread::quit()}{quit()} slot on a
+    QThread, use the following code:
 
     \snippet code/src_corelib_kernel_qmetaobject.cpp 2
 
@@ -1514,6 +1519,7 @@ bool QMetaObject::invokeMethod(QObject *obj,
 
 /*!
     \class QMetaMethod
+    \inmodule QtCore
 
     \brief The QMetaMethod class provides meta-data about a member
     function.
@@ -1690,6 +1696,12 @@ QByteArray QMetaMethodPrivate::tag() const
     return stringData(mobj, mobj->d.data[handle + 3]);
 }
 
+int QMetaMethodPrivate::ownMethodIndex() const
+{
+    // recompute the methodIndex by reversing the arithmetic in QMetaObject::property()
+    return (handle - priv(mobj->d.data)->methodData) / 5;
+}
+
 /*!
     \since 5.0
 
@@ -1766,7 +1778,16 @@ int QMetaMethod::parameterType(int index) const
         return QMetaType::UnknownType;
     if (index >= QMetaMethodPrivate::get(this)->parameterCount())
         return QMetaType::UnknownType;
-    return QMetaMethodPrivate::get(this)->parameterType(index);
+
+    int type = QMetaMethodPrivate::get(this)->parameterType(index);
+    if (type != QMetaType::UnknownType)
+        return type;
+
+    void *argv[] = { &type, &index };
+    mobj->static_metacall(QMetaObject::RegisterMethodArgumentMetaType, QMetaMethodPrivate::get(this)->ownMethodIndex(), argv);
+    if (type != -1)
+        return type;
+    return QMetaType::UnknownType;
 }
 
 /*!
@@ -1861,7 +1882,9 @@ const char *QMetaMethod::tag() const
 }
 
 
-/*! \internal */
+/*!
+    \internal
+ */
 int QMetaMethod::attributes() const
 {
     if (!mobj)
@@ -1878,7 +1901,7 @@ int QMetaMethod::methodIndex() const
 {
     if (!mobj)
         return -1;
-    return ((handle - priv(mobj->d.data)->methodData) / 5) + mobj->methodOffset();
+    return QMetaMethodPrivate::get(this)->ownMethodIndex() + mobj->methodOffset();
 }
 
 /*!
@@ -1894,7 +1917,7 @@ int QMetaMethod::revision() const
     if ((QMetaMethod::Access)(mobj->d.data[handle + 4] & MethodRevisioned)) {
         int offset = priv(mobj->d.data)->methodData
                      + priv(mobj->d.data)->methodCount * 5
-                     + (handle - priv(mobj->d.data)->methodData) / 5;
+                     + QMetaMethodPrivate::get(this)->ownMethodIndex();
         return mobj->d.data[offset];
     }
     return 0;
@@ -1940,7 +1963,8 @@ QMetaMethod::MethodType QMetaMethod::methodType() const
     \snippet code/src_corelib_kernel_qmetaobject.cpp 9
 */
 
-/*! \internal
+/*!
+    \internal
 
     Implementation of the fromSignal() function.
 
@@ -2112,8 +2136,7 @@ bool QMetaMethod::invoke(QObject *object,
         val8.data(),
         val9.data()
     };
-    // recompute the methodIndex by reversing the arithmetic in QMetaObject::property()
-    int idx_relative = ((handle - priv(mobj->d.data)->methodData) / 5);
+    int idx_relative = QMetaMethodPrivate::get(this)->ownMethodIndex();
     int idx_offset =  mobj->methodOffset();
     Q_ASSERT(QMetaObjectPrivate::get(mobj)->revision >= 6);
     QObjectPrivate::StaticMetaCallFunction callFunction = mobj->d.static_metacall;
@@ -2146,15 +2169,21 @@ bool QMetaMethod::invoke(QObject *object,
                 args[i] = QMetaType::create(types[i], param[i]);
                 ++nargs;
             } else if (param[i]) {
-                qWarning("QMetaMethod::invoke: Unable to handle unregistered datatype '%s'",
-                         typeNames[i]);
-                for (int x = 1; x < i; ++x) {
-                    if (types[x] && args[x])
-                        QMetaType::destroy(types[x], args[x]);
+                // Try to register the type and try again before reporting an error.
+                void *argv[] = { &types[i], &i };
+                QMetaObject::metacall(object, QMetaObject::RegisterMethodArgumentMetaType,
+                                      idx_relative + idx_offset, argv);
+                if (types[i] == -1) {
+                    qWarning("QMetaMethod::invoke: Unable to handle unregistered datatype '%s'",
+                            typeNames[i]);
+                    for (int x = 1; x < i; ++x) {
+                        if (types[x] && args[x])
+                            QMetaType::destroy(types[x], args[x]);
+                    }
+                    free(types);
+                    free(args);
+                    return false;
                 }
-                free(types);
-                free(args);
-                return false;
             }
         }
 
@@ -2233,6 +2262,7 @@ bool QMetaMethod::invoke(QObject *object,
 
 /*!
     \class QMetaEnum
+    \inmodule QtCore
     \brief The QMetaEnum class provides meta-data about an enumerator.
 
     \ingroup objectmodel
@@ -2507,6 +2537,7 @@ static QByteArray qualifiedName(const QMetaEnum &e)
 
 /*!
     \class QMetaProperty
+    \inmodule QtCore
     \brief The QMetaProperty class provides meta-data about a property.
 
     \ingroup objectmodel
@@ -2645,7 +2676,14 @@ int QMetaProperty::userType() const
             return QVariant::Int; // Match behavior of QMetaType::type()
         return enumMetaTypeId;
     }
-    return QMetaType::type(typeName());
+    type = QMetaType::type(typeName());
+    if (type != QMetaType::UnknownType)
+        return type;
+    void *argv[] = { &type };
+    mobj->static_metacall(QMetaObject::RegisterPropertyMetaType, idx, argv);
+    if (type != -1)
+        return type;
+    return QMetaType::UnknownType;
 }
 
 /*!
@@ -2752,8 +2790,16 @@ QVariant QMetaProperty::read(const QObject *object) const
             t = QMetaType::type(typeName);
         }
         if (t == QMetaType::UnknownType) {
-            qWarning("QMetaProperty::read: Unable to handle unregistered datatype '%s' for property '%s::%s'", typeName, mobj->className(), name());
-            return QVariant();
+            // Try to register the type and try again before reporting an error.
+            int registerResult = -1;
+            void *argv[] = { &registerResult };
+            QMetaObject::metacall(const_cast<QObject*>(object), QMetaObject::RegisterPropertyMetaType,
+                                  idx + mobj->propertyOffset(), argv);
+            if (registerResult == -1) {
+                qWarning("QMetaProperty::read: Unable to handle unregistered datatype '%s' for property '%s::%s'", typeName, mobj->className(), name());
+                return QVariant();
+            }
+            t = registerResult;
         }
     }
 
@@ -3151,6 +3197,7 @@ bool QMetaProperty::isEditable(const QObject *object) const
 
 /*!
     \class QMetaClassInfo
+    \inmodule QtCore
 
     \brief The QMetaClassInfo class provides additional information
     about a class.
@@ -3228,6 +3275,7 @@ const char* QMetaClassInfo::value() const
 
 /*!
     \class QGenericArgument
+    \inmodule QtCore
 
     \brief The QGenericArgument class is an internal helper class for
     marshalling arguments.
@@ -3258,6 +3306,7 @@ const char* QMetaClassInfo::value() const
 
 /*!
     \class QGenericReturnArgument
+    \inmodule QtCore
 
     \brief The QGenericReturnArgument class is an internal helper class for
     marshalling arguments.
@@ -3275,7 +3324,8 @@ const char* QMetaClassInfo::value() const
     and \a data.
 */
 
-/*! \internal
+/*!
+    \internal
     If the local_method_index is a cloned method, return the index of the original.
 
     Example: if the index of "destroyed()" is passed, the index of "destroyed(QObject*)" is returned

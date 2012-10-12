@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -72,8 +72,7 @@
 QT_BEGIN_NAMESPACE
 
 static QString appFont;
-static bool popupGrabOk = false;
-static QPointer<QWidget> autoGrabber;
+static bool popupGrabOk;
 extern QWidget *qt_button_down;
 extern QWidget *qt_popup_down;
 extern bool qt_replay_popup_mouse_event;
@@ -142,28 +141,6 @@ void QApplicationPrivate::notifyActiveWindowChange(QWindow *previous)
     QApplication::setActiveWindow(tlw);
 }
 
-void QApplicationPrivate::handleAutomaticMouseGrab(QWidget *widget, QMouseEvent *e)
-{
-    // Grab the mouse automatically for current window when any button is pressed,
-    // unless there is an active mousegrabber or mouse is being grabbed for a popup.
-    if (e->type() == QEvent::MouseButtonPress || e->type() == QEvent::MouseButtonRelease) {
-        if (e->buttons() == Qt::NoButton) {
-            // No buttons remain pressed, so release the grab unless grab has been acquired
-            // for some other reason in the meantime.
-            if (autoGrabber && !QWidget::mouseGrabber() && !popupGrabOk)
-                qt_widget_private(autoGrabber)->stealMouseGrab(false);
-            autoGrabber = 0;
-        } else {
-            // Some buttons are pressed, grab mouse input for current window,
-            // unless there is already an active grab.
-            if (!autoGrabber && !QWidget::mouseGrabber() && !popupGrabOk) {
-                autoGrabber = widget->window();
-                qt_widget_private(autoGrabber)->stealMouseGrab(true);
-            }
-        }
-    }
-}
-
 static void ungrabKeyboardForPopup(QWidget *popup)
 {
     if (QWidget::keyboardGrabber())
@@ -185,9 +162,6 @@ static void grabForPopup(QWidget *popup)
     Q_ASSERT(popup->testAttribute(Qt::WA_WState_Created));
     popupGrabOk = qt_widget_private(popup)->stealKeyboardGrab(true);
     if (popupGrabOk) {
-        if (autoGrabber)
-            qt_widget_private(autoGrabber)->stealMouseGrab(false);
-        autoGrabber = 0;
         popupGrabOk = qt_widget_private(popup)->stealMouseGrab(true);
         if (!popupGrabOk) {
             // transfer grab back to the keyboard grabber if any
@@ -413,7 +387,6 @@ bool QApplication::isEffectEnabled(Qt::UIEffect effect)
     return QColormap::instance().depth() >= 16
            && (QApplicationPrivate::enabledAnimations & QPlatformTheme::GeneralUiEffect)
            && (QApplicationPrivate::enabledAnimations & uiEffectToFlag(effect));
-        return false;
 }
 
 QWidget *QApplication::topLevelAt(const QPoint &pos)

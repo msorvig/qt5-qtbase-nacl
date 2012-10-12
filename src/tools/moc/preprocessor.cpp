@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -41,10 +41,10 @@
 
 #include "preprocessor.h"
 #include "utils.h"
-#include <QStringList>
-#include <QFile>
-#include <QDir>
-#include <QFileInfo>
+#include <qstringlist.h>
+#include <qfile.h>
+#include <qdir.h>
+#include <qfileinfo.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -157,14 +157,14 @@ bool Preprocessor::skipBranch()
 }
 
 
-enum TokenizeMode { TokenizeCpp, TokenizePreprocessor, PreparePreprocessorStatement, TokenizePreprocessorStatement, TokenizeInclude };
+enum TokenizeMode { TokenizeCpp, TokenizePreprocessor, PreparePreprocessorStatement, TokenizePreprocessorStatement, TokenizeInclude, PrepareDefine, TokenizeDefine };
 static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode mode = TokenizeCpp)
 {
     Symbols symbols;
     const char *begin = input.constData();
     const char *data = begin;
     while (*data) {
-        if (mode == TokenizeCpp) {
+        if (mode == TokenizeCpp || mode == TokenizeDefine) {
             int column = 0;
 
             const char *lexem = data;
@@ -267,7 +267,7 @@ static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode m
                         ++data;
                     break;
                 case HASH:
-                    if (column == 1) {
+                    if (column == 1 && mode == TokenizeCpp) {
                         mode = PreparePreprocessorStatement;
                         while (*data && (*data == ' ' || *data == '\t'))
                             ++data;
@@ -276,8 +276,17 @@ static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode m
                         continue;
                     }
                     break;
+                case PP_HASHHASH:
+                    if (mode == TokenizeCpp)
+                        continue;
+                    break;
                 case NEWLINE:
                     ++lineNum;
+                    if (mode == TokenizeDefine) {
+                        mode = TokenizeCpp;
+                        // emit the newline token
+                        break;
+                    }
                     continue;
                 case BACKSLASH:
                 {
@@ -375,6 +384,9 @@ static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode m
             case NOTOKEN:
                 ++data;
                 break;
+            case PP_DEFINE:
+                mode = PrepareDefine;
+                break;
             case PP_IFDEF:
                 symbols += Symbol(lineNum, PP_IF);
                 symbols += Symbol(lineNum, PP_DEFINED);
@@ -441,6 +453,17 @@ static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode m
                 while (is_ident_char(*data))
                     ++data;
                 token = PP_IDENTIFIER;
+
+                if (mode == PrepareDefine) {
+                    symbols += Symbol(lineNum, token, input, lexem-begin, data-lexem);
+                    // make sure we explicitly add the whitespace here if the next char
+                    // is not an opening brace, so we can distinguish correctly between
+                    // regular and function macros
+                    if (*data != '(')
+                        symbols += Symbol(lineNum, WHITESPACE);
+                    mode = TokenizeDefine;
+                    continue;
+                }
                 break;
             case PP_C_COMMENT:
                 if (*data) {
@@ -509,6 +532,170 @@ static Symbols tokenize(const QByteArray &input, int lineNum = 1, TokenizeMode m
     symbols += Symbol(); // eof symbol
     return symbols;
 }
+
+void Preprocessor::macroExpandSymbols(int lineNum, const Symbols &symbolList, Symbols &expanded, MacroSafeSet safeset)
+{
+    Symbols saveSymbols = symbols;
+    int saveIndex = index;
+    symbols = symbolList;
+    index = 0;
+
+    while (hasNext()) {
+        next();
+        macroExpandIdentifier(lineNum, expanded, safeset);
+    }
+
+    symbols = saveSymbols;
+    index = saveIndex;
+}
+
+void Preprocessor::macroExpandIdentifier(int lineNum, Symbols &preprocessed, MacroSafeSet safeset)
+{
+    const Symbol &s = symbol();
+    // not a macro
+    if (s.token != PP_IDENTIFIER || !macros.contains(s) || safeset.contains(s)) {
+        preprocessed += s;
+        preprocessed.last().lineNum = lineNum;
+        return;
+    }
+
+    const Macro &macro = macros.value(s);
+    safeset += s;
+
+    // don't expand macros with arguments for now
+    if (macro.isFunction) {
+        while (test(PP_WHITESPACE));
+        if (!test(PP_LPAREN)) {
+            preprocessed += s;
+            return;
+        }
+        QList<Symbols> arguments;
+        while (hasNext()) {
+            Symbols argument;
+            // strip leading space
+            while (test(PP_WHITESPACE));
+            int nesting = 0;
+            bool vararg = macro.isVariadic && (arguments.size() == macro.arguments.size() - 1);
+            while (hasNext()) {
+                Token t = next();
+                if (t == PP_LPAREN) {
+                    ++nesting;
+                } else if (t == PP_RPAREN) {
+                    --nesting;
+                    if (nesting < 0)
+                        break;
+                } else if (t == PP_COMMA && nesting == 0) {
+                    if (!vararg)
+                        break;
+                }
+                argument += symbol();
+            }
+
+            // each argument undoergoes macro expansion
+            Symbols expanded;
+            macroExpandSymbols(lineNum, argument, expanded, safeset);
+            arguments += expanded;
+
+            if (nesting < 0)
+                break;
+        }
+
+        // empty VA_ARGS
+        if (macro.isVariadic && arguments.size() == macro.arguments.size() - 1)
+            arguments += Symbols();
+
+        if (arguments.size() != macro.arguments.size() &&
+            // 0 argument macros are a bit special. They are ok if the
+            // argument is pure whitespace or empty
+            (macro.arguments.size() != 0 || arguments.size() != 1 || !arguments.at(0).isEmpty()))
+            error("Macro argument mismatch.");
+
+        // now replace the macro arguments with the expanded arguments
+
+        Symbols expansion;
+        enum Mode {
+            Normal,
+            Hash,
+            HashHash
+        } mode = Normal;
+
+        for (int i = 0; i < macro.symbols.size(); ++i) {
+            const Symbol &s = macro.symbols.at(i);
+            if (s.token == HASH || s.token == PP_HASHHASH) {
+                mode = (s.token == HASH ? Hash : HashHash);
+                continue;
+            }
+            int index = macro.arguments.indexOf(s);
+            if (mode == Normal) {
+                if (index >= 0)
+                    expansion += arguments.at(index);
+                else
+                    expansion += s;
+            } else if (mode == Hash) {
+                if (s.token == WHITESPACE)
+                    continue;
+                if (index < 0)
+                    error("'#' is not followed by a macro parameter");
+
+                const Symbols &arg = arguments.at(index);
+                QByteArray stringified;
+                for (int i = 0; i < arg.size(); ++i) {
+                    stringified += arg.at(i).lexem();
+                }
+                stringified.replace('"', "\\\"");
+                stringified.prepend('"');
+                stringified.append('"');
+                expansion += Symbol(lineNum, STRING_LITERAL, stringified);
+            } else if (mode == HashHash){
+                if (s.token == WHITESPACE)
+                    continue;
+
+                while (expansion.size() && expansion.last().token == PP_WHITESPACE)
+                    expansion.pop_back();
+                if (!expansion.size())
+                    error("'##' can't appear first in macro argument");
+
+                Symbol last = expansion.last();
+                expansion.pop_back();
+
+                Symbol next = s;
+                if (index >= 0) {
+                    const Symbols &arg = arguments.at(index);
+                    if (arg.size() == 0) {
+                        mode = Normal;
+                        continue;
+                    }
+                    next = arg.at(0);
+                }
+
+                if (last.token == STRING_LITERAL || s.token == STRING_LITERAL)
+                    error("Can't concatenate non identifier tokens");
+
+                if (last.token == s.token) {
+                    QByteArray lexem = last.lexem() + next.lexem();
+                    expansion += Symbol(lineNum, last.token, lexem);
+                } else {
+                    expansion += last;
+                    expansion += next;
+                }
+
+                if (index >= 0) {
+                    const Symbols &arg = arguments.at(index);
+                    for (int i = 1; i < arg.size(); ++i)
+                        expansion += arg.at(i);
+                }
+            }
+            mode = Normal;
+        }
+        if (mode != Normal)
+            error("'#' or '##' found at the end of a macro argument");
+
+        macroExpandSymbols(lineNum, expansion, preprocessed, safeset);
+    } else {
+        macroExpandSymbols(lineNum, macro.symbols, preprocessed, safeset);
+    }
+}
+
 
 void Preprocessor::substituteMacro(const MacroName &macro, Symbols &substituted, MacroSafeSet safeset)
 {
@@ -862,9 +1049,20 @@ void Preprocessor::preprocess(const QByteArray &filename, Symbols &preprocessed)
         {
             next(IDENTIFIER);
             QByteArray name = lexem();
+            Macro macro;
+            macro.isVariadic = false;
+            Token t = next();
+            if (t == LPAREN) {
+                // we have a function macro
+                macro.isFunction = true;
+                parseDefineArguments(&macro);
+            } else if (t == PP_WHITESPACE){
+                macro.isFunction = false;
+            } else {
+                error("Moc: internal error");
+            }
             int start = index;
             until(PP_NEWLINE);
-            Macro macro;
             macro.symbols.reserve(index - start - 1);
             for (int i = start; i < index - 1; ++i)
                 macro.symbols += symbols.at(i);
@@ -878,20 +1076,11 @@ void Preprocessor::preprocess(const QByteArray &filename, Symbols &preprocessed)
             macros.remove(name);
             continue;
         }
-        case PP_IDENTIFIER:
-        {
-//             if (macros.contains(symbol()))
-//                 ;
+        case PP_IDENTIFIER: {
+            // substitute macros
+            macroExpandIdentifier(symbol().lineNum, preprocessed);
+            continue;
         }
-            // we _could_ easily substitute macros by the following
-            // four lines, but we choose not to.
-            /*
-            if (macros.contains(sym.lexem())) {
-                preprocessed += substitute(macros, symbols, i);
-                continue;
-            }
-            */
-            break;
         case PP_HASH:
             until(PP_NEWLINE);
             continue; // skip unknown preprocessor statement
@@ -975,6 +1164,45 @@ Symbols Preprocessor::preprocessed(const QByteArray &filename, QIODevice *file)
 #endif
 
     return result;
+}
+
+void Preprocessor::parseDefineArguments(Macro *m)
+{
+    Symbols arguments;
+    while (hasNext()) {
+        while (test(PP_WHITESPACE));
+        Token t = next();
+        if (t == PP_RPAREN)
+            break;
+        if (t != PP_IDENTIFIER) {
+            QByteArray l = lexem();
+            if (l == "...") {
+                m->isVariadic = true;
+                arguments += Symbol(symbol().lineNum, PP_IDENTIFIER, "__VA_ARGS__");
+                while (test(PP_WHITESPACE));
+                if (!test(PP_RPAREN))
+                    error("missing ')' in macro argument list");
+                break;
+            } else if (!is_identifier(l.constData(), l.length())) {
+                qDebug() << l;
+                error("Unexpected character in macro argument list.");
+            }
+        }
+
+        Symbol arg = symbol();
+        if (arguments.contains(arg))
+            error("Duplicate macro parameter.");
+        arguments += symbol();
+
+        while (test(PP_WHITESPACE));
+        t = next();
+        if (t == PP_RPAREN)
+            break;
+        if (t != PP_COMMA)
+            error("Unexpected character in macro argument list.");
+    }
+    m->arguments = arguments;
+    while (test(PP_WHITESPACE));
 }
 
 void Preprocessor::until(Token t)

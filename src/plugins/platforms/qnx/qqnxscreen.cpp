@@ -1,38 +1,38 @@
 /***************************************************************************
 **
 ** Copyright (C) 2011 - 2012 Research In Motion
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -54,7 +54,54 @@
 #define qScreenDebug QT_NO_QDEBUG_MACRO
 #endif
 
+#if defined(QQNX_PHYSICAL_SCREEN_WIDTH) && QQNX_PHYSICAL_SCREEN_WIDTH > 0 \
+    && defined(QQNX_PHYSICAL_SCREEN_HEIGHT) && QQNX_PHYSICAL_SCREEN_HEIGHT > 0
+#define QQNX_PHYSICAL_SCREEN_SIZE_DEFINED
+#elif defined(QQNX_PHYSICAL_SCREEN_WIDTH) || defined(QQNX_PHYSICAL_SCREEN_HEIGHT)
+#error Please define QQNX_PHYSICAL_SCREEN_WIDTH and QQNX_PHYSICAL_SCREEN_HEIGHT to values greater than zero
+#endif
+
 QT_BEGIN_NAMESPACE
+
+static QSize determineScreenSize(screen_display_t display, bool primaryScreen) {
+    int val[2];
+
+    errno = 0;
+    const int result = screen_get_display_property_iv(display, SCREEN_PROPERTY_PHYSICAL_SIZE, val);
+    if (result != 0) {
+        qFatal("QQnxScreen: failed to query display physical size, errno=%d", errno);
+        return QSize(150, 90);
+    }
+
+    if (val[0] > 0 && val[1] > 0)
+        return QSize(val[0], val[1]);
+
+    qWarning("QQnxScreen: screen_get_display_property_iv() reported an invalid physical screen size (%dx%d). Falling back to QQNX_PHYSICAL_SCREEN_SIZE environment variable.", val[0], val[1]);
+
+    const QString envPhySizeStr = qgetenv("QQNX_PHYSICAL_SCREEN_SIZE");
+    if (!envPhySizeStr.isEmpty()) {
+        const QStringList envPhySizeStrList = envPhySizeStr.split(QLatin1Char(','));
+        const int envWidth = envPhySizeStrList.size() == 2 ? envPhySizeStrList[0].toInt() : -1;
+        const int envHeight = envPhySizeStrList.size() == 2 ? envPhySizeStrList[1].toInt() : -1;
+
+        if (envWidth <= 0 || envHeight <= 0) {
+            qFatal("QQnxScreen: The value of QQNX_PHYSICAL_SCREEN_SIZE must be in the format \"width,height\" in mm, with width, height > 0. Example: QQNX_PHYSICAL_SCREEN_SIZE=150,90");
+            return QSize(150, 90);
+        }
+
+        return QSize(envWidth, envHeight);
+    }
+
+#if defined(QQNX_PHYSICAL_SCREEN_SIZE_DEFINED)
+    const QSize defSize(QQNX_PHYSICAL_SCREEN_WIDTH, QQNX_PHYSICAL_SCREEN_HEIGHT);
+    qWarning("QQnxScreen: QQNX_PHYSICAL_SCREEN_SIZE variable not set. Falling back to defines QQNX_PHYSICAL_SCREEN_WIDTH/QQNX_PHYSICAL_SCREEN_HEIGHT (%dx%d)", defSize.width(), defSize.height());
+    return defSize;
+#else
+    if (primaryScreen)
+        qFatal("QQnxScreen: QQNX_PHYSICAL_SCREEN_SIZE variable not set. Could not determine physical screen size.");
+    return QSize(150, 90);
+#endif
+}
 
 QQnxScreen::QQnxScreen(screen_context_t screenContext, screen_display_t display, bool primaryScreen)
     : m_screenContext(screenContext),
@@ -89,19 +136,15 @@ QQnxScreen::QQnxScreen(screen_context_t screenContext, screen_display_t display,
     // libscreen always reports the physical size dimensions as width and height in the
     // native orientation. Contrary to this, QPlatformScreen::physicalSize() expects the
     // returned dimensions to follow the current orientation.
-    errno = 0;
-    result = screen_get_display_property_iv(m_display, SCREEN_PROPERTY_PHYSICAL_SIZE, val);
-    if (result != 0) {
-        qFatal("QQnxScreen: failed to query display physical size, errno=%d", errno);
-    }
+    const QSize screenSize = determineScreenSize(m_display, primaryScreen);
 
-    m_nativeOrientation = val[0] >= val[1] ? Qt::LandscapeOrientation : Qt::PortraitOrientation;
+    m_nativeOrientation = screenSize.width() >= screenSize.height() ? Qt::LandscapeOrientation : Qt::PortraitOrientation;
 
     const int angle = screen()->angleBetween(m_nativeOrientation, orientation());
     if (angle == 0 || angle == 180)
-        m_currentPhysicalSize = m_initialPhysicalSize = QSize(val[0], val[1]);
+        m_currentPhysicalSize = m_initialPhysicalSize = screenSize;
     else
-        m_currentPhysicalSize = m_initialPhysicalSize = QSize(val[1], val[0]);
+        m_currentPhysicalSize = m_initialPhysicalSize = screenSize.transposed();
 
     // We only create the root window if we are the primary display.
     if (primaryScreen)
@@ -208,6 +251,8 @@ void QQnxScreen::setRotation(int rotation)
         if (m_rootWindow)
             m_rootWindow->setRotation(rotation);
 
+        const QRect previousScreenGeometry = geometry();
+
         // Swap dimensions if we've rotated 90 or 270 from initial orientation
         if (isOrthogonal(m_initialRotation, rotation)) {
             m_currentGeometry = QRect(0, 0, m_initialGeometry.height(), m_initialGeometry.width());
@@ -222,6 +267,9 @@ void QQnxScreen::setRotation(int rotation)
             qScreenDebug() << Q_FUNC_INFO << "resize, size =" << m_currentGeometry.size();
             if (m_rootWindow)
                 m_rootWindow->resize(m_currentGeometry.size());
+
+            if (m_primaryScreen)
+                resizeWindows(previousScreenGeometry);
         } else {
             // TODO: Find one global place to flush display updates
             // Force immediate display update if no geometry changes required
@@ -238,12 +286,117 @@ void QQnxScreen::setRotation(int rotation)
         if (m_primaryScreen) {
             QWindowSystemInterface::handleScreenOrientationChange(screen(), orientation());
             QWindowSystemInterface::handleScreenGeometryChange(screen(), m_currentGeometry);
-            resizeMaximizedWindows();
         }
 
         // Flush everything, so that the windows rotations are applied properly.
         // Needed for non-maximized windows
         screen_flush_context( m_screenContext, 0 );
+    }
+}
+
+/*!
+  Resize the given window proportionally to the screen geometry
+*/
+void QQnxScreen::resizeNativeWidgetWindow(QQnxWindow *w, const QRect &previousScreenGeometry) const
+{
+    const qreal relativeX = static_cast<qreal>(w->geometry().topLeft().x()) / previousScreenGeometry.width();
+    const qreal relativeY = static_cast<qreal>(w->geometry().topLeft().y()) / previousScreenGeometry.height();
+    const qreal relativeWidth = static_cast<qreal>(w->geometry().width()) / previousScreenGeometry.width();
+    const qreal relativeHeight = static_cast<qreal>(w->geometry().height()) / previousScreenGeometry.height();
+
+    const QRect windowGeometry(relativeX * geometry().width(), relativeY * geometry().height(),
+            relativeWidth * geometry().width(), relativeHeight * geometry().height());
+
+    w->setGeometry(windowGeometry);
+}
+
+/*!
+  Resize the given window to fit the screen geometry
+*/
+void QQnxScreen::resizeTopLevelWindow(QQnxWindow *w, const QRect &previousScreenGeometry) const
+{
+    QRect windowGeometry = w->geometry();
+
+    const qreal relativeCenterX = static_cast<qreal>(w->geometry().center().x()) / previousScreenGeometry.width();
+    const qreal relativeCenterY = static_cast<qreal>(w->geometry().center().y()) / previousScreenGeometry.height();
+    const QPoint newCenter(relativeCenterX * geometry().width(), relativeCenterY * geometry().height());
+
+    windowGeometry.moveCenter(newCenter);
+
+    // adjust center position in case the window
+    // is clipped
+    if (!geometry().contains(windowGeometry)) {
+        const int x1 = windowGeometry.x();
+        const int y1 = windowGeometry.y();
+        const int x2 = x1 + windowGeometry.width();
+        const int y2 = y1 + windowGeometry.height();
+
+        if (x1 < 0) {
+            const int centerX = qMin(qAbs(x1) + windowGeometry.center().x(),
+                                        geometry().center().x());
+
+            windowGeometry.moveCenter(QPoint(centerX, windowGeometry.center().y()));
+        }
+
+        if (y1 < 0) {
+            const int centerY = qMin(qAbs(y1) + windowGeometry.center().y(),
+                                        geometry().center().y());
+
+            windowGeometry.moveCenter(QPoint(windowGeometry.center().x(), centerY));
+        }
+
+        if (x2 > geometry().width()) {
+            const int centerX = qMax(windowGeometry.center().x() - (x2 - geometry().width()),
+                                        geometry().center().x());
+
+            windowGeometry.moveCenter(QPoint(centerX, windowGeometry.center().y()));
+        }
+
+        if (y2 > geometry().height()) {
+            const int centerY = qMax(windowGeometry.center().y() - (y2 - geometry().height()),
+                                        geometry().center().y());
+
+            windowGeometry.moveCenter(QPoint(windowGeometry.center().x(), centerY));
+        }
+    }
+
+    // at this point, if the window is still clipped,
+    // it means that it's too big to fit on the screen,
+    // so we need to proportionally shrink it
+    if (!geometry().contains(windowGeometry)) {
+        QSize newSize = windowGeometry.size();
+        newSize.scale(geometry().size(), Qt::KeepAspectRatio);
+        windowGeometry.setSize(newSize);
+
+        if (windowGeometry.x() < 0)
+            windowGeometry.moveCenter(QPoint(geometry().center().x(), windowGeometry.center().y()));
+
+        if (windowGeometry.y() < 0)
+            windowGeometry.moveCenter(QPoint(windowGeometry.center().x(), geometry().center().y()));
+    }
+
+    w->setGeometry(windowGeometry);
+}
+
+/*!
+  Adjust windows to the new screen geometry.
+*/
+void QQnxScreen::resizeWindows(const QRect &previousScreenGeometry)
+{
+    resizeMaximizedWindows();
+
+    Q_FOREACH (QQnxWindow *w, m_childWindows) {
+
+        if (w->window()->windowState() & Qt::WindowFullScreen || w->window()->windowState() & Qt::WindowMaximized)
+            continue;
+
+        if (w->parent()) {
+            // This is a native (non-alien) widget window
+            resizeNativeWidgetWindow(w, previousScreenGeometry);
+        } else {
+            // This is a toplevel window
+            resizeTopLevelWindow(w, previousScreenGeometry);
+        }
     }
 }
 

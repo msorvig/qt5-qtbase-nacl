@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -47,6 +47,7 @@
 #undef check
 
 #include "qmacstyle_mac.h"
+#include "qwindowsstyle_p.h"
 #include <private/qapplication_p.h>
 #include <private/qcombobox_p.h>
 #include <private/qpainter_p.h>
@@ -138,12 +139,11 @@ enum QAquaWidgetSize { QAquaSizeLarge = 0, QAquaSizeSmall = 1, QAquaSizeMini = 2
 
 bool qt_mac_buttonIsRenderedFlat(const QPushButton *pushButton, const QStyleOptionButton *option);
 
-class QMacStylePrivate : public QObject
+class QMacStylePrivate : public QWindowsStylePrivate
 {
-    Q_OBJECT
-
+    Q_DECLARE_PUBLIC(QMacStyle)
 public:
-    QMacStylePrivate(QMacStyle *style);
+    QMacStylePrivate();
 
     // Ideally these wouldn't exist, but since they already exist we need some accessors.
     static const int PushButtonLeftOffset;
@@ -171,7 +171,8 @@ public:
                              QStyle::ContentsType ct = QStyle::CT_CustomBase,
                              QSize szHint=QSize(-1, -1), QSize *insz = 0) const;
     void getSliderInfo(QStyle::ComplexControl cc, const QStyleOptionSlider *slider,
-                          HIThemeTrackDrawInfo *tdi, const QWidget *needToRemoveMe);
+                          HIThemeTrackDrawInfo *tdi, const QWidget *needToRemoveMe) const;
+    void animate();
     bool doAnimate(Animates);
     inline int animateSpeed(Animates) const { return 33; }
 
@@ -185,7 +186,7 @@ public:
                                    const HIThemeButtonDrawInfo *bdi) const;
 
     void initComboboxBdi(const QStyleOptionComboBox *combo, HIThemeButtonDrawInfo *bdi,
-                        const QWidget *widget, const ThemeDrawState &tds);
+                        const QWidget *widget, const ThemeDrawState &tds) const;
 
     static HIRect comboboxInnerBounds(const HIRect &outerBounds, int buttonKind);
 
@@ -200,11 +201,7 @@ public:
                                const ThemeDrawState tds,
                                HIThemeButtonDrawInfo *bdi) const;
     QPixmap generateBackgroundPattern() const;
-protected:
-    bool eventFilter(QObject *, QEvent *);
-    void timerEvent(QTimerEvent *);
 
-private slots:
     void startAnimationTimer();
 
 public:
@@ -232,16 +229,15 @@ public:
         QDateTime lastHovered;
         bool cleared;
     };
-    QMap<const QWidget*, OverlayScrollBarInfo> scrollBarInfos;
+    mutable QMap<const QWidget*, OverlayScrollBarInfo> scrollBarInfos;
 
     struct ButtonState {
         int frame;
         enum { ButtonDark, ButtonLight } dir;
     } buttonState;
     UInt8 progressFrame;
-    QPointer<QFocusFrame> focusWidget;
+    mutable QPointer<QFocusFrame> focusWidget;
     CFAbsoluteTime defaultButtonStart;
-    QMacStyle *q;
     bool mouseDown;
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
     void* receiver;

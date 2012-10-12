@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -153,7 +153,7 @@ bool QWindowsVistaStylePrivate::useVista()
   \warning This style is only available on the Windows Vista platform
   because it makes use of Windows Vista's style engine.
 
-  \sa QMacStyle, QWindowsXPStyle, QPlastiqueStyle, QCleanlooksStyle, QMotifStyle
+  \sa QMacStyle, QWindowsXPStyle, QPlastiqueStyle, QCleanlooksStyle
 */
 
 /*!
@@ -747,19 +747,19 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
 
     case PE_PanelItemViewItem:
         {
-            const QStyleOptionViewItemV4 *vopt;
+            const QStyleOptionViewItem *vopt;
             const QAbstractItemView *view = qobject_cast<const QAbstractItemView *>(widget);
             bool newStyle = true;
 
             if (qobject_cast<const QTableView*>(widget))
                 newStyle = false;
 
-            if (newStyle && view && (vopt = qstyleoption_cast<const QStyleOptionViewItemV4 *>(option))) {
+            if (newStyle && view && (vopt = qstyleoption_cast<const QStyleOptionViewItem *>(option))) {
                 bool selected = vopt->state & QStyle::State_Selected;
                 bool hover = vopt->state & QStyle::State_MouseOver;
                 bool active = vopt->state & QStyle::State_Active;
 
-                if (vopt->features & QStyleOptionViewItemV2::Alternate)
+                if (vopt->features & QStyleOptionViewItem::Alternate)
                     painter->fillRect(vopt->rect, vopt->palette.alternateBase());
 
                 QPalette::ColorGroup cg = vopt->state & QStyle::State_Enabled
@@ -787,33 +787,35 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
                 }
 
                 if (hover || selected) {
-                    QString key = QString::fromLatin1("qvdelegate-%1-%2-%3-%4-%5").arg(sectionSize.width())
-                                                        .arg(sectionSize.height()).arg(selected).arg(active).arg(hover);
-                    if (!QPixmapCache::find(key, pixmap)) {
-                        pixmap = QPixmap(sectionSize);
-                        pixmap.fill(Qt::transparent);
+                    if (sectionSize.width() > 0 && sectionSize.height() > 0) {
+                        QString key = QString::fromLatin1("qvdelegate-%1-%2-%3-%4-%5").arg(sectionSize.width())
+                                                            .arg(sectionSize.height()).arg(selected).arg(active).arg(hover);
+                        if (!QPixmapCache::find(key, pixmap)) {
+                            pixmap = QPixmap(sectionSize);
+                            pixmap.fill(Qt::transparent);
 
-                        int state;
-                        if (selected && hover)
-                            state = LISS_HOTSELECTED;
-                        else if (selected && !active)
-                            state = LISS_SELECTEDNOTFOCUS;
-                        else if (selected)
-                            state = LISS_SELECTED;
-                        else
-                            state = LISS_HOT;
+                            int state;
+                            if (selected && hover)
+                                state = LISS_HOTSELECTED;
+                            else if (selected && !active)
+                                state = LISS_SELECTEDNOTFOCUS;
+                            else if (selected)
+                                state = LISS_SELECTED;
+                            else
+                                state = LISS_HOT;
 
-                        QPainter pixmapPainter(&pixmap);
-                        XPThemeData theme(0, &pixmapPainter,
-                                          QWindowsXPStylePrivate::TreeViewTheme,
-                            LVP_LISTITEM, state, QRect(0, 0, sectionSize.width(), sectionSize.height()));
-                        if (d->initTreeViewTheming() && theme.isValid()) {
-                            d->drawBackground(theme);
-                        } else {
-                            QWindowsXPStyle::drawPrimitive(PE_PanelItemViewItem, option, painter, widget);
-                            break;;
+                            QPainter pixmapPainter(&pixmap);
+                            XPThemeData theme(0, &pixmapPainter,
+                                              QWindowsXPStylePrivate::TreeViewTheme,
+                                LVP_LISTITEM, state, QRect(0, 0, sectionSize.width(), sectionSize.height()));
+                            if (d->initTreeViewTheming() && theme.isValid()) {
+                                d->drawBackground(theme);
+                            } else {
+                                QWindowsXPStyle::drawPrimitive(PE_PanelItemViewItem, option, painter, widget);
+                                break;;
+                            }
+                            QPixmapCache::insert(key, pixmap);
                         }
-                        QPixmapCache::insert(key, pixmap);
                     }
 
                     if (vopt->showDecorationSelected) {
@@ -821,10 +823,10 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
                         QRect srcRect = QRect(0, 0, sectionSize.width(), sectionSize.height());
                         QRect pixmapRect = vopt->rect;
                         bool reverse = vopt->direction == Qt::RightToLeft;
-                        bool leftSection = vopt->viewItemPosition == QStyleOptionViewItemV4::Beginning;
-                        bool rightSection = vopt->viewItemPosition == QStyleOptionViewItemV4::End;
-                        if (vopt->viewItemPosition == QStyleOptionViewItemV4::OnlyOne
-                            || vopt->viewItemPosition == QStyleOptionViewItemV4::Invalid)
+                        bool leftSection = vopt->viewItemPosition == QStyleOptionViewItem::Beginning;
+                        bool rightSection = vopt->viewItemPosition == QStyleOptionViewItem::End;
+                        if (vopt->viewItemPosition == QStyleOptionViewItem::OnlyOne
+                            || vopt->viewItemPosition == QStyleOptionViewItem::Invalid)
                             painter->drawPixmap(pixmapRect.topLeft(), pixmap);
                         else if (reverse ? rightSection : leftSection){
                             painter->drawPixmap(QRect(pixmapRect.topLeft(), 
@@ -839,7 +841,7 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
                                                 QSize(frame, pixmapRect.height())));
                             painter->drawPixmap(pixmapRect.adjusted(0, 0, -frame, 0), 
                                                 pixmap, srcRect.adjusted(frame, 0, -frame, 0));
-                        } else if (vopt->viewItemPosition == QStyleOptionViewItemV4::Middle)
+                        } else if (vopt->viewItemPosition == QStyleOptionViewItem::Middle)
                             painter->drawPixmap(pixmapRect, pixmap,
                                                 srcRect.adjusted(frame, 0, -frame, 0));
                     } else {
@@ -1509,7 +1511,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
             if (!dwOpt->title.isEmpty()) {
                 QString titleText = painter->fontMetrics().elidedText(dwOpt->title, Qt::ElideRight,
                                                                       verticalTitleBar ? titleRect.height() : titleRect.width());
-                const int indent = painter->fontMetrics().descent();
+                const int indent = 4;
                 drawItemText(painter, rect.adjusted(indent + 1, 1, -indent - 1, -1),
                                 Qt::AlignLeft | Qt::AlignVCenter, dwOpt->palette,
                                 dwOpt->state & State_Enabled, titleText,
@@ -1521,14 +1523,15 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
 #ifndef QT_NO_ITEMVIEWS
     case CE_ItemViewItem:
         {
-            const QStyleOptionViewItemV4 *vopt;
+            const QStyleOptionViewItem *vopt;
+
             const QAbstractItemView *view = qobject_cast<const QAbstractItemView *>(widget);
             bool newStyle = true;
 
             if (qobject_cast<const QTableView*>(widget))
                 newStyle = false;
 
-            if (newStyle && view && (vopt = qstyleoption_cast<const QStyleOptionViewItemV4 *>(option))) {
+            if (newStyle && view && (vopt = qstyleoption_cast<const QStyleOptionViewItem *>(option))) {
                 /*
                 // We cannot currently get the correct selection color for "explorer style" views
                 COLORREF cref = 0;
@@ -1540,7 +1543,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
                 palette.setColor(QPalette::All, QPalette::HighlightedText, palette.color(QPalette::Active, QPalette::Text));
                 // Note that setting a saturated color here results in ugly XOR colors in the focus rect
                 palette.setColor(QPalette::All, QPalette::Highlight, palette.base().color().darker(108));
-                QStyleOptionViewItemV4 adjustedOption = *vopt;
+                QStyleOptionViewItem adjustedOption = *vopt;
                 adjustedOption.palette = palette;
                 // We hide the  focusrect in singleselection as it is not required
                 if ((view->selectionMode() == QAbstractItemView::SingleSelection) 
@@ -2112,11 +2115,11 @@ QRect QWindowsVistaStyle::subElementRect(SubElement element, const QStyleOption 
         rect = QCommonStyle::subElementRect(SE_ProgressBarGroove, option, widget);
         break;
     case SE_ItemViewItemDecoration:
-        if (qstyleoption_cast<const QStyleOptionViewItemV4 *>(option))
+        if (qstyleoption_cast<const QStyleOptionViewItem *>(option))
             rect.adjust(-2, 0, 2, 0);
         break;
     case SE_ItemViewItemFocusRect:
-        if (const QStyleOptionViewItemV4 *vopt = qstyleoption_cast<const QStyleOptionViewItemV4 *>(option)) {
+        if (const QStyleOptionViewItem *vopt = qstyleoption_cast<const QStyleOptionViewItem *>(option)) {
             QRect textRect = subElementRect(QStyle::SE_ItemViewItemText, option, widget);
             QRect displayRect = subElementRect(QStyle::SE_ItemViewItemDecoration, option, widget);
             if (!vopt->icon.isNull())
@@ -2707,14 +2710,14 @@ void QWindowsVistaStylePrivate::cleanupTreeViewTheming()
 }
 
 /*!
-\internal
+\reimp
 */
-QIcon QWindowsVistaStyle::standardIconImplementation(StandardPixmap standardIcon,
-                                                  const QStyleOption *option,
-                                                  const QWidget *widget) const
+QIcon QWindowsVistaStyle::standardIcon(StandardPixmap standardIcon,
+                                       const QStyleOption *option,
+                                       const QWidget *widget) const
 {
     if (!QWindowsVistaStylePrivate::useVista()) {
-        return QWindowsStyle::standardIconImplementation(standardIcon, option, widget);
+        return QWindowsStyle::standardIcon(standardIcon, option, widget);
     }
 
     QWindowsVistaStylePrivate *d = const_cast<QWindowsVistaStylePrivate *>(d_func());
@@ -2757,7 +2760,7 @@ QIcon QWindowsVistaStyle::standardIconImplementation(StandardPixmap standardIcon
     default:
         break;
     }
-    return QWindowsXPStyle::standardIconImplementation(standardIcon, option, widget);
+    return QWindowsXPStyle::standardIcon(standardIcon, option, widget);
 }
 
 QT_END_NAMESPACE

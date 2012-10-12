@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -243,7 +243,7 @@ void QGraphicsSceneBspTreeIndexPrivate::climbTree(QGraphicsItem *item, int *stac
 {
     if (!item->d_ptr->children.isEmpty()) {
         QList<QGraphicsItem *> childList = item->d_ptr->children;
-        qSort(childList.begin(), childList.end(), qt_closestLeaf);
+        std::sort(childList.begin(), childList.end(), qt_closestLeaf);
         for (int i = 0; i < childList.size(); ++i) {
             QGraphicsItem *item = childList.at(i);
             if (!(item->flags() & QGraphicsItem::ItemStacksBehindParent))
@@ -282,7 +282,7 @@ void QGraphicsSceneBspTreeIndexPrivate::_q_updateSortCache()
             topLevels << item;
     }
 
-    qSort(topLevels.begin(), topLevels.end(), qt_closestLeaf);
+    std::sort(topLevels.begin(), topLevels.end(), qt_closestLeaf);
     for (int i = 0; i < topLevels.size(); ++i)
         climbTree(topLevels.at(i), &stackingOrder);
 }
@@ -417,23 +417,23 @@ void QGraphicsSceneBspTreeIndexPrivate::sortItems(QList<QGraphicsItem *> *itemLi
 
     if (onlyTopLevelItems) {
         if (order == Qt::DescendingOrder)
-            qSort(itemList->begin(), itemList->end(), qt_closestLeaf);
+            std::sort(itemList->begin(), itemList->end(), qt_closestLeaf);
         else if (order == Qt::AscendingOrder)
-            qSort(itemList->begin(), itemList->end(), qt_notclosestLeaf);
+            std::sort(itemList->begin(), itemList->end(), qt_notclosestLeaf);
         return;
     }
 
     if (sortCacheEnabled) {
         if (order == Qt::DescendingOrder) {
-            qSort(itemList->begin(), itemList->end(), closestItemFirst_withCache);
+            std::sort(itemList->begin(), itemList->end(), closestItemFirst_withCache);
         } else if (order == Qt::AscendingOrder) {
-            qSort(itemList->begin(), itemList->end(), closestItemLast_withCache);
+            std::sort(itemList->begin(), itemList->end(), closestItemLast_withCache);
         }
     } else {
         if (order == Qt::DescendingOrder) {
-            qSort(itemList->begin(), itemList->end(), qt_closestItemFirst);
+            std::sort(itemList->begin(), itemList->end(), qt_closestItemFirst);
         } else if (order == Qt::AscendingOrder) {
-            qSort(itemList->begin(), itemList->end(), qt_closestItemLast);
+            std::sort(itemList->begin(), itemList->end(), qt_closestItemLast);
         }
     }
 }

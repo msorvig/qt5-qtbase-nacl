@@ -1,35 +1,34 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 /*!
     \page qtsql-index.html
     \title Qt SQL
-    \brief A module that provides a driver layer, SQL API layer, and a user
-    interface layer for SQL databases.
-    \ingroup modules
+    \brief Provides a driver layer, SQL API layer, and a user
+    interface layer for SQL databases
 
     Qt SQL is an essential module which provides support for SQL databases. Qt
     SQL's APIs are divided into different layers:
@@ -55,14 +54,16 @@
     \section1 Reference
     These are links to the API reference materials.
     \list
-    \li \l{Qt SQL Module - C++ Classes}{C++ classes}
+    \li \l{Qt SQL Module C++ Classes}{C++ classes}
     \endlist
 */
 
 /*!
     \module QtSql
-    \title Qt SQL Module - C++ Classes
+    \title Qt SQL Module C++ Classes
     \ingroup modules
+    \brief Provides a driver layer, SQL API layer, and a user
+    interface layer for SQL databases.
 
     To include the definitions of the module's classes, use the
     following directive:

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -195,9 +195,27 @@ bool QSqlTableModelPrivate::exec(const QString &stmt, bool prepStatement,
     return true;
 }
 
+QSqlRecord QSqlTableModelPrivate::primaryValues(const QSqlRecord &rec, const QSqlRecord &pIndex)
+{
+    QSqlRecord pValues(pIndex);
+
+    for (int i = pValues.count() - 1; i >= 0; --i)
+        pValues.setValue(i, rec.value(pValues.fieldName(i)));
+
+    return pValues;
+}
+
 QSqlRecord QSqlTableModelPrivate::primaryValues(int row) const
 {
-    return cache.value(row).primaryValues(primaryIndex.isEmpty() ? rec : primaryIndex);
+    Q_Q(const QSqlTableModel);
+
+    const QSqlRecord &pIndex = primaryIndex.isEmpty() ? rec : primaryIndex;
+
+    ModifiedRow mr = cache.value(row);
+    if (mr.op() != None)
+        return mr.primaryValues(pIndex);
+    else
+        return primaryValues(q->QSqlQueryModel::record(row), pIndex);
 }
 
 /*!
@@ -409,20 +427,52 @@ bool QSqlTableModel::selectRow(int row)
     static const QString wh = Sql::where() + Sql::sp();
     if (d->filter.startsWith(wh, Qt::CaseInsensitive))
         d->filter.remove(0, wh.length());
-    const QString stmt = selectStatement();
+
+    QString stmt;
+
+    if (!d->filter.isEmpty())
+        stmt = selectStatement();
+
     d->sortColumn = table_sort_col;
     d->filter = table_filter;
 
-    QSqlQuery q(d->db);
-    q.setForwardOnly(true);
-    if (!q.exec(stmt))
+    if (stmt.isEmpty())
         return false;
 
-    bool exists = q.next();
-    d->cache[row].refresh(exists, q.record());
+    bool exists;
+    QSqlRecord newValues;
 
-    emit headerDataChanged(Qt::Vertical, row, row);
-    emit dataChanged(createIndex(row, 0), createIndex(row, columnCount() - 1));
+    {
+        QSqlQuery q(d->db);
+        q.setForwardOnly(true);
+        if (!q.exec(stmt))
+            return false;
+
+        exists = q.next();
+        newValues = q.record();
+    }
+
+    bool needsAddingToCache = !exists || d->cache.contains(row);
+
+    if (!needsAddingToCache) {
+        const QSqlRecord curValues = record(row);
+        needsAddingToCache = curValues.count() != newValues.count();
+        if (!needsAddingToCache) {
+            // Look for changed values. Primary key fields are customarily first
+            // and probably change less often than other fields, so start at the end.
+            for (int f = curValues.count() - 1; f >= 0; --f) {
+                if (curValues.value(f) != newValues.value(f))
+                    needsAddingToCache = true;
+                    break;
+            }
+        }
+    }
+
+    if (needsAddingToCache) {
+        d->cache[row].refresh(exists, newValues);
+        emit headerDataChanged(Qt::Vertical, row, row);
+        emit dataChanged(createIndex(row, 0), createIndex(row, columnCount() - 1));
+    }
 
     return true;
 }
@@ -514,6 +564,9 @@ bool QSqlTableModel::isDirty(const QModelIndex &index) const
     For OnRowChange, an index may receive a change only if no other
     row has a cached change. Changes are not submitted automatically.
 
+    Returns true if \a value is equal to the current value. However,
+    the value will not be submitted to the database.
+
     Returns true if the value could be set or false on error, for
     example if \a index is out of bounds.
 
@@ -533,6 +586,9 @@ bool QSqlTableModel::setData(const QModelIndex &index, const QVariant &value, in
 
     if (!(flags(index) & Qt::ItemIsEditable))
         return false;
+
+    if (QSqlTableModel::data(index, role) == value)
+        return true;
 
     QSqlTableModelPrivate::ModifiedRow &row = d->cache[index.row()];
 
@@ -690,20 +746,25 @@ bool QSqlTableModel::submitAll()
 
     bool success = true;
 
-    for (QSqlTableModelPrivate::CacheMap::Iterator it = d->cache.begin();
-         it != d->cache.end(); ++it) {
-        if (it.value().submitted())
+    foreach (int row, d->cache.keys()) {
+        // be sure cache *still* contains the row since overriden selectRow() could have called select()
+        QSqlTableModelPrivate::CacheMap::iterator it = d->cache.find(row);
+        if (it == d->cache.end())
             continue;
 
-        switch (it.value().op()) {
+        QSqlTableModelPrivate::ModifiedRow &mrow = it.value();
+        if (mrow.submitted())
+            continue;
+
+        switch (mrow.op()) {
         case QSqlTableModelPrivate::Insert:
-            success = insertRowIntoTable(it.value().rec());
+            success = insertRowIntoTable(mrow.rec());
             break;
         case QSqlTableModelPrivate::Update:
-            success = updateRowInTable(it.key(), it.value().rec());
+            success = updateRowInTable(row, mrow.rec());
             break;
         case QSqlTableModelPrivate::Delete:
-            success = deleteRowFromTable(it.key());
+            success = deleteRowFromTable(row);
             break;
         case QSqlTableModelPrivate::None:
             Q_ASSERT_X(false, "QSqlTableModel::submitAll()", "Invalid cache operation");
@@ -711,9 +772,9 @@ bool QSqlTableModel::submitAll()
         }
 
         if (success) {
-            it.value().setSubmitted();
+            mrow.setSubmitted();
             if (d->strategy != OnManualSubmit)
-                success = selectRow(it.key());
+                success = selectRow(row);
         }
 
         if (!success)
@@ -1257,7 +1318,6 @@ QSqlRecord QSqlTableModel::record() const
 }
 
 /*!
-\reimp
 \since 5.0
     Returns the record at \a row in the model.
 
@@ -1273,10 +1333,18 @@ QSqlRecord QSqlTableModel::record(int row) const
 {
     Q_D(const QSqlTableModel);
 
-    if (d->cache.contains(row))
-        return d->cache.value(row).rec();
+    // the query gets the values from virtual data()
+    QSqlRecord rec = QSqlQueryModel::record(row);
 
-    return QSqlQueryModel::record(row);
+    // get generated flags from the cache
+    const QSqlTableModelPrivate::ModifiedRow mrow = d->cache.value(row);
+    if (mrow.op() != QSqlTableModelPrivate::None) {
+        const QSqlRecord crec = mrow.rec();
+        for (int i = 0, cnt = rec.count(); i < cnt; ++i)
+            rec.setGenerated(i, crec.isGenerated(i));
+    }
+
+    return rec;
 }
 
 /*!
@@ -1335,14 +1403,16 @@ bool QSqlTableModel::setRecord(int row, const QSqlRecord &values)
     Map::const_iterator i = map.constBegin();
     const Map::const_iterator e = map.constEnd();
     for ( ; i != e; ++i) {
-         mrow.setValue(i.value(), values.value(i.key()));
-         // mrow.setValue() sets generated to TRUE, but source record should prevail.
-         if (!values.isGenerated(i.key()))
+        // have to use virtual setData() here rather than mrow.setValue()
+        EditStrategy strategy = d->strategy;
+        d->strategy = OnManualSubmit;
+        QModelIndex cIndex = createIndex(row, i.value());
+        setData(cIndex, values.value(i.key()));
+        d->strategy = strategy;
+        // setData() sets generated to TRUE, but source record should prevail.
+        if (!values.isGenerated(i.key()))
             mrow.recRef().setGenerated(i.value(), false);
     }
-
-    if (columnCount())
-        emit dataChanged(createIndex(row, 0), createIndex(row, columnCount() - 1));
 
     if (d->strategy != OnManualSubmit)
         return submit();

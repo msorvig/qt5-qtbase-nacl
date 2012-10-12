@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -145,8 +145,6 @@ QT_BEGIN_NAMESPACE
 
     \value Vertex Vertex shader written in the OpenGL Shading Language (GLSL).
     \value Fragment Fragment shader written in the OpenGL Shading Language (GLSL).
-    \value Geometry Geometry shaders written in the OpenGL Shading
-           Language (GLSL), based on the GL_EXT_geometry_shader4 extension.
 */
 
 class QOpenGLShaderPrivate : public QObjectPrivate
@@ -196,10 +194,6 @@ bool QOpenGLShaderPrivate::create()
     GLuint shader;
     if (shaderType == QOpenGLShader::Vertex)
         shader = glfuncs->glCreateShader(GL_VERTEX_SHADER);
-#if 0
-    else if (shaderType == QOpenGLShader::Geometry)
-        shader = glfuncs->glCreateShader(GL_GEOMETRY_SHADER_EXT);
-#endif
     else
         shader = glfuncs->glCreateShader(GL_FRAGMENT_SHADER);
     if (!shader) {
@@ -240,8 +234,6 @@ bool QOpenGLShaderPrivate::compile(QOpenGLShader *q)
             type = types[0];
         else if (shaderType == QOpenGLShader::Vertex)
             type = types[1];
-        else if (shaderType == QOpenGLShader::Geometry)
-            type = types[2];
 
         // Get info and source code lengths
         GLint infoLogLength = 0;
@@ -517,9 +509,6 @@ public:
         , linked(false)
         , inited(false)
         , removingShaders(false)
-        , geometryVertexCount(64)
-        , geometryInputType(0)
-        , geometryOutputType(0)
         , glfuncs(new QOpenGLFunctions)
     {
     }
@@ -529,10 +518,6 @@ public:
     bool linked;
     bool inited;
     bool removingShaders;
-
-    int geometryVertexCount;
-    GLenum geometryInputType;
-    GLenum geometryOutputType;
 
     QString log;
     QList<QOpenGLShader *> shaders;
@@ -837,23 +822,6 @@ bool QOpenGLShaderProgram::link()
         if (d->linked)
             return true;
     }
-
-    // Set up the geometry shader parameters
-#if 0
-    if (glProgramParameteriEXT) {
-        foreach (QOpenGLShader *shader, d->shaders) {
-            if (shader->shaderType() & QOpenGLShader::Geometry) {
-                glProgramParameteriEXT(program, GL_GEOMETRY_INPUT_TYPE_EXT,
-                                       d->geometryInputType);
-                glProgramParameteriEXT(program, GL_GEOMETRY_OUTPUT_TYPE_EXT,
-                                       d->geometryOutputType);
-                glProgramParameteriEXT(program, GL_GEOMETRY_VERTICES_OUT_EXT,
-                                       d->geometryVertexCount);
-                break;
-            }
-        }
-    }
-#endif
 
     d->glfuncs->glLinkProgram(program);
     value = 0;
@@ -2131,35 +2099,6 @@ void QOpenGLShaderProgram::setUniformValue(const char *name, const QSizeF& size)
     setUniformValue(uniformLocation(name), size);
 }
 
-// We have to repack matrices from qreal to GLfloat.
-#define setUniformMatrix(func,location,value,cols,rows) \
-    if (location == -1) \
-        return; \
-    if (sizeof(qreal) == sizeof(GLfloat)) { \
-        func(location, 1, GL_FALSE, \
-             reinterpret_cast<const GLfloat *>(value.constData())); \
-    } else { \
-        GLfloat mat[cols * rows]; \
-        const qreal *data = value.constData(); \
-        for (int i = 0; i < cols * rows; ++i) \
-            mat[i] = data[i]; \
-        func(location, 1, GL_FALSE, mat); \
-    }
-#define setUniformGenericMatrix(colfunc,location,value,cols,rows) \
-    if (location == -1) \
-        return; \
-    if (sizeof(qreal) == sizeof(GLfloat)) { \
-        const GLfloat *data = reinterpret_cast<const GLfloat *> \
-            (value.constData());  \
-        colfunc(location, cols, data); \
-    } else { \
-        GLfloat mat[cols * rows]; \
-        const qreal *data = value.constData(); \
-        for (int i = 0; i < cols * rows; ++i) \
-            mat[i] = data[i]; \
-        colfunc(location, cols, mat); \
-    }
-
 /*!
     Sets the uniform variable at \a location in the current context
     to a 2x2 matrix \a value.
@@ -2170,7 +2109,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix2x2& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(d->glfuncs->glUniformMatrix2fv, location, value, 2, 2);
+    d->glfuncs->glUniformMatrix2fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -2196,8 +2135,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix2x3& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform3fv, location, value, 2, 3);
+    d->glfuncs->glUniform3fv(location, 2, value.constData());
 }
 
 /*!
@@ -2223,8 +2161,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix2x4& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform4fv, location, value, 2, 4);
+    d->glfuncs->glUniform4fv(location, 2, value.constData());
 }
 
 /*!
@@ -2250,8 +2187,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix3x2& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform2fv, location, value, 3, 2);
+    d->glfuncs->glUniform2fv(location, 3, value.constData());
 }
 
 /*!
@@ -2277,7 +2213,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix3x3& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(d->glfuncs->glUniformMatrix3fv, location, value, 3, 3);
+    d->glfuncs->glUniformMatrix3fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -2303,8 +2239,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix3x4& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform4fv, location, value, 3, 4);
+    d->glfuncs->glUniform4fv(location, 3, value.constData());
 }
 
 /*!
@@ -2330,8 +2265,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix4x2& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform2fv, location, value, 4, 2);
+    d->glfuncs->glUniform2fv(location, 4, value.constData());
 }
 
 /*!
@@ -2357,8 +2291,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix4x3& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (d->glfuncs->glUniform3fv, location, value, 4, 3);
+    d->glfuncs->glUniform3fv(location, 4, value.constData());
 }
 
 /*!
@@ -2384,7 +2317,7 @@ void QOpenGLShaderProgram::setUniformValue(int location, const QMatrix4x4& value
 {
     Q_D(QOpenGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(d->glfuncs->glUniformMatrix4fv, location, value, 4, 4);
+    d->glfuncs->glUniformMatrix4fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -2994,96 +2927,6 @@ void QOpenGLShaderProgram::setUniformValueArray(const char *name, const QMatrix4
 }
 
 /*!
-    Returns the hardware limit for how many vertices a geometry shader
-    can output.
-
-    \sa setGeometryOutputVertexCount()
-*/
-int QOpenGLShaderProgram::maxGeometryOutputVertices() const
-{
-    GLint n = 0;
-//    glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES_EXT, &n);
-    return n;
-}
-
-/*!
-    Sets the maximum number of vertices the current geometry shader
-    program will produce, if active, to \a count.
-
-    This parameter takes effect the next time the program is linked.
-*/
-void QOpenGLShaderProgram::setGeometryOutputVertexCount(int count)
-{
-#ifndef QT_NO_DEBUG
-    int max = maxGeometryOutputVertices();
-    if (count > max) {
-        qWarning("QOpenGLShaderProgram::setGeometryOutputVertexCount: count: %d higher than maximum: %d",
-                 count, max);
-    }
-#endif
-    d_func()->geometryVertexCount = count;
-}
-
-
-/*!
-    Returns the maximum number of vertices the current geometry shader
-    program will produce, if active.
-
-    This parameter takes effect the ntext time the program is linked.
-*/
-int QOpenGLShaderProgram::geometryOutputVertexCount() const
-{
-    return d_func()->geometryVertexCount;
-}
-
-
-/*!
-    Sets the input type from \a inputType.
-
-    This parameter takes effect the next time the program is linked.
-*/
-void QOpenGLShaderProgram::setGeometryInputType(GLenum inputType)
-{
-    d_func()->geometryInputType = inputType;
-}
-
-
-/*!
-    Returns the geometry shader input type, if active.
-
-    This parameter takes effect the next time the program is linked.
- */
-
-GLenum QOpenGLShaderProgram::geometryInputType() const
-{
-    return d_func()->geometryInputType;
-}
-
-
-/*!
-    Sets the output type from the geometry shader, if active, to
-    \a outputType.
-
-    This parameter takes effect the next time the program is linked.
-*/
-void QOpenGLShaderProgram::setGeometryOutputType(GLenum outputType)
-{
-    d_func()->geometryOutputType = outputType;
-}
-
-
-/*!
-    Returns the geometry shader output type, if active.
-
-    This parameter takes effect the next time the program is linked.
- */
-GLenum QOpenGLShaderProgram::geometryOutputType() const
-{
-    return d_func()->geometryOutputType;
-}
-
-
-/*!
     Returns true if shader programs written in the OpenGL Shading
     Language (GLSL) are supported on this system; false otherwise.
 
@@ -3129,17 +2972,8 @@ bool QOpenGLShader::hasOpenGLShaders(ShaderType type, QOpenGLContext *context)
     if (!context)
         return false;
 
-    if ((type & ~(Geometry | Vertex | Fragment)) || type == 0)
+    if ((type & ~(Vertex | Fragment)) || type == 0)
         return false;
-
-#if 0
-    bool resolved = qt_resolve_glsl_extensions(const_cast<QOpenGLContext *>(context));
-    if (!resolved)
-        return false;
-
-    if ((type & Geometry) && !QByteArray((const char *) glGetString(GL_EXTENSIONS)).contains("GL_EXT_geometry_shader4"))
-        return false;
-#endif
 
     return true;
 }

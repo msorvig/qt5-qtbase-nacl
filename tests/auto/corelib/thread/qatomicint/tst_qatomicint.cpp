@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -161,6 +161,25 @@ static void warningFreeHelperTemplate()
     assemblyMarker<64>(&i);
 }
 
+template <bool> inline void booleanHelper()
+{ }
+
+template <typename Atomic>
+static void constexprFunctionsHelperTemplate()
+{
+#ifdef Q_COMPILER_CONSTEXPR
+    // this is a compile-time test only
+    booleanHelper<Atomic::isReferenceCountingNative()>();
+    booleanHelper<Atomic::isReferenceCountingWaitFree()>();
+    booleanHelper<Atomic::isTestAndSetNative()>();
+    booleanHelper<Atomic::isTestAndSetWaitFree()>();
+    booleanHelper<Atomic::isFetchAndStoreNative()>();
+    booleanHelper<Atomic::isFetchAndStoreWaitFree()>();
+    booleanHelper<Atomic::isFetchAndAddNative()>();
+    booleanHelper<Atomic::isFetchAndAddWaitFree()>();
+#endif
+}
+
 void tst_QAtomicInt::warningFreeHelper()
 {
     qFatal("This code is bogus, and shouldn't be run. We're looking for compiler warnings only.");
@@ -169,23 +188,40 @@ void tst_QAtomicInt::warningFreeHelper()
 #ifdef Q_ATOMIC_INT32_IS_SUPPORTED
     warningFreeHelperTemplate<int, QBasicAtomicInteger<int> >();
     warningFreeHelperTemplate<unsigned int, QBasicAtomicInteger<unsigned int> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<int> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<unsigned int> >();
+# ifdef Q_COMPILER_UNICODE_STRINGS
+    warningFreeHelperTemplate<qint16, QBasicAtomicInteger<char32_t> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<char32_t> >();
+# endif
 #endif
 
 #ifdef Q_ATOMIC_INT16_IS_SUPPORTED
     warningFreeHelperTemplate<qint16, QBasicAtomicInteger<qint16> >();
     warningFreeHelperTemplate<quint16, QBasicAtomicInteger<quint16> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<qint16> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<quint16> >();
+# ifdef Q_COMPILER_UNICODE_STRINGS
+    warningFreeHelperTemplate<qint16, QBasicAtomicInteger<char16_t> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<char16_t> >();
+# endif
 #endif
 
 #ifdef Q_ATOMIC_INT8_IS_SUPPORTED
     warningFreeHelperTemplate<char, QBasicAtomicInteger<char> >();
     warningFreeHelperTemplate<signed char, QBasicAtomicInteger<signed char> >();
     warningFreeHelperTemplate<unsigned char, QBasicAtomicInteger<unsigned char> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<char> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<signed char> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<unsigned char> >();
 #endif
 
 #ifdef Q_ATOMIC_INT64_IS_SUPPORTED
 #if !defined(__i386__) || (defined(Q_CC_GNU) && defined(__OPTIMIZE__))
     warningFreeHelperTemplate<qlonglong, QBasicAtomicInteger<qlonglong> >();
     warningFreeHelperTemplate<qulonglong, QBasicAtomicInteger<qulonglong> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<qlonglong> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<qulonglong> >();
 #endif
 #endif
 }

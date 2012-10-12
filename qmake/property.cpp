@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,8 +48,6 @@
 #include <stdio.h>
 
 QT_BEGIN_NAMESPACE
-
-QStringList qmake_mkspec_paths(); //project.cpp
 
 static const struct {
     const char *name;
@@ -79,14 +77,18 @@ QMakeProperty::QMakeProperty() : settings(0)
 {
     for (int i = 0; i < sizeof(propList)/sizeof(propList[0]); i++) {
         QString name = QString::fromLatin1(propList[i].name);
-        m_values[name + "/get"] = QLibraryInfo::rawLocation(propList[i].loc, QLibraryInfo::EffectivePaths);
+        m_values[ProKey(name + "/get")] = QLibraryInfo::rawLocation(propList[i].loc, QLibraryInfo::EffectivePaths);
         QString val = QLibraryInfo::rawLocation(propList[i].loc, QLibraryInfo::FinalPaths);
         if (!propList[i].raw) {
-            m_values[name] = QLibraryInfo::location(propList[i].loc);
+            m_values[ProKey(name)] = QLibraryInfo::location(propList[i].loc);
             name += "/raw";
         }
-        m_values[name] = val;
+        m_values[ProKey(name)] = val;
     }
+    m_values["QMAKE_VERSION"] = ProString(QMAKE_VERSION_STR);
+#ifdef QT_VERSION_STR
+    m_values["QT_VERSION"] = ProString(QT_VERSION_STR);
+#endif
 }
 
 QMakeProperty::~QMakeProperty()
@@ -103,29 +105,22 @@ void QMakeProperty::initSettings()
     }
 }
 
-QString
-QMakeProperty::value(const QString &v)
+ProString
+QMakeProperty::value(const ProKey &vk)
 {
-    QString val = m_values.value(v);
+    ProString val = m_values.value(vk);
     if (!val.isNull())
         return val;
-    else if(v == "QMAKE_MKSPECS")
-        return qmake_mkspec_paths().join(Option::dirlist_sep);
-    else if(v == "QMAKE_VERSION")
-        return qmake_version();
-#ifdef QT_VERSION_STR
-    else if(v == "QT_VERSION")
-        return QT_VERSION_STR;
-#endif
 
     initSettings();
+    QString v = vk.toQString();
     if (!settings->contains(v))
         return settings->value("2.01a/" + v).toString(); // Backwards compat
     return settings->value(v).toString();
 }
 
 bool
-QMakeProperty::hasValue(QString v)
+QMakeProperty::hasValue(const ProKey &v)
 {
     return !value(v).isNull();
 }
@@ -165,15 +160,14 @@ QMakeProperty::exec()
             QStringList specialProps;
             for (int i = 0; i < sizeof(propList)/sizeof(propList[0]); i++)
                 specialProps.append(QString::fromLatin1(propList[i].name));
-            specialProps.append("QMAKE_MKSPECS");
             specialProps.append("QMAKE_VERSION");
 #ifdef QT_VERSION_STR
             specialProps.append("QT_VERSION");
 #endif
             foreach (QString prop, specialProps) {
-                QString val = value(prop);
-                QString pval = value(prop + "/raw");
-                QString gval = value(prop + "/get");
+                ProString val = value(ProKey(prop));
+                ProString pval = value(ProKey(prop + "/raw"));
+                ProString gval = value(ProKey(prop + "/get"));
                 fprintf(stdout, "%s:%s\n", prop.toLatin1().constData(), val.toLatin1().constData());
                 if (!pval.isEmpty() && pval != val)
                     fprintf(stdout, "%s/raw:%s\n", prop.toLatin1().constData(), pval.toLatin1().constData());
@@ -186,11 +180,12 @@ QMakeProperty::exec()
             it != Option::prop::properties.end(); it++) {
             if(Option::prop::properties.count() > 1)
                 fprintf(stdout, "%s:", (*it).toLatin1().constData());
-            if(!hasValue((*it))) {
+            const ProKey pkey(*it);
+            if (!hasValue(pkey)) {
                 ret = false;
                 fprintf(stdout, "**Unknown**\n");
             } else {
-                fprintf(stdout, "%s\n", value((*it)).toLatin1().constData());
+                fprintf(stdout, "%s\n", value(pkey).toLatin1().constData());
             }
         }
     } else if(Option::qmake_mode == Option::QMAKE_SET_PROPERTY) {

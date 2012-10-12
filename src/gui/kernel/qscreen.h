@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -71,7 +71,13 @@ class Q_GUI_EXPORT QScreen : public QObject
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(int depth READ depth CONSTANT)
     Q_PROPERTY(QSize size READ size NOTIFY sizeChanged)
+    Q_PROPERTY(QSize availableSize READ availableSize NOTIFY availableSizeChanged)
+    Q_PROPERTY(QSize virtualSize READ virtualSize NOTIFY sizeChanged)
+    Q_PROPERTY(QSize availableVirtualSize READ availableVirtualSize NOTIFY availableSizeChanged)
     Q_PROPERTY(QRect geometry READ geometry NOTIFY geometryChanged)
+    Q_PROPERTY(QRect availableGeometry READ availableGeometry NOTIFY availableGeometryChanged)
+    Q_PROPERTY(QRect virtualGeometry READ virtualGeometry NOTIFY sizeChanged)
+    Q_PROPERTY(QRect availableVirtualGeometry READ availableVirtualGeometry NOTIFY availableGeometryChanged)
     Q_PROPERTY(QSizeF physicalSize READ physicalSize CONSTANT)
     Q_PROPERTY(qreal physicalDotsPerInchX READ physicalDotsPerInchX NOTIFY physicalDotsPerInchXChanged)
     Q_PROPERTY(qreal physicalDotsPerInchY READ physicalDotsPerInchY NOTIFY physicalDotsPerInchYChanged)
@@ -79,9 +85,7 @@ class Q_GUI_EXPORT QScreen : public QObject
     Q_PROPERTY(qreal logicalDotsPerInchX READ logicalDotsPerInchX NOTIFY logicalDotsPerInchXChanged)
     Q_PROPERTY(qreal logicalDotsPerInchY READ logicalDotsPerInchY NOTIFY logicalDotsPerInchYChanged)
     Q_PROPERTY(qreal logicalDotsPerInch READ logicalDotsPerInch NOTIFY logicalDotsPerInchChanged)
-    Q_PROPERTY(QSize availableSize READ availableSize NOTIFY availableSizeChanged)
-    Q_PROPERTY(QRect availableGeometry READ availableGeometry NOTIFY availableGeometryChanged)
-    Q_PROPERTY(Qt::ScreenOrientation primaryOrientation READ orientation NOTIFY primaryOrientationChanged)
+    Q_PROPERTY(Qt::ScreenOrientation primaryOrientation READ primaryOrientation NOTIFY primaryOrientationChanged)
     Q_PROPERTY(Qt::ScreenOrientation orientation READ orientation NOTIFY orientationChanged)
     Q_PROPERTY(qreal refreshRate READ refreshRate NOTIFY refreshRateChanged)
 
@@ -129,7 +133,7 @@ public:
     bool isPortrait(Qt::ScreenOrientation orientation) const;
     bool isLandscape(Qt::ScreenOrientation orientation) const;
 
-    QPixmap grabWindow(WId window, int x, int y, int w, int h);
+    QPixmap grabWindow(WId window, int x = 0, int y = 0, int w = -1, int h = -1);
 
     qreal refreshRate() const;
 

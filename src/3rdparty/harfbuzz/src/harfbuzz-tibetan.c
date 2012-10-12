@@ -92,6 +92,7 @@ static const unsigned char tibetanForm[0x80] = {
 #define tibetan_form(c) \
     (TibetanForm)tibetanForm[c - 0x0f40]
 
+#ifndef NO_OPENTYPE
 static const HB_OpenTypeFeature tibetan_features[] = {
     { HB_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { HB_MAKE_TAG('a', 'b', 'v', 's'), AboveSubstProperty },
@@ -99,6 +100,7 @@ static const HB_OpenTypeFeature tibetan_features[] = {
     { HB_MAKE_TAG('c', 'a', 'l', 't'), CaltProperty },
     {0, 0}
 };
+#endif
 
 static HB_Bool tibetan_shape_syllable(HB_Bool openType, HB_ShaperItem *item, HB_Bool invalid)
 {
@@ -216,7 +218,7 @@ HB_Bool HB_TibetanShape(HB_ShaperItem *item)
 
     assert(item->item.script == HB_Script_Tibetan);
 
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
     openType = HB_SelectScript(item, tibetan_features);
 #endif
 
@@ -258,12 +260,12 @@ void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *text, hb_uint32 fr
         HB_Bool invalid;
         hb_uint32 boundary = tibetan_nextSyllableBoundary(text, from+i, end, &invalid) - from;
 
-        attributes[i].charStop = TRUE;
+        attributes[i].graphemeBoundary = TRUE;
 
         if (boundary > len-1) boundary = len;
         i++;
         while (i < boundary) {
-            attributes[i].charStop = FALSE;
+            attributes[i].graphemeBoundary = FALSE;
             ++uc;
             ++i;
         }

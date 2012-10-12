@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -167,6 +167,11 @@ private slots:
     void setComponents();
     void streaming_data();
     void streaming();
+    void detach();
+    void testThreading();
+
+private:
+    void testThreadingHelper();
 };
 
 // Testing get/set functions
@@ -178,11 +183,9 @@ void tst_QUrl::getSetCheck()
     obj1.setPort(0);
     QCOMPARE(0, obj1.port());
 
-    QTest::ignoreMessage(QtWarningMsg, "QUrl::setPort: Out of range");
     obj1.setPort(INT_MIN);
     QCOMPARE(-1, obj1.port()); // Out of range, -1
 
-    QTest::ignoreMessage(QtWarningMsg, "QUrl::setPort: Out of range");
     obj1.setPort(INT_MAX);
     QCOMPARE(-1, obj1.port()); // Out of range, -1
 
@@ -217,6 +220,8 @@ void tst_QUrl::constructing()
     QVERIFY(url.isEmpty());
     QCOMPARE(url.port(), -1);
     QCOMPARE(url.toString(), QString());
+    QVERIFY(url == url);
+    QVERIFY(!(url < url));
 
     QUrl justHost("qt.nokia.com");
     QVERIFY(!justHost.isEmpty());
@@ -280,6 +285,8 @@ void tst_QUrl::comparison()
     QVERIFY(url2.isValid());
 
     QVERIFY(url1 == url2);
+    QVERIFY(!(url1 < url2));
+    QVERIFY(!(url2 < url1));
 
     // 6.2.2 Syntax-based Normalization
     QUrl url3 = QUrl::fromEncoded("example://a/b/c/%7Bfoo%7D");
@@ -294,6 +301,13 @@ void tst_QUrl::comparison()
     QUrl url6;
     url6.setEncodedQuery("a=%2A");
     QVERIFY(url5 == url6);
+
+    QUrl url7;
+    url7.setEncodedQuery("a=C");
+    QUrl url8;
+    url8.setEncodedQuery("a=c");
+    QVERIFY(url7 != url8);
+    QVERIFY(url7 < url8);
 }
 
 void tst_QUrl::comparison2_data()
@@ -960,7 +974,7 @@ void tst_QUrl::toString_constructed_data()
 
     QString n("");
 
-    QTest::newRow("data1") << n << n << n << QString::fromLatin1("qt.nokia.com") << -1 << QString::fromLatin1("index.html")
+    QTest::newRow("data1") << n << n << n << QString::fromLatin1("qt.nokia.com") << -1 << QString::fromLatin1("/index.html")
                         << QByteArray() << n << QString::fromLatin1("//qt.nokia.com/index.html")
                         << QByteArray("//qt.nokia.com/index.html") << 0u;
     QTest::newRow("data2") << QString::fromLatin1("file") << n << n << n << -1 << QString::fromLatin1("/root") << QByteArray()
@@ -1279,6 +1293,8 @@ void tst_QUrl::compat_isValid_01()
 
     QUrl url( urlStr );
     QCOMPARE( url.isValid(), res );
+    if (!res)
+        QVERIFY(url.toString().isEmpty());
 }
 
 void tst_QUrl::compat_isValid_02_data()
@@ -1297,9 +1313,9 @@ void tst_QUrl::compat_isValid_02_data()
     QTest::newRow( "ok_02" ) << QString("ftp") << n     << n     << QString("ftp.qt.nokia.com") << -1 << n      << (bool)true;
     QTest::newRow( "ok_03" ) << QString("ftp") << QString("foo") << n     << QString("ftp.qt.nokia.com") << -1 << n      << (bool)true;
     QTest::newRow( "ok_04" ) << QString("ftp") << QString("foo") << QString("bar") << QString("ftp.qt.nokia.com") << -1 << n      << (bool)true;
-    QTest::newRow( "ok_05" ) << QString("ftp") << n     << n     << QString("ftp.qt.nokia.com") << -1 << QString("path")<< (bool)true;
-    QTest::newRow( "ok_06" ) << QString("ftp") << QString("foo") << n     << QString("ftp.qt.nokia.com") << -1 << QString("path") << (bool)true;
-    QTest::newRow( "ok_07" ) << QString("ftp") << QString("foo") << QString("bar") << QString("ftp.qt.nokia.com") << -1 << QString("path")<< (bool)true;
+    QTest::newRow( "ok_05" ) << QString("ftp") << n     << n     << QString("ftp.qt.nokia.com") << -1 << QString("/path")<< (bool)true;
+    QTest::newRow( "ok_06" ) << QString("ftp") << QString("foo") << n     << QString("ftp.qt.nokia.com") << -1 << QString("/path") << (bool)true;
+    QTest::newRow( "ok_07" ) << QString("ftp") << QString("foo") << QString("bar") << QString("ftp.qt.nokia.com") << -1 << QString("/path")<< (bool)true;
 
     QTest::newRow( "err_01" ) << n     << n     << n     << n                   << -1 << n << (bool)false;
     QTest::newRow( "err_02" ) << QString("ftp") << n     << n     << n                   << -1 << n << (bool)true;
@@ -1336,7 +1352,9 @@ void tst_QUrl::compat_isValid_02()
     if ( !path.isEmpty() )
         url.setPath( path );
 
-    QVERIFY( url.isValid() == res );
+    QCOMPARE( url.isValid(), res );
+    if (!res)
+        QVERIFY(url.toString().isEmpty());
 }
 
 void tst_QUrl::compat_path_data()
@@ -1604,9 +1622,11 @@ void tst_QUrl::ipv6()
     QUrl url(ipv6Auth);
 
     QCOMPARE(url.isValid(), isValid);
+    QCOMPARE(url.toString().isEmpty(), !isValid);
     if (url.isValid()) {
         QCOMPARE(url.toString(), output);
         url.setHost(url.host());
+        QVERIFY(url.isValid());
         QCOMPARE(url.toString(), output);
     }
 }
@@ -1708,11 +1728,13 @@ void tst_QUrl::isValid()
     {
         QUrl url(QString("A=B"));
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         QCOMPARE(url.path(), QString("A=B"));
     }
     {
         QUrl url = QUrl::fromEncoded("http://strange<username>@ok-hostname/", QUrl::StrictMode);
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         // < and > are not allowed in userinfo in strict mode
         url.setUserName("normal_username");
         QVERIFY(url.isValid());
@@ -1720,36 +1742,63 @@ void tst_QUrl::isValid()
     {
         QUrl url = QUrl::fromEncoded("http://strange<username>@ok-hostname/");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         // < and > are allowed in tolerant mode
         QCOMPARE(url.toEncoded(), QByteArray("http://strange%3Cusername%3E@ok-hostname/"));
     }
     {
         QUrl url = QUrl::fromEncoded("http://strange;hostname/here");
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         QCOMPARE(url.path(), QString("/here"));
         url.setAuthority("strange;hostname");
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         url.setAuthority("foobar@bar");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         url.setAuthority("strange;hostname");
         QVERIFY(!url.isValid());
-        QVERIFY(url.errorString().contains("Hostname contains invalid characters"));
+        QVERIFY(url.toString().isEmpty());
+        QVERIFY2(url.errorString().contains("Invalid hostname"),
+                 qPrintable(url.errorString()));
     }
 
     {
         QUrl url = QUrl::fromEncoded("foo://stuff;1/g");
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         QCOMPARE(url.path(), QString("/g"));
         url.setHost("stuff;1");
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         url.setHost("stuff-1");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         url.setHost("stuff;1");
         QVERIFY(!url.isValid());
-        QVERIFY2(url.errorString().contains("Hostname contains invalid characters"),
+        QVERIFY(url.toString().isEmpty());
+        QVERIFY2(url.errorString().contains("Invalid hostname"),
                  qPrintable(url.errorString()));
     }
 
+    {
+        QUrl url("http://example.com");
+        QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
+        url.setPath("relative");
+        QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
+        QVERIFY(url.errorString().contains("Path component is relative and authority is present"));
+    }
+
+    {
+        QUrl url;
+        url.setPath("http://example.com");
+        QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
+        QVERIFY(url.errorString().contains("':' before any '/'"));
+    }
 }
 
 void tst_QUrl::schemeValidator_data()
@@ -1791,9 +1840,11 @@ void tst_QUrl::schemeValidator()
     QFETCH(QString, toString);
 
     QUrl url = QUrl::fromEncoded(encodedUrl);
-    QEXPECT_FAIL("ftp:/index.html", "high-level URL validation not reimplemented yet", Continue);
-    QEXPECT_FAIL("mailto://smtp.trolltech.com/ole@bull.name", "high-level URL validation not reimplemented yet", Continue);
+    QEXPECT_FAIL("ftp:/index.html", "high-level URL validation not reimplemented yet", Abort);
+    QEXPECT_FAIL("mailto://smtp.trolltech.com/ole@bull.name", "high-level URL validation not reimplemented yet", Abort);
     QCOMPARE(url.isValid(), result);
+    if (!result)
+        QVERIFY(url.toString().isEmpty());
 }
 
 void tst_QUrl::invalidSchemeValidator()
@@ -1808,23 +1859,28 @@ void tst_QUrl::invalidSchemeValidator()
         QUrl url("http://qt.nokia.com");
         url.setScheme("111http://qt.nokia.com");
         QCOMPARE(url.isValid(), false);
+        QVERIFY(url.toString().isEmpty());
     }
     // non-ALPHA character at other positions in the scheme are ok
     {
         QUrl url("ht111tp://qt.nokia.com", QUrl::StrictMode);
         QVERIFY(url.isValid());
         QCOMPARE(url.scheme(), QString("ht111tp"));
+        QVERIFY(!url.toString().isEmpty());
     }
     {
         QUrl url("http://qt.nokia.com");
         url.setScheme("ht123tp://qt.nokia.com");
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
         url.setScheme("http");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
     }
     {
         QUrl url = QUrl::fromEncoded("ht321tp://qt.nokia.com", QUrl::StrictMode);
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
     }
 }
 
@@ -1833,35 +1889,37 @@ void tst_QUrl::strictParser_data()
     QTest::addColumn<QString>("input");
     QTest::addColumn<QString>("needle");
 
-    QTest::newRow("invalid-scheme") << "ht%://example.com" << "Invalid scheme";
-    QTest::newRow("empty-scheme") << ":/" << "Empty scheme";
+    // QUrl doesn't detect an error in the scheme when parsing because
+    // it falls back to parsing as a path. So, these errors are path errors
+    QTest::newRow("invalid-scheme") << "ht%://example.com" << "character '%' not permitted";
+    QTest::newRow("empty-scheme") << ":/" << "':' before any '/'";
 
-    QTest::newRow("invalid-user1") << "http://bad<user_name>@ok-hostname" << "Invalid user name";
-    QTest::newRow("invalid-user2") << "http://bad%@ok-hostname" << "Invalid user name";
+    QTest::newRow("invalid-user1") << "http://bad<user_name>@ok-hostname" << "Invalid user name (character '<' not permitted)";
+    QTest::newRow("invalid-user2") << "http://bad%@ok-hostname" << "Invalid user name (character '%' not permitted)";
 
-    QTest::newRow("invalid-password") << "http://user:pass\x7F@ok-hostname" << "Invalid password";
+    QTest::newRow("invalid-password") << "http://user:pass\x7F@ok-hostname" << "Invalid password (character '\x7F' not permitted)";
 
-    QTest::newRow("invalid-regname") << "http://bad<hostname>" << "Hostname contains invalid characters";
-    QTest::newRow("invalid-regname-2") << "http://b%61d" << "Hostname contains invalid characters";
+    QTest::newRow("invalid-regname") << "http://bad<hostname>" << "Invalid hostname (contains invalid characters)";
+    QTest::newRow("invalid-regname-2") << "http://b%61d" << "Invalid hostname (contains invalid characters)";
     QTest::newRow("invalid-ipv6") << "http://[:::]" << "Invalid IPv6 address";
     QTest::newRow("invalid-ipvfuture-1") << "http://[v7]" << "Invalid IPvFuture address";
     QTest::newRow("invalid-ipvfuture-2") << "http://[v7.]" << "Invalid IPvFuture address";
     QTest::newRow("invalid-ipvfuture-3") << "http://[v789]" << "Invalid IPvFuture address";
-    QTest::newRow("unbalanced-brackets") << "http://[ff02::1" << "Expected ']'";
+    QTest::newRow("unbalanced-brackets") << "http://[ff02::1" << "Expected ']' to match '[' in hostname";
 
-    QTest::newRow("empty-port") << "http://example.com:" << "Invalid port";
+    // port errors happen in TolerantMode too
+    QTest::newRow("empty-port-1") << "http://example.com:" << "Port field was empty";
+    QTest::newRow("empty-port-2") << "http://example.com:/" << "Port field was empty";
     QTest::newRow("invalid-port-1") << "http://example.com:-1" << "Invalid port";
     QTest::newRow("invalid-port-2") << "http://example.com:abc" << "Invalid port";
     QTest::newRow("invalid-port-3") << "http://example.com:9a" << "Invalid port";
     QTest::newRow("port-range") << "http://example.com:65536" << "out of range";
 
-    QTest::newRow("invalid-path") << "foo:/path%\x1F" << "Invalid path";
-    // not yet checked:
-    //QTest::newRow("path-colon-before-slash") << "foo::/" << "':' before any '/'";
+    QTest::newRow("invalid-path") << "foo:/path%\x1F" << "Invalid path (character '%' not permitted)";
 
-    QTest::newRow("invalid-query") << "foo:?\\#" << "Invalid query";
+    QTest::newRow("invalid-query") << "foo:?\\#" << "Invalid query (character '\\' not permitted)";
 
-    QTest::newRow("invalid-fragment") << "#{}" << "Invalid fragment";
+    QTest::newRow("invalid-fragment") << "#{}" << "Invalid fragment (character '{' not permitted)";
 }
 
 void tst_QUrl::strictParser()
@@ -1870,12 +1928,17 @@ void tst_QUrl::strictParser()
     QFETCH(QString, needle);
 
     QUrl url(input, QUrl::StrictMode);
-    QEXPECT_FAIL("empty-scheme", "QUrl does not forbid paths with a colon before the first slash yet", Abort);
     QVERIFY(!url.isValid());
+    QVERIFY(url.toString().isEmpty());
     QVERIFY(!url.errorString().isEmpty());
-    if (!url.errorString().contains(needle))
-        qWarning("Error string changed and does not contain \"%s\" anymore: %s",
-                 qPrintable(needle), qPrintable(url.errorString()));
+    QVERIFY2(url.errorString().contains(input),
+             "Error string does not contain the original input (\"" +
+             input.toLatin1() + "\"): " + url.errorString().toLatin1());
+
+    // Note: if the following fails due to changes in the parser, simply update the test data
+    QVERIFY2(url.errorString().contains(needle),
+             "Error string changed and does not contain \"" +
+             needle.toLatin1() + "\" anymore: " + url.errorString().toLatin1());
 }
 
 void tst_QUrl::tolerantParser()
@@ -1883,18 +1946,22 @@ void tst_QUrl::tolerantParser()
     {
         QUrl url("http://www.example.com/path%20with spaces.html");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         QCOMPARE(url.path(), QString("/path with spaces.html"));
         QCOMPARE(url.toEncoded(), QByteArray("http://www.example.com/path%20with%20spaces.html"));
         QCOMPARE(url.toString(QUrl::FullyEncoded), QString("http://www.example.com/path%20with%20spaces.html"));
         url.setUrl("http://www.example.com/path%20with spaces.html", QUrl::StrictMode);
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
     }
     {
         QUrl url = QUrl::fromEncoded("http://www.example.com/path%20with spaces.html");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         QCOMPARE(url.path(), QString("/path with spaces.html"));
         url.setEncodedUrl("http://www.example.com/path%20with spaces.html", QUrl::StrictMode);
         QVERIFY(!url.isValid());
+        QVERIFY(url.toString().isEmpty());
     }
 
     {
@@ -1919,6 +1986,7 @@ void tst_QUrl::tolerantParser()
         QUrl url;
         url.setUrl("http://foo.bar/[image][1].jpg");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
         QCOMPARE(url.toString(QUrl::FullyEncoded), QString("http://foo.bar/%5Bimage%5D%5B1%5D.jpg"));
         QCOMPARE(url.toEncoded(), QByteArray("http://foo.bar/%5Bimage%5D%5B1%5D.jpg"));
         QCOMPARE(url.toString(), QString("http://foo.bar/[image][1].jpg"));
@@ -1956,6 +2024,7 @@ void tst_QUrl::tolerantParser()
 
         url.setEncodedUrl("http://www.host.com/foo.php?P0=[2006-3-8]");
         QVERIFY(url.isValid());
+        QVERIFY(!url.toString().isEmpty());
 
         url.setEncodedUrl("http://foo.bar/[image][1].jpg");
         QVERIFY(url.isValid());
@@ -2043,6 +2112,8 @@ void tst_QUrl::correctEncodedMistakes()
     QCOMPARE(url.isValid(), result);
     if (url.isValid()) {
         QCOMPARE(url.toString(), toDecoded);
+    } else {
+        QVERIFY(url.toString().isEmpty());
     }
 }
 
@@ -2071,6 +2142,8 @@ void tst_QUrl::correctDecodedMistakes()
     QCOMPARE(url.isValid(), result);
     if (url.isValid()) {
         QCOMPARE(url.toString(), toDecoded);
+    } else {
+        QVERIFY(url.toString().isEmpty());
     }
 }
 
@@ -2247,6 +2320,8 @@ void tst_QUrl::setEncodedFragment_data()
     QTest::newRow("initial url has fragment") << BA("http://www.kde.org#old") << BA("new") << BA("http://www.kde.org#new");
     QTest::newRow("encoded fragment") << BA("http://www.kde.org") << BA("a%20c") << BA("http://www.kde.org#a%20c");
     QTest::newRow("with #") << BA("http://www.kde.org") << BA("a#b") << BA("http://www.kde.org#a#b");
+    QTest::newRow("unicode") << BA("http://www.kde.org") << BA("\xc3\xa9") << BA("http://www.kde.org#%C3%A9");
+    QTest::newRow("binary") << BA("http://www.kde.org") << BA("\x00\xc0\x80", 3) << BA("http://www.kde.org#%00%C0%80");
 }
 
 void tst_QUrl::setEncodedFragment()
@@ -2375,7 +2450,6 @@ void tst_QUrl::setPort()
         QCOMPARE(url.port(), -1);
         QCOMPARE(url.toString(), QString());
         url.setPort(80);
-        QTest::ignoreMessage(QtWarningMsg, "QUrl::setPort: Out of range");
         url.setPort(65536);
         QCOMPARE(url.port(), -1);
         QVERIFY(url.errorString().contains("out of range"));
@@ -2587,7 +2661,7 @@ void tst_QUrl::isEmptyForEncodedUrl()
 void tst_QUrl::toEncodedNotUsingUninitializedPath()
 {
     QUrl url;
-    url.setEncodedPath("test.txt");
+    url.setEncodedPath("/test.txt");
     url.setHost("example.com");
 
     QCOMPARE(url.toEncoded().constData(), "//example.com/test.txt");
@@ -2926,6 +3000,17 @@ void tst_QUrl::componentEncodings()
     QCOMPARE(url.toString(formatting),
              (((QString(toString ))))); // the weird () and space is to align the output
 
+    if (formatting == QUrl::FullyEncoded) {
+        QCOMPARE(url.encodedUserName(), userName.toUtf8());
+        QCOMPARE(url.encodedPassword(), password.toUtf8());
+        // no encodedUserInfo
+        QCOMPARE(url.encodedHost(), host.toUtf8());
+        // no encodedAuthority
+        QCOMPARE(url.encodedPath(), path.toUtf8());
+        QCOMPARE(url.encodedQuery(), query.toUtf8());
+        QCOMPARE(url.encodedFragment(), fragment.toUtf8());
+    }
+
     // repeat with the URL we got from toString
     QUrl url2(toString);
     QCOMPARE(url2.userName(formatting), userName);
@@ -3062,9 +3147,15 @@ void tst_QUrl::setComponents_data()
     QTest::newRow("invalid-authority-2") << QUrl("http://example.com")
                                          << int(Authority) << "%31%30.%30.%30.%31" << Strict << false
                                          << PrettyDecoded << "" << "";
+
+    // these test cases are "compound invalid":
+    // they produces isValid == false, but the original is still available
     QTest::newRow("invalid-path-1") << QUrl("/relative")
                                     << int(Path) << "c:/" << Strict << false
-                                    << PrettyDecoded << "" << "";
+                                    << PrettyDecoded << "c:/" << "";
+    QTest::newRow("invalid-path-2") << QUrl("http://example.com")
+                                    << int(Path) << "relative" << Strict << false
+                                    << PrettyDecoded << "relative" << "";
 
     // -- test decoded behaviour --
     // '%' characters are not permitted in the scheme, this tests that it fails to set anything
@@ -3088,8 +3179,8 @@ void tst_QUrl::setComponents_data()
                                               << int(Authority) << "ex%61mple.com" << Decoded << false
                                               << PrettyDecoded << "" << "";
     QTest::newRow("path-encode") << QUrl("http://example.com/foo")
-                                 << int(Path) << "bar%23" << Decoded << true
-                                 << PrettyDecoded << "bar%2523" << "http://example.com/bar%2523";
+                                 << int(Path) << "/bar%23" << Decoded << true
+                                 << PrettyDecoded << "/bar%2523" << "http://example.com/bar%2523";
     QTest::newRow("query-encode") << QUrl("http://example.com/foo?q")
                                   << int(Query) << "bar%23" << Decoded << true
                                   << PrettyDecoded << "bar%2523" << "http://example.com/foo?bar%2523";
@@ -3138,7 +3229,6 @@ void tst_QUrl::setComponents()
 
     case Path:
         copy.setPath(newValue, QUrl::ParsingMode(parsingMode));
-        QEXPECT_FAIL("invalid-path-1", "QUrl does not forbid paths with a colon before the first slash yet", Abort);
         QCOMPARE(copy.path(QUrl::ComponentFormattingOptions(encoding)), output);
         break;
 
@@ -3186,6 +3276,8 @@ void tst_QUrl::setComponents()
     if (isValid) {
         QFETCH(QString, toString);
         QCOMPARE(copy.toString(), toString);
+    } else {
+        QVERIFY(copy.toString().isEmpty());
     }
 }
 
@@ -3221,5 +3313,80 @@ void tst_QUrl::streaming()
         QVERIFY(!restored.isValid());
 }
 
+void tst_QUrl::detach()
+{
+    QUrl empty;
+    empty.detach();
+
+    QUrl foo("http://www.kde.org");
+    QUrl foo2 = foo;
+    foo2.detach(); // not that it's needed, given that setHost detaches, of course. But this increases coverage :)
+    foo2.setHost("www.gnome.org");
+    QCOMPARE(foo2.host(), QString("www.gnome.org"));
+    QCOMPARE(foo.host(), QString("www.kde.org"));
+}
+
+// Test accessing the same QUrl from multiple threads concurrently
+// To maximize the chances of a race (and of a report from helgrind), we actually use
+// 10 urls rather than one.
+class UrlStorage
+{
+public:
+    UrlStorage() {
+        m_urls.resize(10);
+        for (int i = 0 ; i < m_urls.size(); ++i)
+            m_urls[i] = QUrl::fromEncoded("http://www.kde.org", QUrl::StrictMode);
+    }
+    QVector<QUrl> m_urls;
+};
+
+static const UrlStorage * s_urlStorage = 0;
+
+void tst_QUrl::testThreadingHelper()
+{
+    const UrlStorage* storage = s_urlStorage;
+    for (int i = 0 ; i < storage->m_urls.size(); ++i ) {
+        const QUrl& u = storage->m_urls.at(i);
+        // QVERIFY/QCOMPARE trigger race conditions in helgrind
+        if (!u.isValid())
+            qFatal("invalid url");
+        if (u.scheme() != QLatin1String("http"))
+            qFatal("invalid scheme");
+        if (!u.toString().startsWith('h'))
+            qFatal("invalid toString");
+        QUrl copy(u);
+        copy.setHost("www.new-host.com");
+        QUrl copy2(u);
+        copy2.setUserName("dfaure");
+        QUrl copy3(u);
+        copy3.setUrl("http://www.new-host.com");
+        QUrl copy4(u);
+        copy4.detach();
+        QUrl copy5(u);
+        QUrl resolved1 = u.resolved(QUrl("index.html"));
+        Q_UNUSED(resolved1);
+        QUrl resolved2 = QUrl("http://www.kde.org").resolved(u);
+        Q_UNUSED(resolved2);
+        QString local = u.toLocalFile();
+        Q_UNUSED(local);
+        QTest::qWait(10); // give time for the other threads to start
+    }
+}
+
+#include <QThreadPool>
+#include <QtConcurrent>
+
+void tst_QUrl::testThreading()
+{
+    s_urlStorage = new UrlStorage;
+    QThreadPool::globalInstance()->setMaxThreadCount(100);
+    QFutureSynchronizer<void> sync;
+    for (int i = 0; i < 100; ++i)
+        sync.addFuture(QtConcurrent::run(this, &tst_QUrl::testThreadingHelper));
+    sync.waitForFinished();
+    delete s_urlStorage;
+}
+
 QTEST_MAIN(tst_QUrl)
+
 #include "tst_qurl.moc"

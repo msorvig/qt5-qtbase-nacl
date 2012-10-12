@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -870,17 +870,6 @@ public Q_SLOTS:
     }
 };
 
-static QAccessibleInterface *relatedInterface(QAccessibleInterface *iface, QAccessible::RelationFlag flag)
-{
-    typedef QPair<QAccessibleInterface *, QAccessible::Relation> RelationPair;
-    QVector<RelationPair> rels = iface->relations(flag);
-
-    for (int i = 1; i < rels.count(); ++i)
-        delete rels.at(i).first;
-
-    return rels.value(0).first;
-}
-
 void tst_QAccessibility::buttonTest()
 {
     QWidget window;
@@ -1489,6 +1478,8 @@ void tst_QAccessibility::spinBoxTest()
     QVERIFY(interface);
     QCOMPARE(interface->role(), QAccessible::SpinBox);
 
+    QVERIFY(QTest::qWaitForWindowExposed(spinBox));
+
     const QRect widgetRect = spinBox->geometry();
     const QRect accessibleRect = interface->rect();
     QCOMPARE(accessibleRect, widgetRect);
@@ -1527,6 +1518,8 @@ void tst_QAccessibility::doubleSpinBoxTest()
     QAccessibleInterface *interface = QAccessible::queryAccessibleInterface(doubleSpinBox);
     QVERIFY(interface);
 
+    QVERIFY(QTest::qWaitForWindowExposed(doubleSpinBox));
+
     const QRect widgetRect = doubleSpinBox->geometry();
     const QRect accessibleRect = interface->rect();
     QCOMPARE(accessibleRect, widgetRect);
@@ -1544,47 +1537,89 @@ void tst_QAccessibility::doubleSpinBoxTest()
     QTestAccessibility::clearEvents();
 }
 
+static QRect characterRect(const QTextEdit &edit, int offset)
+{
+    QTextBlock block = edit.document()->findBlock(offset);
+    QTextLayout *layout = block.layout();
+    QPointF layoutPosition = layout->position();
+    int relativeOffset = offset - block.position();
+    QTextLine line = layout->lineForTextPosition(relativeOffset);
+    QFontMetrics fm(edit.font());
+    QChar ch = edit.document()->characterAt(offset);
+    int w = fm.width(ch);
+    int h = fm.height();
+
+    qreal x = line.cursorToX(relativeOffset);
+    QRect r(layoutPosition.x() + x, layoutPosition.y() + line.y(), w, h);
+    r.moveTo(edit.viewport()->mapToGlobal(r.topLeft()));
+
+    return r;
+}
+
 void tst_QAccessibility::textEditTest()
 {
-    {
-    QTextEdit edit;
-    int startOffset;
-    int endOffset;
-    QString text = "hello world\nhow are you today?\n";
-    edit.setText(text);
-    edit.show();
+    for (int pass = 0; pass < 2; ++pass) {
+        {
+        QTextEdit edit;
+        int startOffset;
+        int endOffset;
+        // create two blocks of text. The first block has two lines.
+        QString text = "<p>hello world.<br/>How are you today?</p><p>I'm fine, thanks</p>";
+        edit.setHtml(text);
+        if (pass == 1) {
+            QFont font("Helvetica");
+            font.setPointSizeF(12.5);
+            font.setWordSpacing(1.1);
+            edit.setFont(font);
+        }
 
-    QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&edit);
-    QCOMPARE(iface->text(QAccessible::Value), text);
-    QCOMPARE(iface->textInterface()->textAtOffset(8, QAccessible2::WordBoundary, &startOffset, &endOffset), QString("world"));
-    QCOMPARE(startOffset, 6);
-    QCOMPARE(endOffset, 11);
-    QCOMPARE(iface->textInterface()->textAtOffset(14, QAccessible2::LineBoundary, &startOffset, &endOffset), QString("how are you today?"));
-    QCOMPARE(startOffset, 12);
-    QCOMPARE(endOffset, 30);
-    QCOMPARE(iface->textInterface()->characterCount(), 31);
-    QFontMetrics fm(edit.font());
-    QCOMPARE(iface->textInterface()->characterRect(0).size(), QSize(fm.width("h"), fm.height()));
-    QCOMPARE(iface->textInterface()->characterRect(5).size(), QSize(fm.width(" "), fm.height()));
-    QCOMPARE(iface->textInterface()->characterRect(6).size(), QSize(fm.width("w"), fm.height()));
+        edit.show();
+        QTest::qWaitForWindowShown(&edit);
+        QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&edit);
+        QCOMPARE(iface->text(QAccessible::Value), edit.toPlainText());
+        QCOMPARE(iface->textInterface()->textAtOffset(8, QAccessible2::WordBoundary, &startOffset, &endOffset), QString("world"));
+        QCOMPARE(startOffset, 6);
+        QCOMPARE(endOffset, 11);
+        QCOMPARE(iface->textInterface()->textAtOffset(15, QAccessible2::LineBoundary, &startOffset, &endOffset), QString("How are you today?"));
+        QCOMPARE(startOffset, 13);
+        QCOMPARE(endOffset, 31);
+        QCOMPARE(iface->textInterface()->characterCount(), 48);
+        QFontMetrics fm(edit.font());
+        QCOMPARE(iface->textInterface()->characterRect(0).size(), QSize(fm.width("h"), fm.height()));
+        QCOMPARE(iface->textInterface()->characterRect(5).size(), QSize(fm.width(" "), fm.height()));
+        QCOMPARE(iface->textInterface()->characterRect(6).size(), QSize(fm.width("w"), fm.height()));
 
-    QTestAccessibility::clearEvents();
+        int offset = 10;
+        QCOMPARE(iface->textInterface()->text(offset, offset + 1), QStringLiteral("d"));
+        QCOMPARE(iface->textInterface()->characterRect(offset), characterRect(edit, offset));
+        offset = 13;
+        QCOMPARE(iface->textInterface()->text(offset, offset + 1), QStringLiteral("H"));
+        QCOMPARE(iface->textInterface()->characterRect(offset), characterRect(edit, offset));
+        offset = 21;
+        QCOMPARE(iface->textInterface()->text(offset, offset + 1), QStringLiteral("y"));
+        QCOMPARE(iface->textInterface()->characterRect(offset), characterRect(edit, offset));
+        offset = 32;
+        QCOMPARE(iface->textInterface()->text(offset, offset + 1), QStringLiteral("I"));
+        QCOMPARE(iface->textInterface()->characterRect(offset), characterRect(edit, offset));
 
-    // select text
-    QTextCursor c = edit.textCursor();
-    c.setPosition(2);
-    c.setPosition(4, QTextCursor::KeepAnchor);
-    edit.setTextCursor(c);
-    QAccessibleTextSelectionEvent sel(&edit, 2, 4);
-    QVERIFY_EVENT(&sel);
+        QTestAccessibility::clearEvents();
 
-    edit.selectAll();
-    int end = edit.textCursor().position();
-    sel.setCursorPosition(end);
-    sel.setSelection(0, end);
-    QVERIFY_EVENT(&sel);
+        // select text
+        QTextCursor c = edit.textCursor();
+        c.setPosition(2);
+        c.setPosition(4, QTextCursor::KeepAnchor);
+        edit.setTextCursor(c);
+        QAccessibleTextSelectionEvent sel(&edit, 2, 4);
+        QVERIFY_EVENT(&sel);
+
+        edit.selectAll();
+        int end = edit.textCursor().position();
+        sel.setCursorPosition(end);
+        sel.setSelection(0, end);
+        QVERIFY_EVENT(&sel);
+        }
+        QTestAccessibility::clearEvents();
     }
-    QTestAccessibility::clearEvents();
 }
 
 void tst_QAccessibility::textBrowserTest()
@@ -2154,6 +2189,8 @@ void tst_QAccessibility::dialTest()
     QAccessibleInterface *interface = QAccessible::queryAccessibleInterface(&dial);
     QVERIFY(interface);
     QCOMPARE(interface->childCount(), 0);
+
+    QVERIFY(QTest::qWaitForWindowExposed(&dial));
 
     QCOMPARE(interface->text(QAccessible::Value), QString::number(dial.value()));
     QCOMPARE(interface->rect(), dial.geometry());
@@ -2785,6 +2822,7 @@ void tst_QAccessibility::comboBoxTest()
     QComboBox combo;
     combo.addItems(QStringList() << "one" << "two" << "three");
     combo.show();
+
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&combo);
     QCOMPARE(verifyHierarchy(iface), 0);
 

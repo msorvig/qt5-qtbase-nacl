@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,10 +42,16 @@
 
 #include <QtTest/QtTest>
 #include <QtGui/QtGui>
+#include <QtCore/QTextStream>
+#include <QtCore/QStringList>
+#include <QtCore/QMimeData>
+#include <QtCore/QPoint>
 #include <qeventloop.h>
 #include <qlist.h>
 
 #include <qlistwidget.h>
+#include <qpushbutton.h>
+#include <qboxlayout.h>
 
 
 class tst_QWidget_window : public QWidget
@@ -60,6 +66,8 @@ public slots:
     void cleanupTestCase();
 
 private slots:
+    void tst_min_max_size();
+    void tst_min_max_size_data();
     void tst_move_show();
     void tst_show_move();
     void tst_show_move_hide_show();
@@ -75,6 +83,10 @@ private slots:
 
     void tst_showWithoutActivating();
     void tst_paintEventOnSecondShow();
+
+#ifndef QT_NO_DRAGANDDROP
+    void tst_dnd();
+#endif
 };
 
 void tst_QWidget_window::initTestCase()
@@ -83,6 +95,40 @@ void tst_QWidget_window::initTestCase()
 
 void tst_QWidget_window::cleanupTestCase()
 {
+}
+
+/* Test if the maximum/minimum size constraints
+ * are propagated from the wid  src/widgets/kernel/qwidgetwindow_qpa_p.h
+get to the QWidgetWindow
+ * independently of whether they were set before or after
+ * window creation (QTBUG-26745). */
+
+void tst_QWidget_window::tst_min_max_size_data()
+{
+    QTest::addColumn<bool>("setMinMaxSizeBeforeShow");
+    QTest::newRow("Set min/max size after show") << false;
+    QTest::newRow("Set min/max size before show") << true;
+}
+
+void tst_QWidget_window::tst_min_max_size()
+{
+    QFETCH(bool, setMinMaxSizeBeforeShow);
+    const QSize minSize(300, 400);
+    const QSize maxSize(1000, 500);
+    QWidget w1;
+    (new QVBoxLayout(&w1))->addWidget(new QPushButton("Test"));
+    if (setMinMaxSizeBeforeShow) {
+        w1.setMinimumSize(minSize);
+        w1.setMaximumSize(maxSize);
+    }
+    w1.show();
+    if (!setMinMaxSizeBeforeShow) {
+        w1.setMinimumSize(minSize);
+        w1.setMaximumSize(maxSize);
+    }
+    QVERIFY(QTest::qWaitForWindowExposed(&w1));
+    QCOMPARE(w1.windowHandle()->minimumSize(),minSize);
+    QCOMPARE(w1.windowHandle()->maximumSize(), maxSize);
 }
 
 void tst_QWidget_window::tst_move_show()
@@ -325,6 +371,206 @@ void tst_QWidget_window::tst_paintEventOnSecondShow()
     QApplication::processEvents();
     QTRY_VERIFY(w.paintEventReceived);
 }
+
+#ifndef QT_NO_DRAGANDDROP
+
+/* DnD test for QWidgetWindow (handleDrag*Event() functions).
+ * Simulates a drop onto a QWidgetWindow of a top level widget
+ * that has 3 child widgets in a vertical layout with a frame. Only the lower 2
+ * child widgets accepts drops (QTBUG-22987), the bottom child has another child
+ * that does not accept drops.
+ * Sends a series of DnD events to the QWidgetWindow,
+ * entering the top level at the top frame and move
+ * down in steps of 5 pixels, drop onto the bottom widget.
+ * The test compares the sequences of events received by the widgets in readable format.
+ * It also checks whether the address of the mimedata received is the same as the
+ * sending one, that is, no conversion/serialization of text mime data occurs in the
+ * process. */
+
+static const char *expectedLogC[] = {
+    "Event at 11,1 ignored",
+    "Event at 11,21 ignored",
+    "Event at 11,41 ignored",
+    "Event at 11,61 ignored",
+    "Event at 11,81 ignored",
+    "Event at 11,101 ignored",
+    "acceptingDropsWidget1::dragEnterEvent at 1,11 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,121 accepted",
+    "acceptingDropsWidget1::dragMoveEvent at 1,31 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,141 accepted",
+    "acceptingDropsWidget1::dragMoveEvent at 1,51 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,161 accepted",
+    "acceptingDropsWidget1::dragMoveEvent at 1,71 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,181 accepted",
+    "acceptingDropsWidget1::dragLeaveEvent QDragLeaveEvent",
+    "Event at 11,201 ignored",
+    "acceptingDropsWidget2::dragEnterEvent at 1,11 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,221 accepted",
+    "acceptingDropsWidget2::dragMoveEvent at 1,31 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,241 accepted",
+    "acceptingDropsWidget2::dropEvent at 1,51 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 11,261 accepted",
+    "acceptingDropsWidget1::dragEnterEvent at 10,10 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 0,0 accepted",
+    "acceptingDropsWidget1::dragMoveEvent at 11,11 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 1,1 accepted",
+    "acceptingDropsWidget1::dropEvent at 12,12 action=1 MIME_DATA_ADDRESS 'testmimetext'",
+    "Event at 2,2 accepted"
+};
+
+// A widget that logs the DnD events it receives into a QStringList.
+class DnDEventLoggerWidget : public QWidget
+{
+public:
+    DnDEventLoggerWidget(QStringList *log, QWidget *w = 0) : QWidget(w), m_log(log) {}
+
+protected:
+    void dragEnterEvent(QDragEnterEvent *);
+    void dragMoveEvent(QDragMoveEvent *);
+    void dragLeaveEvent(QDragLeaveEvent *);
+    void dropEvent(QDropEvent *);
+
+private:
+    void formatDropEvent(const char *function, const QDropEvent *e, QTextStream &str) const;
+    QStringList *m_log;
+};
+
+void DnDEventLoggerWidget::formatDropEvent(const char *function, const QDropEvent *e, QTextStream &str) const
+{
+    str << objectName() << "::" << function  << " at " << e->pos().x() << ',' << e->pos().y()
+        << " action=" << e->dropAction()
+        << ' ' << quintptr(e->mimeData()) << " '" << e->mimeData()->text() << '\'';
+}
+
+void DnDEventLoggerWidget::dragEnterEvent(QDragEnterEvent *e)
+{
+    e->accept();
+    QString message;
+    QTextStream str(&message);
+    formatDropEvent("dragEnterEvent", e, str);
+    m_log->push_back(message);
+}
+
+void DnDEventLoggerWidget::dragMoveEvent(QDragMoveEvent *e)
+{
+    e->accept();
+    QString message;
+    QTextStream str(&message);
+    formatDropEvent("dragMoveEvent", e, str);
+    m_log->push_back(message);
+}
+
+void DnDEventLoggerWidget::dragLeaveEvent(QDragLeaveEvent *e)
+{
+    e->accept();
+    m_log->push_back(objectName() + QLatin1String("::") + QLatin1String("dragLeaveEvent") + QLatin1String(" QDragLeaveEvent"));
+}
+
+void DnDEventLoggerWidget::dropEvent(QDropEvent *e)
+{
+    e->accept();
+    QString message;
+    QTextStream str(&message);
+    formatDropEvent("dropEvent", e, str);
+    m_log->push_back(message);
+}
+
+static QString msgEventAccepted(const QDropEvent &e)
+{
+    QString message;
+    QTextStream str(&message);
+    str << "Event at " << e.pos().x() << ',' << e.pos().y() << ' ' << (e.isAccepted() ? "accepted" : "ignored");
+    return message;
+}
+
+void tst_QWidget_window::tst_dnd()
+{
+    QStringList log;
+    DnDEventLoggerWidget dndTestWidget(&log);
+
+    dndTestWidget.setObjectName(QLatin1String("dndTestWidget"));
+    dndTestWidget.setWindowTitle(dndTestWidget.objectName());
+    dndTestWidget.resize(200, 300);
+
+    QWidget *dropsRefusingWidget1 = new DnDEventLoggerWidget(&log, &dndTestWidget);
+    dropsRefusingWidget1->setObjectName(QLatin1String("dropsRefusingWidget1"));
+    dropsRefusingWidget1->resize(180, 80);
+    dropsRefusingWidget1->move(10, 10);
+
+    QWidget *dropsAcceptingWidget1 = new DnDEventLoggerWidget(&log, &dndTestWidget);
+    dropsAcceptingWidget1->setAcceptDrops(true);
+    dropsAcceptingWidget1->setObjectName(QLatin1String("acceptingDropsWidget1"));
+    dropsAcceptingWidget1->resize(180, 80);
+    dropsAcceptingWidget1->move(10, 110);
+
+    // Create a native widget on top of dropsAcceptingWidget1 to check QTBUG-27336
+    QWidget *nativeWidget = new QWidget(dropsAcceptingWidget1);
+    nativeWidget->resize(160, 60);
+    nativeWidget->move(10, 10);
+    nativeWidget->winId();
+
+    QWidget *dropsAcceptingWidget2 = new DnDEventLoggerWidget(&log, &dndTestWidget);
+    dropsAcceptingWidget2->setAcceptDrops(true);
+    dropsAcceptingWidget2->setObjectName(QLatin1String("acceptingDropsWidget2"));
+    dropsAcceptingWidget2->resize(180, 80);
+    dropsAcceptingWidget2->move(10, 210);
+
+    QWidget *dropsRefusingWidget2 = new DnDEventLoggerWidget(&log, dropsAcceptingWidget2);
+    dropsRefusingWidget2->setObjectName(QLatin1String("dropsRefusingDropsWidget2"));
+    dropsRefusingWidget2->resize(160, 60);
+    dropsRefusingWidget2->move(10, 10);
+
+    dndTestWidget.show();
+    qApp->setActiveWindow(&dndTestWidget);
+    QVERIFY(QTest::qWaitForWindowActive(&dndTestWidget));
+
+    QMimeData mimeData;
+    mimeData.setText(QLatin1String("testmimetext"));
+
+    // Simulate DnD events on the QWidgetWindow.
+    QPoint position = QPoint(11, 1);
+    QDragEnterEvent e(position, Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+    QWindow *window = dndTestWidget.windowHandle();
+    qApp->sendEvent(window, &e);
+    log.push_back(msgEventAccepted(e));
+    while (true) {
+        position.ry() += 20;
+        if (position.y() >= 250) {
+            QDropEvent e(position, Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+            qApp->sendEvent(window, &e);
+            log.push_back(msgEventAccepted(e));
+            break;
+        } else {
+            QDragMoveEvent e(position, Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+            qApp->sendEvent(window, &e);
+            log.push_back(msgEventAccepted(e));
+        }
+    }
+
+    window = nativeWidget->windowHandle();
+    QDragEnterEvent enterEvent(QPoint(0, 0), Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+    qApp->sendEvent(window, &enterEvent);
+    log.push_back(msgEventAccepted(enterEvent));
+
+    QDragMoveEvent moveEvent(QPoint(1, 1), Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+    qApp->sendEvent(window, &moveEvent);
+    log.push_back(msgEventAccepted(moveEvent));
+
+    QDropEvent dropEvent(QPoint(2, 2), Qt::CopyAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+    qApp->sendEvent(window, &dropEvent);
+    log.push_back(msgEventAccepted(dropEvent));
+
+    // Compare logs.
+    QStringList expectedLog;
+    const int expectedLogSize = int(sizeof(expectedLogC) / sizeof(expectedLogC[0]));
+    const QString mimeDataAddress = QString::number(quintptr(&mimeData));
+    const QString mimeDataAddressPlaceHolder = QLatin1String("MIME_DATA_ADDRESS");
+    for (int i= 0; i < expectedLogSize; ++i)
+        expectedLog.push_back(QString::fromLatin1(expectedLogC[i]).replace(mimeDataAddressPlaceHolder, mimeDataAddress));
+
+    QCOMPARE(log, expectedLog);
+}
+#endif
 
 QTEST_MAIN(tst_QWidget_window)
 #include "tst_qwidget_window.moc"

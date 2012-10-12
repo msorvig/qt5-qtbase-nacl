@@ -51,23 +51,20 @@ defineTest(qtAddModule) {
 
     INCLUDEPATH *= $$MODULE_INCLUDES
     auto_use_privates|isEqual(2, UsePrivate) { # Tests function parameter 2 ($$2) being equal to 'UsePrivate'
-        # This adds both
-        #     <module privates include path>/
-        # and <module privates include path>/<module name>
-        # since we have code using both #include <QtCore/private/foo> and #include <private/foo>
-        # Both need to be supported with the new private includes structure
-        MODULE_INCLUDES_PRIVATES = $$eval(QT.$${1}.private_includes)
-        INCLUDEPATH += $$MODULE_INCLUDES_PRIVATES $$MODULE_INCLUDES_PRIVATES/$$MODULE_NAME
+        INCLUDEPATH += $$eval(QT.$${1}.private_includes)
     }
 
     unset(LINKAGE)
     mac {
-        !contains(MODULE_CONFIG,staticlib):CONFIG(qt_framework, qt_framework|qt_no_framework) { #forced
-          QMAKE_FRAMEWORKPATH *= $${MODULE_LIBS}
+        contains(MODULE_CONFIG, lib_bundle) {
           FRAMEWORK_INCLUDE = $${MODULE_LIBS}/$${MODULE_NAME}.framework/Headers
-          !qt_no_framework_direct_includes:exists($$FRAMEWORK_INCLUDE): \
+          !qt_no_framework_direct_includes:exists($$FRAMEWORK_INCLUDE) {
                INCLUDEPATH *= $$FRAMEWORK_INCLUDE
-           LINKAGE = -framework $${MODULE_NAME}$${QT_LIBINFIX}
+               LINKAGE = -F$${MODULE_LIBS}
+          } else {
+               QMAKE_FRAMEWORKPATH *= $${MODULE_LIBS}
+          }
+          LINKAGE += -framework $${MODULE_NAME}$${QT_LIBINFIX}
         }
     }
 
@@ -82,18 +79,29 @@ defineTest(qtAddModule) {
     }
 
     isEmpty(LINKAGE) {
-       !isEmpty(MODULE_LIBS) {
-           QMAKE_LIBDIR *= $$MODULE_LIBS
-           !isEqual(MODULE_LIBS, $$[QT_INSTALL_LIBS]) {
-               # Make sure we can link to uninstalled libraries
-               unix:!mac:QMAKE_LFLAGS *= "-Wl,-rpath-link,$$MODULE_LIBS"
-           }
-       }
+       !isEmpty(MODULE_LIBS): LINKAGE = -L$$MODULE_LIBS
+       lib =
        if(!debug_and_release|build_pass):CONFIG(debug, debug|release) {
-           win32:LINKAGE = -l$${MODULE_NAME}$${QT_LIBINFIX}d
-           mac:LINKAGE = -l$${MODULE_NAME}$${QT_LIBINFIX}_debug
+           win32: lib = -l$${MODULE_NAME}$${QT_LIBINFIX}d
+           mac: lib = -l$${MODULE_NAME}$${QT_LIBINFIX}_debug
        }
-       isEmpty(LINKAGE):LINKAGE = -l$${MODULE_NAME}$${QT_LIBINFIX}
+       isEmpty(lib): lib = -l$${MODULE_NAME}$${QT_LIBINFIX}
+       LINKAGE += $$lib
+
+       contains(QT_CONFIG, rpath) {
+           rpath = $$eval(QT.$${1}.rpath)
+           isEmpty(rpath): rpath = $$MODULE_LIBS
+           QMAKE_RPATHDIR *= $$rpath
+       }
+
+       # Make sure we can link to uninstalled libraries
+       unix:!mac:!isEmpty(QT.$${1}.libs) { # Use unmodified path, so /usr/lib also works
+            for(rpl, QT.$${1}.rpath_link): \
+                QMAKE_LFLAGS *= -Wl,-rpath-link,$$rpl
+            !auto_use_privates:!isEqual(2, UsePrivate): \
+                for(rpl, QT.$${1}.rpath_link_private): \
+                    QMAKE_LFLAGS *= -Wl,-rpath-link,$$rpl
+       }
     }
     # Only link to this module if a libs directory is set, else this is just a module
     # to give access to sources or include files, and not for linking.
@@ -112,6 +120,7 @@ defineTest(qtAddModule) {
     export(QMAKE_FRAMEWORKPATH)
     export(QMAKE_LFLAGS)
     export(QMAKE_LIBDIR)
+    export(QMAKE_RPATHDIR)
     return(true)
 }
 
@@ -148,21 +157,16 @@ defineTest(qtAddModules) {
 
         qtAddModule($$QTLIB, $$eval(QT.$${QTLIB}.want_private), $$2)
     }
-    !isEmpty(BAD_QT):error("Unknown module(s) in QT: $$BAD_QT")
+    !isEmpty(BAD_QT):error("Unknown module(s) in $$1: $$BAD_QT")
 
     export(using_privates)
 }
 
 # variable, default
 defineTest(qtPrepareTool) {
-    $$1 = $$eval(QT_TOOL.$${2}.binary)
+    $$1 = $$eval(QT_TOOL.$${2}.command)
     isEmpty($$1) {
-        MODBASE = $$[QT_HOST_BINS/get]
-        count(ARGS, 2, greaterThan) {
-            isEmpty(QT.$${3}.bins):warning("No QT.$${3}.bins, module path ignored for qtPrepareTool($$1, $$2, $$3)")
-            else:MODBASE = $$eval(QT.$${3}.bins)
-        }
-        isEmpty($$1):$$1 = $$MODBASE/$$2
+        $$1 = $$[QT_HOST_BINS/get]/$$2
         contains(QMAKE_HOST.os, Windows):!contains($$1, .*\\.(exe|bat)$) {
             exists($$eval($$1).bat) {
                 $$1 = $$eval($$1).bat
@@ -175,31 +179,60 @@ defineTest(qtPrepareTool) {
                 $$1 = $$BUNDLENAME
             }
         }
+        $$1 = $$shell_path($$eval($$1))
     }
-    $$1 = $$shell_path($$eval($$1))
+    export($$1)
+}
 
-    deps = $$resolve_depends(QT_TOOL.$${2}.depends, "QT.")
-    !isEmpty(deps) {
-        for(dep, deps): \
-            deppath += $$shell_path($$eval(QT.$${dep}.libs))
-        deppath = $$unique(deppath)
-        equals(QMAKE_DIR_SEP, /) {
-            equals(QMAKE_HOST.os, Windows): \
-                var = PATH
-            else:contains(QMAKE_HOST.os, Linux): \
-                var = LD_LIBRARY_PATH
-            else:equals(QMAKE_HOST.os, Darwin): \
-                var = DYLD_LIBRARY_PATH
-            else: \
-                error("Operating system not supported.")
-            $$1 = "$$var=$$join(deppath, :)${$$var:+:\$$$var} $$eval($$1)"
-        } else {
-            # Escape closing parens when expanding %PATH%, otherwise cmd confuses itself.
-            $$1 = "(set PATH=$$join(deppath, ;);%PATH:)=^)%) & $$eval($$1)"
+defineTest(qtAddToolEnv) {
+    for(env, 2) {
+        value = $$eval($${env}.value)
+        !isEmpty(value) {
+            name = $$eval($${env}.name)
+            equals(QMAKE_DIR_SEP, /) {
+                contains($${env}.CONFIG, prepend): infix = \${$$name:+:\$$$name}
+                else: infix =
+                $$1 = "$$name=$$join(value, :)$$infix $$eval($$1)"
+            } else {
+                # Escape closing parens when expanding the variable, otherwise cmd confuses itself.
+                contains($${env}.CONFIG, prepend): infix = ;%$$name:)=^)%
+                else: infix =
+                $$1 = "(set $$name=$$join(value, ;)$$infix) & $$eval($$1)"
+            }
         }
     }
-
     export($$1)
+}
+
+defineTest(qtAddTargetEnv) {
+    deps = $$resolve_depends(QT, "QT.")
+    !isEmpty(deps) {
+        plugin_paths =
+        for(dep, deps) {
+            deppath += $$shell_path($$eval(QT.$${dep}.libs))
+            for(rpath, QT.$${dep}.rpath_link): \
+                deppath += $$shell_path($$rpath)
+            plugin_paths += $$eval(QT.$${dep}.plugin_path) $$eval(QT.$${dep}.plugins)
+        }
+        equals(QMAKE_HOST.os, Windows): \
+            deppath.name = PATH
+        else:contains(QMAKE_HOST.os, Linux|FreeBSD): \
+            deppath.name = LD_LIBRARY_PATH
+        else:equals(QMAKE_HOST.os, Darwin): \
+            deppath.name = DYLD_LIBRARY_PATH
+        else: \
+            error("Operating system not supported.")
+        deppath.value = $$unique(deppath)
+        deppath.CONFIG = prepend
+        pluginpath.name = QT_PLUGIN_PATH
+        pluginpath.value =
+        plugin_paths = $$unique(plugin_paths)
+        for(ppath, plugin_paths): \
+            exists($$ppath): \
+                pluginpath.value += $$shell_path($$ppath)
+        QT_TOOL_ENV += deppath pluginpath
+    }
+    qtAddToolEnv($$1, $$QT_TOOL_ENV)
 }
 
 defineReplace(pkgConfigExecutable) {

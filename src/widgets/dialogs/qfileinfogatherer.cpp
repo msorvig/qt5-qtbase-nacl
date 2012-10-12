@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -79,9 +79,6 @@ QFileInfoGatherer::QFileInfoGatherer(QObject *parent)
 {
 #ifdef Q_OS_WIN
     m_resolveSymlinks = true;
-#elif !defined(Q_OS_INTEGRITY)
-    userId = getuid();
-    groupId = getgid();
 #endif
 #ifndef QT_NO_FILESYSTEMWATCHER
     watcher = new QFileSystemWatcher(this);
@@ -96,10 +93,8 @@ QFileInfoGatherer::QFileInfoGatherer(QObject *parent)
 */
 QFileInfoGatherer::~QFileInfoGatherer()
 {
-    QMutexLocker locker(&mutex);
-    abort = true;
-    condition.wakeOne();
-    locker.unlock();
+    abort.store(true);
+    condition.wakeAll();
     wait();
 }
 
@@ -107,7 +102,6 @@ void QFileInfoGatherer::setResolveSymlinks(bool enable)
 {
     Q_UNUSED(enable);
 #ifdef Q_OS_WIN
-    QMutexLocker locker(&mutex);
     m_resolveSymlinks = enable;
 #endif
 }
@@ -119,7 +113,6 @@ bool QFileInfoGatherer::resolveSymlinks() const
 
 void QFileInfoGatherer::setIconProvider(QFileIconProvider *provider)
 {
-    QMutexLocker locker(&mutex);
     m_iconProvider = provider;
 }
 
@@ -136,7 +129,7 @@ QFileIconProvider *QFileInfoGatherer::iconProvider() const
 void QFileInfoGatherer::fetchExtendedInformation(const QString &path, const QStringList &files)
 {
     QMutexLocker locker(&mutex);
-    // See if we already have this dir/file in our que
+    // See if we already have this dir/file in our queue
     int loc = this->path.lastIndexOf(path);
     while (loc > 0)  {
         if (this->files.at(loc) == files) {
@@ -204,25 +197,18 @@ void QFileInfoGatherer::list(const QString &directoryPath)
 void QFileInfoGatherer::run()
 {
     forever {
-        bool updateFiles = false;
         QMutexLocker locker(&mutex);
-        if (abort) {
-            return;
-        }
-        if (this->path.isEmpty())
+        while (!abort.load() && path.isEmpty())
             condition.wait(&mutex);
-        QString path;
-        QStringList list;
-        if (!this->path.isEmpty()) {
-            path = this->path.first();
-            list = this->files.first();
-            this->path.pop_front();
-            this->files.pop_front();
-            updateFiles = true;
-        }
+        if (abort.load())
+            return;
+        const QString thisPath = path.front();
+        path.pop_front();
+        const QStringList thisList = files.front();
+        files.pop_front();
         locker.unlock();
-        if (updateFiles)
-            getFileInfos(path, list);
+
+        getFileInfos(thisPath, thisList);
     }
 }
 
@@ -257,7 +243,7 @@ QExtendedInformation QFileInfoGatherer::getInfo(const QFileInfo &fileInfo) const
     return info;
 }
 
-QString QFileInfoGatherer::translateDriveName(const QFileInfo &drive) const
+static QString translateDriveName(const QFileInfo &drive)
 {
     QString driveName = drive.absoluteFilePath();
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
@@ -294,6 +280,7 @@ void QFileInfoGatherer::getFileInfos(const QString &path, const QStringList &fil
         if (files.isEmpty()) {
             infoList = QDir::drives();
         } else {
+            infoList.reserve(files.count());
             for (int i = 0; i < files.count(); ++i)
                 infoList << QFileInfo(files.at(i));
         }
@@ -316,7 +303,7 @@ void QFileInfoGatherer::getFileInfos(const QString &path, const QStringList &fil
     QString itPath = QDir::fromNativeSeparators(files.isEmpty() ? path : QLatin1String(""));
     QDirIterator dirIt(itPath, QDir::AllEntries | QDir::System | QDir::Hidden);
     QStringList allFiles;
-    while(!abort && dirIt.hasNext()) {
+    while (!abort.load() && dirIt.hasNext()) {
         dirIt.next();
         fileInfo = dirIt.fileInfo();
         allFiles.append(fileInfo.fileName());
@@ -326,7 +313,7 @@ void QFileInfoGatherer::getFileInfos(const QString &path, const QStringList &fil
         emit newListOfFiles(path, allFiles);
 
     QStringList::const_iterator filesIt = filesToCheck.constBegin();
-    while(!abort && filesIt != filesToCheck.constEnd()) {
+    while (!abort.load() && filesIt != filesToCheck.constEnd()) {
         fileInfo.setFile(path + QDir::separator() + *filesIt);
         ++filesIt;
         fetch(fileInfo, base, firstTime, updatedFiles, path);

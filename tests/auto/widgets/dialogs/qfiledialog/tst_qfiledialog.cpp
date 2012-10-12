@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -101,7 +101,9 @@ public slots:
 
 private slots:
     void currentChangedSignal();
+#ifdef QT_BUILD_INTERNAL
     void directoryEnteredSignal();
+#endif
     void filesSelectedSignal_data();
     void filesSelectedSignal();
     void filterSelectedSignal();
@@ -141,8 +143,10 @@ private slots:
     void enableChooseButton();
     void hooks();
 #ifdef Q_OS_UNIX
+#ifdef QT_BUILD_INTERNAL
     void tildeExpansion_data();
     void tildeExpansion();
+#endif // QT_BUILD_INTERNAL
 #endif
 
 private:
@@ -213,9 +217,9 @@ void tst_QFiledialog::currentChangedSignal()
 }
 
 // only emitted from the views, sidebar, or lookin combo
+#if defined QT_BUILD_INTERNAL
 void tst_QFiledialog::directoryEnteredSignal()
 {
-#if defined QT_BUILD_INTERNAL
     QNonNativeFileDialog fd(0, "", QDir::root().path());
     fd.setOptions(QFileDialog::DontUseNativeDialog);
     fd.show();
@@ -259,8 +263,8 @@ void tst_QFiledialog::directoryEnteredSignal()
     QTest::mouseDClick(listView->viewport(), Qt::LeftButton, 0, listView->visualRect(folder).center());
     QTRY_COMPARE(spyDirectoryEntered.count(), 1);
     */
-#endif
 }
+#endif
 
 Q_DECLARE_METATYPE(QFileDialog::FileMode)
 void tst_QFiledialog::filesSelectedSignal_data()
@@ -420,7 +424,7 @@ void tst_QFiledialog::completer_data()
     QStringList list = root.entryList();
     QString folder;
     for (int i = 0; i < list.count(); ++i) {
-        if (list.at(0) == QChar('.'))
+        if (list[i].at(0) == QChar('.'))
             continue;
         QFileInfo info(QDir::rootPath() + list[i]);
         if (info.isDir()) {
@@ -1313,6 +1317,7 @@ void tst_QFiledialog::hooks()
 }
 
 #ifdef Q_OS_UNIX
+#ifdef QT_BUILD_INTERNAL
 void tst_QFiledialog::tildeExpansion_data()
 {
     QTest::addColumn<QString>("tildePath");
@@ -1328,18 +1333,17 @@ void tst_QFiledialog::tildeExpansion_data()
     QString invalid = QString::fromLatin1("~thisIsNotAValidUserName");
     QTest::newRow("invalid user name") << invalid << invalid;
 }
+#endif // QT_BUILD_INTERNAL
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFiledialog::tildeExpansion()
 {
-#ifndef QT_BUILD_INTERNAL
-    QSKIP("Test case relies on developer build (AUTOTEST_EXPORT)");
-#else
     QFETCH(QString, tildePath);
     QFETCH(QString, expandedPath);
 
     QCOMPARE(qt_tildeExpansion(tildePath), expandedPath);
-#endif
 }
+#endif // QT_BUILD_INTERNAL
 #endif
 
 QTEST_MAIN(tst_QFiledialog)

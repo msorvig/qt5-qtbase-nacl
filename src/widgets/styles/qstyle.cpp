@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -89,7 +89,7 @@ static int unpackControlTypes(QSizePolicy::ControlTypes controls, QSizePolicy::C
 
     Qt provides a set of QStyle subclasses that emulate the native
     look of the different platforms supported by Qt (QWindowsStyle,
-    QMacStyle, QMotifStyle, etc.). These styles are built into the
+    QMacStyle, etc.). These styles are built into the
     QtGui library, other styles can be made available using Qt's
     plugin mechansim.
 
@@ -152,7 +152,7 @@ static int unpackControlTypes(QSizePolicy::ControlTypes controls, QSizePolicy::C
 
     Qt contains a set of QStyle subclasses that emulate the styles of
     the different platforms supported by Qt (QWindowsStyle,
-    QMacStyle, QMotifStyle, etc.). By default, these styles are built
+    QMacStyle etc.). By default, these styles are built
     into the QtGui library. Styles can also be made available as
     plugins.
 
@@ -714,15 +714,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
     \sa drawPrimitive()
 */
 
-/*!
-    \typedef QStyle::SFlags
-    \internal
-*/
-
-/*!
-    \typedef QStyle::SCFlags
-    \internal
-*/
 
 /*!
     \enum QStyle::StateFlag
@@ -760,7 +751,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
     \value State_Small Used to indicate a small style Mac widget or button.
     \omitvalue State_Window
     \omitvalue State_Bottom
-    \omitvalue State_Default
     \omitvalue State_FocusAtBorder
     \omitvalue State_Top
 
@@ -1630,8 +1620,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
 
     \value SH_DitherDisabledText Disabled text is dithered as it is on Motif.
 
-    \value SH_GUIStyle The GUI style to use.
-
     \value SH_ScrollBar_ContextMenu Whether or not a scroll bar has a context menu.
 
     \value SH_ScrollBar_MiddleClickAbsolutePosition  A boolean value.
@@ -1672,7 +1660,7 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
         manner, i.e., left on a vertical slider subtracts a line.
 
     \value SH_ProgressDialog_CenterCancelButton  Center button on
-        progress dialogs, like Motif, otherwise right aligned.
+        progress dialogs, otherwise right aligned.
 
     \value SH_ProgressDialog_TextLabelAlignment The alignment for text
     labels in progress dialogs; Qt::AlignCenter on Windows,
@@ -1803,11 +1791,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
     \value SH_CustomBase  Base value for custom style hints.
     Custom values must be greater than this value.
 
-    \value SH_MenuBar_DismissOnSecondClick A boolean indicating if a menu in
-    the menu bar should be dismissed when it is clicked on a second time. (Example:
-    Clicking and releasing on the File Menu in a menu bar and then
-    immediately clicking on the File Menu again.)
-
     \value SH_MessageBox_UseBorderForButtonSpacing A boolean indicating what the to
     use the border of the buttons (computed as half the button height) for the spacing
     of the button in a message box.
@@ -1836,8 +1819,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
 
     \value SH_Dial_BackgroundRole Defines the style's preferred
     background role (as QPalette::ColorRole) for a dial widget.
-
-    \value SH_ScrollBar_BackgroundMode The background mode for a scroll bar.
 
     \value SH_ComboBox_LayoutDirection The layout direction for the
     combo box.  By default it should be the same as indicated by the
@@ -1905,8 +1886,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
 
     \value SH_RequestSoftwareInputPanel Determines when a software input panel should
            be requested by input widgets. Returns an enum of type QStyle::RequestSoftwareInputPanel.
-
-    \omitvalue SH_UnderlineAccelerator
 
     \sa styleHint()
 */
@@ -2037,7 +2016,7 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
 
     Developers calling standardPixmap() should instead call standardIcon()
     Developers who re-implemented standardPixmap() should instead re-implement
-    the slot standardIconImplementation().
+    standardIcon().
 
     \sa standardIcon()
 */
@@ -2229,6 +2208,9 @@ QPalette QStyle::standardPalette() const
 /*!
     \since 4.1
 
+    \fn QIcon QStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption *option = 0,
+                                   const QWidget *widget = 0) const = 0;
+
     Returns an icon for the given \a standardIcon.
 
     The \a standardIcon is a standard pixmap which can follow some
@@ -2236,56 +2218,14 @@ QPalette QStyle::standardPalette() const
     used to pass extra information required when defining the
     appropriate icon. The \a widget argument is optional and can also
     be used to aid the determination of the icon.
-
-    \warning Because of binary compatibility constraints, this
-    function is not virtual.  If you want to provide your own icons in
-    a QStyle subclass, reimplement the standardIconImplementation()
-    slot in your subclass instead. The standardIcon() function will
-    dynamically detect the slot and call it.
-
-    \sa standardIconImplementation()
 */
-QIcon QStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption *option,
-                           const QWidget *widget) const
-{
-    QIcon result;
-    // ### Qt 4.1: invokeMethod should accept const functions, to avoid this dirty cast
-    QMetaObject::invokeMethod(const_cast<QStyle*>(this),
-                              "standardIconImplementation", Qt::DirectConnection,
-                              Q_RETURN_ARG(QIcon, result),
-                              Q_ARG(StandardPixmap, standardIcon),
-                              Q_ARG(const QStyleOption*, option),
-                              Q_ARG(const QWidget*, widget));
-    return result;
-}
-
-/*!
-    \since 4.1
-
-    Returns an icon for the given \a standardIcon.
-
-    Reimplement this slot to provide your own icons in a QStyle
-    subclass; because of binary compatibility constraints, the
-    standardIcon() function (introduced in Qt 4.1) is not
-    virtual. Instead, standardIcon() will dynamically detect and call
-    \e this slot.
-
-    The \a standardIcon is a standard pixmap which can follow some
-    existing GUI style or guideline. The \a option argument can be
-    used to pass extra information required when defining the
-    appropriate icon. The \a widget argument is optional and can also
-    be used to aid the determination of the icon.
-
-    \sa standardIcon()
-*/
-QIcon QStyle::standardIconImplementation(StandardPixmap standardIcon, const QStyleOption *option,
-                                         const QWidget *widget) const
-{
-    return QIcon(standardPixmap(standardIcon, option, widget));
-}
 
 /*!
     \since 4.3
+
+    \fn int QStyle::layoutSpacing(QSizePolicy::ControlType control1,
+                                  QSizePolicy::ControlType control2, Qt::Orientation orientation,
+                                  const QStyleOption *option = 0, const QWidget *widget = 0) const
 
     Returns the spacing that should be used between \a control1 and
     \a control2 in a layout. \a orientation specifies whether the
@@ -2298,35 +2238,8 @@ QIcon QStyle::standardIconImplementation(StandardPixmap standardIcon, const QSty
     PM_LayoutHorizontalSpacing or PM_LayoutVerticalSpacing returns a
     negative value.
 
-    For binary compatibility reasons, this function is not virtual.
-    If you want to specify custom layout spacings in a QStyle
-    subclass, implement a slot called layoutSpacingImplementation().
-    QStyle will discover the slot at run-time (using Qt's
-    \l{meta-object system}) and direct all calls to layoutSpacing()
-    to layoutSpacingImplementation().
-
-    \sa combinedLayoutSpacing(), layoutSpacingImplementation()
+    \sa combinedLayoutSpacing()
 */
-int QStyle::layoutSpacing(QSizePolicy::ControlType control1, QSizePolicy::ControlType control2,
-                          Qt::Orientation orientation, const QStyleOption *option,
-                          const QWidget *widget) const
-{
-    Q_D(const QStyle);
-    if (d->layoutSpacingIndex == -1) {
-        d->layoutSpacingIndex = metaObject()->indexOfMethod(
-            "layoutSpacingImplementation(QSizePolicy::ControlType,QSizePolicy::ControlType,"
-            "Qt::Orientation,const QStyleOption*,const QWidget*)"
-            );
-    }
-    if (d->layoutSpacingIndex < 0)
-        return -1;
-    int result = -1;
-    void *param[] = {&result, &control1, &control2, &orientation, &option, &widget};
-
-    const_cast<QStyle *>(this)->qt_metacall(QMetaObject::InvokeMetaMethod,
-                                            d->layoutSpacingIndex, param);
-    return result;
-}
 
 /*!
     \since 4.3
@@ -2345,7 +2258,7 @@ int QStyle::layoutSpacing(QSizePolicy::ControlType control1, QSizePolicy::Contro
     PM_LayoutHorizontalSpacing or PM_LayoutVerticalSpacing returns a
     negative value.
 
-    \sa layoutSpacing(), layoutSpacingImplementation()
+    \sa layoutSpacing()
 */
 int QStyle::combinedLayoutSpacing(QSizePolicy::ControlTypes controls1,
                                   QSizePolicy::ControlTypes controls2, Qt::Orientation orientation,
@@ -2364,36 +2277,6 @@ int QStyle::combinedLayoutSpacing(QSizePolicy::ControlTypes controls1,
         }
     }
     return result;
-}
-
-/*!
-    \since 4.3
-
-    This slot is called by layoutSpacing() to determine the spacing
-    that should be used between \a control1 and \a control2 in a
-    layout. \a orientation specifies whether the controls are laid
-    out side by side or stacked vertically. The \a option parameter
-    can be used to pass extra information about the parent widget.
-    The \a widget parameter is optional and can also be used if \a
-    option is 0.
-
-    If you want to provide custom layout spacings in a QStyle
-    subclass, implement a slot called layoutSpacingImplementation()
-    in your subclass. Be aware that this slot will only be called if
-    PM_LayoutHorizontalSpacing or PM_LayoutVerticalSpacing returns a
-    negative value.
-
-    The default implementation returns -1.
-
-    \sa layoutSpacing(), combinedLayoutSpacing()
-*/
-int QStyle::layoutSpacingImplementation(QSizePolicy::ControlType /* control1 */,
-                                        QSizePolicy::ControlType /* control2 */,
-                                        Qt::Orientation /*orientation*/,
-                                        const QStyleOption * /* option */,
-                                        const QWidget * /* widget */) const
-{
-    return -1;
 }
 
 QT_BEGIN_INCLUDE_NAMESPACE

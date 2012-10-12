@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -40,7 +40,7 @@
 ****************************************************************************/
 
 // Prevent windows system header files from defining min/max as macros.
-#define NOMINMAX
+#define NOMINMAX 1
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -325,12 +325,12 @@ bool QNativeSocketEnginePrivate::createNewSocket(QAbstractSocket::SocketType soc
 
     SOCKET socket = INVALID_SOCKET;
     // Windows 7 or later, try the new API
-    if (osver >= QSysInfo::WV_6_1)
+    if ((osver & QSysInfo::WV_NT_based) >= QSysInfo::WV_6_1)
         socket = ::WSASocket(protocol, type, 0, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT | WSA_FLAG_OVERLAPPED);
     // previous call fails if the windows 7 service pack 1 or hot fix isn't installed.
 
     // Try the old API if the new one failed on Windows 7, or always on earlier versions
-    if (socket == INVALID_SOCKET && osver <= QSysInfo::WV_6_1) {
+    if (socket == INVALID_SOCKET && ((osver & QSysInfo::WV_NT_based) <= QSysInfo::WV_6_1)) {
         socket = ::WSASocket(protocol, type, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 #ifdef HANDLE_FLAG_INHERIT
         if (socket != INVALID_SOCKET) {
@@ -909,7 +909,40 @@ bool QNativeSocketEnginePrivate::nativeListen(int backlog)
 int QNativeSocketEnginePrivate::nativeAccept()
 {
     int acceptedDescriptor = WSAAccept(socketDescriptor, 0,0,0,0);
-	if (acceptedDescriptor != -1 && QAbstractEventDispatcher::instance()) {
+    if (acceptedDescriptor == -1) {
+        int err = WSAGetLastError();
+        switch (err) {
+        case WSAEACCES:
+            setError(QAbstractSocket::SocketAccessError, AccessErrorString);
+            break;
+        case WSAECONNREFUSED:
+            setError(QAbstractSocket::ConnectionRefusedError, ConnectionRefusedErrorString);
+            break;
+        case WSAECONNRESET:
+            setError(QAbstractSocket::NetworkError, RemoteHostClosedErrorString);
+            break;
+        case WSAENETDOWN:
+            setError(QAbstractSocket::NetworkError, NetworkUnreachableErrorString);
+        case WSAENOTSOCK:
+            setError(QAbstractSocket::SocketResourceError, NotSocketErrorString);
+            break;
+        case WSAEINVAL:
+        case WSAEOPNOTSUPP:
+            setError(QAbstractSocket::UnsupportedSocketOperationError, ProtocolUnsupportedErrorString);
+            break;
+        case WSAEFAULT:
+        case WSAEMFILE:
+        case WSAENOBUFS:
+            setError(QAbstractSocket::SocketResourceError, ResourceErrorString);
+            break;
+        case WSAEWOULDBLOCK:
+            setError(QAbstractSocket::TemporaryError, TemporaryErrorString);
+            break;
+        default:
+            setError(QAbstractSocket::UnknownSocketError, UnknownSocketErrorString);
+            break;
+        }
+    } else if (acceptedDescriptor != -1 && QAbstractEventDispatcher::instance()) {
 		// Because of WSAAsyncSelect() WSAAccept returns a non blocking socket
 		// with the same attributes as the listening socket including the current
 		// WSAAsyncSelect(). To be able to change the socket to blocking mode the

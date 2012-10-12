@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -277,7 +277,7 @@ static bool ensureValidImage(QImage *dest, struct jpeg_decompress_struct *info,
 
 static bool read_jpeg_image(QImage *outImage,
                             QSize scaledSize, QRect scaledClipRect,
-                            QRect clipRect, int inQuality, j_decompress_ptr info, struct my_error_mgr* err  )
+                            QRect clipRect, volatile int inQuality, j_decompress_ptr info, struct my_error_mgr* err  )
 {
     if (!setjmp(err->setjmp_buffer)) {
         // -1 means default quality.
@@ -363,7 +363,7 @@ static bool read_jpeg_image(QImage *outImage,
         // If high quality not required, use fast decompression
         if( quality < HIGH_QUALITY_THRESHOLD ) {
             info->dct_method = JDCT_IFAST;
-            info->do_fancy_upsampling = FALSE;
+            info->do_fancy_upsampling = false;
         }
 
         (void) jpeg_calc_output_dimensions(info);
@@ -561,7 +561,7 @@ static inline void set_text(const QImage &image, j_compress_ptr cinfo, const QSt
     }
 }
 
-static bool write_jpeg_image(const QImage &image, QIODevice *device, int sourceQuality, const QString &description)
+static bool write_jpeg_image(const QImage &image, QIODevice *device, volatile int sourceQuality, const QString &description)
 {
     bool success = false;
     const QVector<QRgb> cmap = image.colorTable();
@@ -624,7 +624,7 @@ static bool write_jpeg_image(const QImage &image, QIODevice *device, int sourceQ
         }
 
 
-        int quality = sourceQuality >= 0 ? qMin(sourceQuality,100) : 75;
+        int quality = sourceQuality >= 0 ? qMin(int(sourceQuality),100) : 75;
 #if defined(Q_OS_UNIXWARE)
         jpeg_set_quality(&cinfo, quality, B_TRUE /* limit to baseline-JPEG values */);
         jpeg_start_compress(&cinfo, B_TRUE);
@@ -870,22 +870,32 @@ bool QJpegHandlerPrivate::read(QImage *image)
 
 }
 
+Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_neon(quint32 *dst, const uchar *src, int len);
+Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_ssse3(quint32 *dst, const uchar *src, int len);
+Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_avx(quint32 *dst, const uchar *src, int len);
+
 QJpegHandler::QJpegHandler()
     : d(new QJpegHandlerPrivate(this))
 {
 #if defined(QT_COMPILER_SUPPORTS_NEON)
     // from qimage_neon.cpp
-    Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_neon(quint32 *dst, const uchar *src, int len);
 
     if (qCpuHasFeature(NEON))
         rgb888ToRgb32ConverterPtr = qt_convert_rgb888_to_rgb32_neon;
 #endif // QT_COMPILER_SUPPORTS_NEON
 #if defined(QT_COMPILER_SUPPORTS_SSSE3)
     // from qimage_ssse3.cpp
-    Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_ssse3(quint32 *dst, const uchar *src, int len);
 
-    if (qCpuHasFeature(SSSE3))
+    if (false) {
+#  if defined(QT_COMPILER_SUPPORTS_AVX)
+    } else if (qCpuHasFeature(AVX)) {
+        rgb888ToRgb32ConverterPtr = qt_convert_rgb888_to_rgb32_avx;
+#  endif
+#  ifndef __AVX__
+    } else if (qCpuHasFeature(SSSE3)) {
         rgb888ToRgb32ConverterPtr = qt_convert_rgb888_to_rgb32_ssse3;
+#  endif
+    }
 #endif // QT_COMPILER_SUPPORTS_SSSE3
 }
 

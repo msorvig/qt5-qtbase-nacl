@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,6 +42,9 @@
 #include "mingw_make.h"
 #include "option.h"
 #include "meta.h"
+
+#include <proitems.h>
+
 #include <qregexp.h>
 #include <qdir.h>
 #include <stdlib.h>
@@ -74,16 +77,15 @@ QString MingwMakefileGenerator::getLibTarget()
 bool MingwMakefileGenerator::findLibraries()
 {
     QList<QMakeLocalFileName> dirs;
-  const QString lflags[] = { "QMAKE_LIBS", "QMAKE_LIBS_PRIVATE", QString() };
-  for (int i = 0; !lflags[i].isNull(); i++) {
-    QStringList &l = project->values(lflags[i]);
-    QStringList::Iterator it = l.begin();
+  static const char * const lflags[] = { "QMAKE_LIBS", "QMAKE_LIBS_PRIVATE", 0 };
+  for (int i = 0; lflags[i]; i++) {
+    ProStringList &l = project->values(lflags[i]);
+    ProStringList::Iterator it = l.begin();
     while (it != l.end()) {
         if ((*it).startsWith("-l")) {
-            QString steam = (*it).mid(2), out;
-            QString suffix;
-            if (!project->isEmpty("QMAKE_" + steam.toUpper() + "_SUFFIX"))
-                suffix = project->first("QMAKE_" + steam.toUpper() + "_SUFFIX");
+            QString steam = (*it).mid(2).toQString();
+            ProString out;
+            QString suffix = project->first(ProKey("QMAKE_" + steam.toUpper() + "_SUFFIX")).toQString();
             for (QList<QMakeLocalFileName>::Iterator dir_it = dirs.begin(); dir_it != dirs.end(); ++dir_it) {
                 QString extension;
                 int ver = findHighestVersion((*dir_it).local(), steam, "dll.a|a");
@@ -93,14 +95,14 @@ bool MingwMakefileGenerator::findLibraries()
                 if(QMakeMetaInfo::libExists((*dir_it).local() + Option::dir_sep + steam) ||
                     exists((*dir_it).local() + Option::dir_sep + steam + extension + ".a") ||
                     exists((*dir_it).local() + Option::dir_sep + steam + extension + ".dll.a")) {
-                        out = (*it) + extension;
+                        out = *it + extension;
                         break;
                 }
             }
             if (!out.isEmpty()) // We assume if it never finds it that its correct
                 (*it) = out;
 	    } else if((*it).startsWith("-L")) {
-            dirs.append(QMakeLocalFileName((*it).mid(2)));
+            dirs.append(QMakeLocalFileName((*it).mid(2).toQString()));
         }
 
         ++it;
@@ -129,8 +131,8 @@ bool MingwMakefileGenerator::writeMakefile(QTextStream &t)
 
         if(Option::mkfile::do_stub_makefile) {
             t << "QMAKE    = " << var("QMAKE_QMAKE") << endl;
-            const QStringList &qut = project->values("QMAKE_EXTRA_TARGETS");
-            for(QStringList::ConstIterator it = qut.begin(); it != qut.end(); ++it)
+            const ProStringList &qut = project->values("QMAKE_EXTRA_TARGETS");
+            for (ProStringList::ConstIterator it = qut.begin(); it != qut.end(); ++it)
                 t << *it << " ";
             t << "first all clean install distclean uninstall: qmake" << endl
               << "qmake_all:" << endl;
@@ -148,18 +150,19 @@ bool MingwMakefileGenerator::writeMakefile(QTextStream &t)
     return false;
  }
 
-void createLdObjectScriptFile(const QString &fileName, const QStringList &objList)
+void createLdObjectScriptFile(const QString &fileName, const ProStringList &objList)
 {
     QString filePath = Option::output_dir + QDir::separator() + fileName;
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream t(&file);
         t << "INPUT(" << endl;
-        for (QStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
-            if (QDir::isRelativePath(*it))
-		t << "./" << *it << endl;
-	    else
-		t << *it << endl;
+        for (ProStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
+            QString path = (*it).toQString();
+            if (QDir::isRelativePath(path))
+                t << "./" << path << endl;
+            else
+                t << path << endl;
         }
         t << ");" << endl;
 	t.flush();
@@ -167,14 +170,14 @@ void createLdObjectScriptFile(const QString &fileName, const QStringList &objLis
     }
 }
 
-void createArObjectScriptFile(const QString &fileName, const QString &target, const QStringList &objList)
+void createArObjectScriptFile(const QString &fileName, const QString &target, const ProStringList &objList)
 {
     QString filePath = Option::output_dir + QDir::separator() + fileName;
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream t(&file);
         t << "CREATE " << target << endl;
-        for (QStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
+        for (ProStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
             t << "ADDMOD " << *it << endl;
         }
         t << "SAVE" << endl;
@@ -183,17 +186,18 @@ void createArObjectScriptFile(const QString &fileName, const QString &target, co
     }
 }
 
-void createRvctObjectScriptFile(const QString &fileName, const QStringList &objList)
+void createRvctObjectScriptFile(const QString &fileName, const ProStringList &objList)
 {
     QString filePath = Option::output_dir + QDir::separator() + fileName;
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream t(&file);
-        for (QStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
-            if (QDir::isRelativePath(*it))
-                t << "./" << *it << endl;
+        for (ProStringList::ConstIterator it = objList.constBegin(); it != objList.constEnd(); ++it) {
+            QString path = (*it).toQString();
+            if (QDir::isRelativePath(path))
+                t << "./" << path << endl;
             else
-                t << *it << endl;
+                t << path << endl;
         }
         t.flush();
         file.close();
@@ -205,7 +209,7 @@ void MingwMakefileGenerator::writeMingwParts(QTextStream &t)
     writeStandardParts(t);
 
     if (!preCompHeaderOut.isEmpty()) {
-	QString header = project->first("PRECOMPILED_HEADER");
+        QString header = project->first("PRECOMPILED_HEADER").toQString();
 	QString cHeader = preCompHeaderOut + Option::dir_sep + "c";
 	t << escapeDependencyPath(cHeader) << ": " << escapeDependencyPath(header) << " "
           << escapeDependencyPaths(findDependencies(header)).join(" \\\n\t\t")
@@ -259,8 +263,7 @@ void MingwMakefileGenerator::init()
         project->values("QMAKE_LIBS") += escapeFilePaths(project->values("RES_FILE"));
     }
 
-    QString targetfilename = project->values("TARGET").first();
-    QStringList &configs = project->values("CONFIG");
+    ProStringList &configs = project->values("CONFIG");
 
     if(project->isActiveConfig("qt_dll"))
         if(configs.indexOf("qt") == -1)
@@ -276,7 +279,7 @@ void MingwMakefileGenerator::init()
     }
 
     if (!project->values("DEF_FILE").isEmpty()) {
-        QString defFileName = fileFixify(project->values("DEF_FILE")).first();
+        QString defFileName = fileFixify(project->first("DEF_FILE").toQString());
         project->values("QMAKE_LFLAGS").append(QString("-Wl,") + escapeFilePath(defFileName));
     }
 
@@ -289,7 +292,7 @@ void MingwMakefileGenerator::init()
     if (!project->first("PRECOMPILED_HEADER").isEmpty()
         && project->isActiveConfig("precompile_header")) {
         QString preCompHeader = var("PRECOMPILED_DIR")
-		         + QFileInfo(project->first("PRECOMPILED_HEADER")).fileName();
+                    + QFileInfo(project->first("PRECOMPILED_HEADER").toQString()).fileName();
 	preCompHeaderOut = preCompHeader + ".gch";
 	project->values("QMAKE_CLEAN").append(preCompHeaderOut + Option::dir_sep + "c");
 	project->values("QMAKE_CLEAN").append(preCompHeaderOut + Option::dir_sep + "c++");
@@ -317,9 +320,16 @@ void MingwMakefileGenerator::writeIncPart(QTextStream &t)
 {
     t << "INCPATH       = ";
 
-    const QStringList &incs = project->values("INCLUDEPATH");
-    for (QStringList::ConstIterator incit = incs.begin(); incit != incs.end(); ++incit) {
-        QString inc = (*incit);
+    if (!project->isActiveConfig("no_include_pwd")) {
+        QString pwd = escapeFilePath(fileFixify(qmake_getpwd()));
+        if (pwd.isEmpty())
+            pwd = ".";
+        t << "-I" << pwd << " ";
+    }
+
+    const ProStringList &incs = project->values("INCLUDEPATH");
+    for (ProStringList::ConstIterator incit = incs.begin(); incit != incs.end(); ++incit) {
+        QString inc = (*incit).toQString();
         inc.replace(QRegExp("\\\\$"), "");
         inc.replace(QRegExp("\""), "");
         t << "-I" << quote << inc << quote << " ";
@@ -353,7 +363,7 @@ void MingwMakefileGenerator::writeObjectsPart(QTextStream &t)
         // QMAKE_LIB is used for win32, including mingw, whereas QMAKE_AR is used on Unix.
         if (project->isActiveConfig("rvct_linker")) {
             createRvctObjectScriptFile(ar_script_file, project->values("OBJECTS"));
-            QString ar_cmd = project->values("QMAKE_LIB").join(" ");
+            QString ar_cmd = project->values("QMAKE_LIB").join(' ');
             if (ar_cmd.isEmpty())
                 ar_cmd = "armar --create";
             objectsLinkLine = ar_cmd + " " + var("DEST_TARGET") + " --via " + escapeFilePath(ar_script_file);
@@ -383,12 +393,6 @@ void MingwMakefileGenerator::writeObjectsPart(QTextStream &t)
 
 void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
 {
-    if (project->first("TEMPLATE") == "aux") {
-        t << "first:" << endl;
-        t << "all:" << endl;
-        return;
-    }
-
     t << "first: all" << endl;
     t << "all: " << escapeDependencyPath(fileFixify(Option::output.fileName())) << " " << valGlue(escapeDependencyPaths(project->values("ALL_DEPS"))," "," "," ") << " $(DESTDIR_TARGET)" << endl << endl;
     t << "$(DESTDIR_TARGET): " << var("PRE_TARGETDEPS") << " $(OBJECTS) " << var("POST_TARGETDEPS");
@@ -400,7 +404,7 @@ void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         } else {
             t << "\n\t" << objectsLinkLine << " " ;
         }
-    } else {
+    } else if (project->first("TEMPLATE") != "aux") {
         t << "\n\t" << "$(LINK) $(LFLAGS) -o $(DESTDIR_TARGET) " << objectsLinkLine << " " << " $(LIBS)";
     }
     if(!project->isEmpty("QMAKE_POST_LINK"))
@@ -410,7 +414,7 @@ void MingwMakefileGenerator::writeBuildRulesPart(QTextStream &t)
 
 void MingwMakefileGenerator::writeRcFilePart(QTextStream &t)
 {
-    const QString rc_file = fileFixify(project->first("RC_FILE"));
+    const QString rc_file = fileFixify(project->first("RC_FILE").toQString());
 
     QString incPathStr = fileInfo(rc_file).path();
     if (incPathStr != "." && QDir::isRelativePath(incPathStr))

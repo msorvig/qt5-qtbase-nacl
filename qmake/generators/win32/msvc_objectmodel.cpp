@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -2093,6 +2093,12 @@ void VCFilter::addFiles(const QStringList& fileList)
         addFile(fileList.at(i));
 }
 
+void VCFilter::addFiles(const ProStringList& fileList)
+{
+    for (int i = 0; i < fileList.count(); ++i)
+        addFile(fileList.at(i).toQString());
+}
+
 void VCFilter::modifyPCHstage(QString str)
 {
     bool autogenSourceFile = Project->autogenPrecompCPP;
@@ -2163,7 +2169,7 @@ bool VCFilter::addExtraCompiler(const VCFilterFile &info)
     bool hasBuiltIn = false;
     if (!objectMappedFile.isEmpty()) {
         hasBuiltIn = Project->hasBuiltinCompiler(objectMappedFile.at(0));
-//        qDebug("*** Extra compiler file has object mapped file '%s' => '%s'", qPrintable(inFile), qPrintable(objectMappedFile.join(" ")));
+//        qDebug("*** Extra compiler file has object mapped file '%s' => '%s'", qPrintable(inFile), qPrintable(objectMappedFile.join(' ')));
     }
 
     CustomBuildTool.AdditionalDependencies.clear();
@@ -2180,12 +2186,12 @@ bool VCFilter::addExtraCompiler(const VCFilterFile &info)
             continue;
 
         // All information about the extra compiler
-        QString tmp_out = Project->project->first(extraCompilerName + ".output");
-        QString tmp_cmd = Project->project->values(extraCompilerName + ".commands").join(" ");
-        QString tmp_cmd_name = Project->project->values(extraCompilerName + ".name").join(" ");
-        QStringList tmp_dep = Project->project->values(extraCompilerName + ".depends");
-        QString tmp_dep_cmd = Project->project->values(extraCompilerName + ".depend_command").join(" ");
-        QStringList configs = Project->project->values(extraCompilerName + ".CONFIG");
+        QString tmp_out = Project->project->first(ProKey(extraCompilerName + ".output")).toQString();
+        QString tmp_cmd = Project->project->values(ProKey(extraCompilerName + ".commands")).join(' ');
+        QString tmp_cmd_name = Project->project->values(ProKey(extraCompilerName + ".name")).join(' ');
+        QStringList tmp_dep = Project->project->values(ProKey(extraCompilerName + ".depends")).toQStringList();
+        QString tmp_dep_cmd = Project->project->values(ProKey(extraCompilerName + ".depend_command")).join(' ');
+        const ProStringList &configs = Project->project->values(ProKey(extraCompilerName + ".CONFIG"));
         bool combined = configs.indexOf("combine") != -1;
 
         QString cmd, cmd_name, out;
@@ -2248,12 +2254,13 @@ bool VCFilter::addExtraCompiler(const VCFilterFile &info)
         // Command for file
         if (combined) {
             // Add dependencies for each file
-            QStringList tmp_in = Project->project->values(extraCompilerName + ".input");
+            const ProStringList &tmp_in = Project->project->values(ProKey(extraCompilerName + ".input"));
             for (int a = 0; a < tmp_in.count(); ++a) {
-                const QStringList &files = Project->project->values(tmp_in.at(a));
+                const ProStringList &files = Project->project->values(tmp_in.at(a).toKey());
                 for (int b = 0; b < files.count(); ++b) {
-                    deps += Project->findDependencies(files.at(b));
-                    inputs += Option::fixPathToTargetOS(files.at(b), false);
+                    QString file = files.at(b).toQString();
+                    deps += Project->findDependencies(file);
+                    inputs += Option::fixPathToTargetOS(file, false);
                 }
             }
             deps += inputs; // input files themselves too..
@@ -2261,7 +2268,7 @@ bool VCFilter::addExtraCompiler(const VCFilterFile &info)
             // Replace variables for command w/all input files
             // ### join gives path issues with directories containing spaces!
             cmd = Project->replaceExtraCompilerVariables(tmp_cmd,
-                                                         inputs.join(" "),
+                                                         inputs.join(' '),
                                                          out);
         } else {
             deps += inFile; // input file itself too..

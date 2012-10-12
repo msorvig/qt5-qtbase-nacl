@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -61,8 +61,6 @@
 #include "qabstractscrollarea.h"
 #include "qabstractbutton.h"
 #include "qcombobox.h"
-#include "qabstractscrollarea.h"
-#include "qframe.h"
 #include "qscrollbar.h"
 #include "qabstractitemview.h"
 #include "qmenubar.h"
@@ -4213,7 +4211,7 @@ void QWindowsMobileStylePrivate::drawTabBarTab(QPainter *painter, const QStyleOp
 #endif //QT_NO_TABBAR
 }
 
-void QWindowsMobileStylePrivate::drawPanelItemViewSelected(QPainter *painter, const QStyleOptionViewItemV4 *option, QRect rect)
+void QWindowsMobileStylePrivate::drawPanelItemViewSelected(QPainter *painter, const QStyleOptionViewItem *option, QRect rect)
 {
 #ifdef Q_OS_WINCE_WM
     if (wm65) {
@@ -4226,11 +4224,11 @@ void QWindowsMobileStylePrivate::drawPanelItemViewSelected(QPainter *painter, co
 
         painter->setPen(QColor(Qt::lightGray));
 
-        if (option->viewItemPosition ==  QStyleOptionViewItemV4::Middle) {
+        if (option->viewItemPosition ==  QStyleOptionViewItem::Middle) {
             painter->drawImage(r, imageListViewHighlightMiddle);
-        } else if (option->viewItemPosition ==  QStyleOptionViewItemV4::Beginning) {
+        } else if (option->viewItemPosition ==  QStyleOptionViewItem::Beginning) {
             painter->drawImage(r.adjusted(10, 0, 0, 0), imageListViewHighlightMiddle);
-        } else if (option->viewItemPosition ==  QStyleOptionViewItemV4::End) {
+        } else if (option->viewItemPosition ==  QStyleOptionViewItem::End) {
             painter->drawImage(r.adjusted(0, 0, -10, 0), imageListViewHighlightMiddle);
         } else {
             painter->drawImage(r.adjusted(10, 0, -10, 0), imageListViewHighlightMiddle);
@@ -4248,10 +4246,10 @@ void QWindowsMobileStylePrivate::drawPanelItemViewSelected(QPainter *painter, co
         cornerLeft = cornerLeft.scaled(width, r.height());
         cornerRight = cornerRight.scaled(width, r.height());
 
-        if ((option->viewItemPosition ==  QStyleOptionViewItemV4::Beginning) || (option->viewItemPosition ==  QStyleOptionViewItemV4::OnlyOne) || !option->viewItemPosition) {
+        if ((option->viewItemPosition ==  QStyleOptionViewItem::Beginning) || (option->viewItemPosition ==  QStyleOptionViewItem::OnlyOne) || !option->viewItemPosition) {
             painter->drawImage(r.topLeft(), cornerLeft);
         }
-        if ((option->viewItemPosition ==  QStyleOptionViewItemV4::End) || (option->viewItemPosition ==  QStyleOptionViewItemV4::OnlyOne) || !option->viewItemPosition) {
+        if ((option->viewItemPosition ==  QStyleOptionViewItem::End) || (option->viewItemPosition ==  QStyleOptionViewItem::OnlyOne) || !option->viewItemPosition) {
             painter->drawImage(r.topRight() - QPoint(cornerRight.width(),0), cornerRight);
         }
         return;
@@ -5264,7 +5262,7 @@ void QWindowsMobileStyle::drawPrimitive(PrimitiveElement element, const QStyleOp
 #endif //QT_NO_TABBAR
 #ifndef QT_NO_ITEMVIEWS
     case PE_PanelItemViewRow:
-        if (const QStyleOptionViewItemV4 *vopt = qstyleoption_cast<const QStyleOptionViewItemV4 *>(option)) {
+        if (const QStyleOptionViewItem *vopt = qstyleoption_cast<const QStyleOptionViewItem *>(option)) {
             QPalette::ColorGroup cg = vopt->state & QStyle::State_Enabled
                                       ? QPalette::Normal : QPalette::Disabled;
             if (cg == QPalette::Normal && !(vopt->state & QStyle::State_Active))
@@ -5272,14 +5270,14 @@ void QWindowsMobileStyle::drawPrimitive(PrimitiveElement element, const QStyleOp
 
             if ((vopt->state & QStyle::State_Selected) &&  proxy()->styleHint(QStyle::SH_ItemView_ShowDecorationSelected, option, widget))
                  d->drawPanelItemViewSelected(painter, vopt);
-            else if (vopt->features & QStyleOptionViewItemV2::Alternate)
+            else if (vopt->features & QStyleOptionViewItem::Alternate)
                 painter->fillRect(vopt->rect, vopt->palette.brush(cg, QPalette::AlternateBase));
             else if (!(vopt->state & QStyle::State_Enabled))
                 painter->fillRect(vopt->rect, vopt->palette.brush(cg, QPalette::Base));
         }
         break;
     case PE_PanelItemViewItem:
-        if (const QStyleOptionViewItemV4 *vopt = qstyleoption_cast<const QStyleOptionViewItemV4 *>(option)) {
+        if (const QStyleOptionViewItem *vopt = qstyleoption_cast<const QStyleOptionViewItem *>(option)) {
             QPalette::ColorGroup cg = vopt->state & QStyle::State_Enabled
                                       ? QPalette::Normal : QPalette::Disabled;
             if (cg == QPalette::Normal && !(vopt->state & QStyle::State_Active))

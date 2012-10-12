@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -47,6 +47,7 @@
 #include "qcoretextfontdatabase_p.h"
 #include "qfontengine_coretext_p.h"
 #include <QtCore/QSettings>
+#include <QtGui/QGuiApplication>
 
 QT_BEGIN_NAMESPACE
 
@@ -305,8 +306,19 @@ QFontEngine *QCoreTextFontDatabase::fontEngine(const QFontDef &f, QUnicodeTables
 {
     Q_UNUSED(script);
 
+    qreal scaledPointSize = f.pixelSize;
+
+    // When 96 DPI is forced, the Mac plugin will use DPI 72 for some
+    // fonts (hardcoded in qcocoaintegration.mm) and 96 for others. This
+    // discrepancy makes it impossible to find the correct point size
+    // here without having the DPI used for the font. Until a proper
+    // solution (requiring API change) can be made, we simply fall back
+    // to passing in the point size to retain old behavior.
+    if (QGuiApplication::testAttribute(Qt::AA_Use96Dpi))
+        scaledPointSize = f.pointSize;
+
     CTFontDescriptorRef descriptor = (CTFontDescriptorRef) usrPtr;
-    CTFontRef font = CTFontCreateWithFontDescriptor(descriptor, f.pointSize, NULL);
+    CTFontRef font = CTFontCreateWithFontDescriptor(descriptor, scaledPointSize, NULL);
     if (font) {
         QFontEngine *engine = new QCoreTextFontEngine(font, f);
         engine->fontDef = f;
@@ -351,9 +363,51 @@ QStringList QCoreTextFontDatabase::fallbacksForFamily(const QString family, cons
 }
 
 #ifndef Q_OS_IOS
-OSErr qt_mac_create_fsref(const QString &file, FSRef *fsref);
 QStringList QCoreTextFontDatabase::addApplicationFont(const QByteArray &fontData, const QString &fileName)
 {
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_8
+    if (QSysInfo::QSysInfo::MacintoshVersion >= QSysInfo::MV_10_8) {
+        CTFontRef font = NULL;
+
+        if (!fontData.isEmpty()) {
+            QCFType<CGDataProviderRef> dataProvider = CGDataProviderCreateWithData(NULL,
+                fontData.constData(), fontData.size(), NULL);
+            CGFontRef cgFont = CGFontCreateWithDataProvider(dataProvider);
+            if (cgFont) {
+                CFErrorRef error;
+                bool success = CTFontManagerRegisterGraphicsFont(cgFont, &error);
+                if (success) {
+                    font = CTFontCreateWithGraphicsFont(cgFont, 0.0, NULL, NULL);
+                } else {
+                    NSLog(@"Unable to register font: %@", error);
+                    CFRelease(error);
+                }
+            }
+        } else {
+            CFErrorRef error;
+            QCFType<CFURLRef> fontURL = CFURLCreateWithFileSystemPath(NULL, QCFString(fileName), 0, false);
+            bool success = CTFontManagerRegisterFontsForURL(fontURL, kCTFontManagerScopeProcess, &error);
+            if (success) {
+                const void *keys[] = { fontURL };
+                const void *values[] = { kCTFontURLAttribute };
+                QCFType<CFDictionaryRef> attributes = CFDictionaryCreate(NULL, keys, values, 1,
+                    &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+                QCFType<CTFontDescriptorRef> descriptor = CTFontDescriptorCreateWithAttributes(attributes);
+                font = CTFontCreateWithFontDescriptor(descriptor, 0.0, NULL);
+            } else {
+                NSLog(@"Unable to register font: %@", error);
+                CFRelease(error);
+            }
+        }
+
+        if (font) {
+            QStringList families;
+            families.append(QCFString(CTFontCopyFamilyName(font)));
+            CFRelease(font);
+            return families;
+        }
+    } else {
+#else
     ATSFontContainerRef fontContainer;
     OSStatus e;
 
@@ -363,6 +417,7 @@ QStringList QCoreTextFontDatabase::addApplicationFont(const QByteArray &fontData
                                       kATSOptionFlagsDefault, &fontContainer);
     } else {
         FSRef ref;
+        OSErr qt_mac_create_fsref(const QString &file, FSRef *fsref);
         if (qt_mac_create_fsref(fileName, &ref) != noErr)
             return QStringList();
         e = ATSFontActivateFromFileReference(&ref, kATSFontContextLocal, kATSFontFormatUnspecified, 0,
@@ -388,6 +443,10 @@ QStringList QCoreTextFontDatabase::addApplicationFont(const QByteArray &fontData
 
         return families;
     }
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_8
+    }
+#endif
 
     return QStringList();
 }

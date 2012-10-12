@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -60,6 +60,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QLatin1Char
+    \inmodule QtCore
     \brief The QLatin1Char class provides an 8-bit ASCII/Latin-1 character.
 
     \ingroup string-processing
@@ -91,6 +92,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QChar
+    \inmodule QtCore
     \brief The QChar class provides a 16-bit Unicode character.
 
     \ingroup string-processing
@@ -180,8 +182,9 @@ QT_BEGIN_NAMESPACE
     \value Unicode_5_2  Version 5.2
     \value Unicode_6_0  Version 6.0
     \value Unicode_6_1  Version 6.1
+    \value Unicode_6_2  Version 6.2
     \value Unicode_Unassigned  The value is not assigned to any character
-        in version 6.1 of Unicode.
+                               in version 6.2 of Unicode.
 
     \sa unicodeVersion(), currentUnicodeVersion()
 */
@@ -783,7 +786,7 @@ bool QT_FASTCALL QChar::isLetterOrNumber_helper(uint ucs4)
 */
 
 /*!
-    \fn static bool isNonCharacter(uint ucs4)
+    \fn static bool QChar::isNonCharacter(uint ucs4)
     \overload
     \since 5.0
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -70,7 +70,7 @@ GBuildMakefileGenerator::write()
     QString filename(Option::output.fileName());
     QString pathtoremove(qmake_getpwd());
     QString relpath(pathtoremove);
-    QString strtarget(project->first("TARGET"));
+    QString strtarget(project->first("TARGET").toQString());
     bool isnativebin = nativebins.contains(strtarget);
     relpath.replace(Option::output_dir, "");
 
@@ -214,7 +214,7 @@ GBuildMakefileGenerator::write()
     }
 
     QTextStream t(&Option::output);
-    QString primaryTarget(project->values("QMAKE_CXX").at(0));
+    QString primaryTarget(project->values("QMAKE_CXX").at(0).toQString());
 
     pathtoremove += QDir::separator();
     filename.remove(qmake_getpwd());
@@ -258,8 +258,8 @@ GBuildMakefileGenerator::write()
         t << "\t-Iwork\n";
         t << "\t-Llib\n";
         t << "\t";
-        const QStringList &l = project->values("QMAKE_CXXFLAGS");
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+        const ProStringList &l = project->values("QMAKE_CXXFLAGS");
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
             if ((*it).startsWith("-"))
                 t << "\n" << "\t" << (*it);
             else
@@ -278,14 +278,14 @@ GBuildMakefileGenerator::write()
 
     if (project->first("TEMPLATE") == "app") {
         /* include linker flags if it's an application */
-        QString src[] = { "QMAKE_LFLAGS", "QMAKE_LIBS", "LIBS", QString() };
-        for (int i = 0; !src[i].isNull(); i++) {
+        static const char * const src[] = { "QMAKE_LFLAGS", "QMAKE_LIBS", "LIBS", 0 };
+        for (int i = 0; src[i]; i++) {
             /* skip target libraries for native tools */
             if (isnativebin && (i == 0))
                 continue;
             t << "\t";
-            const QStringList &l = project->values(src[i]);
-            for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+            const ProStringList &l = project->values(src[i]);
+            for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
                 if ((*it).startsWith("-"))
                     t << "\n" << "\t" << (*it);
                 else
@@ -297,14 +297,15 @@ GBuildMakefileGenerator::write()
 
     /* first subdirectories/subprojects */
     {
-        const QStringList &l = project->values("SUBDIRS");
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
-            QString gpjname((*it));
+        const ProStringList &l = project->values("SUBDIRS");
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+            QString gpjname((*it).toQString());
             /* avoid native tools */
             if (nativebins.contains(gpjname.section("_", -1)))
                 continue;
-            if (!project->first((*it) + ".subdir").isEmpty())
-                gpjname = project->first((*it) + ".subdir");
+            const ProKey skey(*it + ".subdir");
+            if (!project->first(skey).isEmpty())
+                gpjname = project->first(skey).toQString();
             else
                 gpjname.replace("_", QDir::separator());
             gpjname += QDir::separator() + gpjname.section(QDir::separator(), -1);
@@ -318,9 +319,9 @@ GBuildMakefileGenerator::write()
     }
 
     {
-        const QStringList &l = project->values("RESOURCES");
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
-            QString tmpstr(*it);
+        const ProStringList &l = project->values("RESOURCES");
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+            QString tmpstr((*it).toQString());
             tmpstr.remove(pathtoremove);
             t << tmpstr << "\t[Qt Resource]\n";
             tmpstr = tmpstr.section(".", -2, -1).section(QDir::separator(), -1);
@@ -332,9 +333,9 @@ GBuildMakefileGenerator::write()
         }
     }
     {
-        const QStringList &l = project->values("FORMS");
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
-            QString tmpstr(*it);
+        const ProStringList &l = project->values("FORMS");
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+            QString tmpstr((*it).toQString());
             tmpstr.remove(pathtoremove);
             t << tmpstr << "\t[Qt Dialog]\n";
             tmpstr = tmpstr.section(".", 0, 0).section(QDir::separator(), -1);
@@ -346,25 +347,25 @@ GBuildMakefileGenerator::write()
     }
 
     /* source files for this project */
-    QString src[] = { "HEADERS", "SOURCES", QString() };
-    for (int i = 0; !src[i].isNull(); i++) {
-        const QStringList &l = project->values(src[i]);
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+    static const char * const src[] = { "HEADERS", "SOURCES", 0 };
+    for (int i = 0; src[i]; i++) {
+        const ProStringList &l = project->values(src[i]);
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
             if ((*it).isEmpty())
                 continue;
             /* native tools aren't preprocessed */
             if (!isnativebin)
-                t << writeOne((*it), pathtoremove);
+                t << writeOne((*it).toQString(), pathtoremove);
             else
-                t << QString(*it).remove(pathtoremove) << "\n";
+                t << (*it).toQString().remove(pathtoremove) << "\n";
         }
     }
     t << "\n";
 
     {
-        const QStringList &l = project->values("GENERATED_SOURCES");
-        for (QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
-            t << "work/" << (*it).section(QDir::separator(), -1) << "\n";
+        const ProStringList &l = project->values("GENERATED_SOURCES");
+        for (ProStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
+            t << "work/" << (*it).toQString().section(QDir::separator(), -1) << "\n";
         }
     }
 
@@ -395,7 +396,7 @@ QString GBuildMakefileGenerator::writeOne(QString filename, QString pathtoremove
         QString tmpstr(filename.section("/", -1));
         QString filepath(pathtoremove);
         if (!project->values("QT_SOURCE_TREE").isEmpty()) {
-            filepath.remove(project->values("QT_SOURCE_TREE").first());
+            filepath.remove(project->first("QT_SOURCE_TREE").toQString());
             filepath.remove(0, 1);
         }
         s += "\n\t:preexecShellSafe='${QT_BUILD_DIR}/bin/moc ";

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -290,6 +290,10 @@ QPoint QWidget::mapToGlobal(const QPoint &pos) const
     int x = pos.x(), y = pos.y();
     const QWidget *w = this;
     while (w) {
+        QWindow *window = w->windowHandle();
+        if (window && window->handle())
+            return window->mapToGlobal(QPoint(x, y));
+
         x += w->data->crect.x();
         y += w->data->crect.y();
         w = w->isWindow() ? 0 : w->parentWidget();
@@ -302,6 +306,10 @@ QPoint QWidget::mapFromGlobal(const QPoint &pos) const
     int x = pos.x(), y = pos.y();
     const QWidget *w = this;
     while (w) {
+        QWindow *window = w->windowHandle();
+        if (window && window->handle())
+            return window->mapFromGlobal(QPoint(x, y));
+
         x -= w->data->crect.x();
         y -= w->data->crect.y();
         w = w->isWindow() ? 0 : w->parentWidget();
@@ -338,6 +346,16 @@ void QWidgetPrivate::setWindowTitle_sys(const QString &caption)
 
 }
 
+void QWidgetPrivate::setWindowFilePath_sys(const QString &filePath)
+{
+    Q_Q(QWidget);
+    if (!q->isWindow())
+        return;
+
+    if (QWindow *window = q->windowHandle())
+        window->setWindowFilePath(filePath);
+}
+
 void QWidgetPrivate::setWindowIcon_sys()
 {
     Q_Q(QWidget);
@@ -354,13 +372,22 @@ QWidget *qt_pressGrab = 0;
 QWidget *qt_mouseGrb = 0;
 static QWidget *keyboardGrb = 0;
 
+static inline QWindow *grabberWindow(const QWidget *w)
+{
+    QWindow *window = w->windowHandle();
+    if (!window)
+        if (const QWidget *nativeParent = w->nativeParentWidget())
+            window = nativeParent->windowHandle();
+    return window;
+}
+
 void QWidget::grabMouse()
 {
     if (qt_mouseGrb)
         qt_mouseGrb->releaseMouse();
 
-    if (windowHandle())
-        windowHandle()->setMouseGrabEnabled(true);
+    if (QWindow *window = grabberWindow(this))
+        window->setMouseGrabEnabled(true);
 
     qt_mouseGrb = this;
     qt_pressGrab = 0;
@@ -370,15 +397,7 @@ void QWidget::grabMouse()
 void QWidget::grabMouse(const QCursor &cursor)
 {
     Q_UNUSED(cursor);
-
-    if (qt_mouseGrb)
-        qt_mouseGrb->releaseMouse();
-
-    if (windowHandle())
-        windowHandle()->setMouseGrabEnabled(true);
-
-    qt_mouseGrb = this;
-    qt_pressGrab = 0;
+    grabMouse();
 }
 #endif
 
@@ -387,14 +406,15 @@ bool QWidgetPrivate::stealMouseGrab(bool grab)
     // This is like a combination of grab/releaseMouse() but with error checking
     // and it has no effect on the result of mouseGrabber().
     Q_Q(QWidget);
-    return q->windowHandle() ? q->windowHandle()->setMouseGrabEnabled(grab) : false;
+    QWindow *window = grabberWindow(q);
+    return window ? window->setMouseGrabEnabled(grab) : false;
 }
 
 void QWidget::releaseMouse()
 {
     if (qt_mouseGrb == this) {
-        if (windowHandle())
-            windowHandle()->setMouseGrabEnabled(false);
+        if (QWindow *window = grabberWindow(this))
+            window->setMouseGrabEnabled(false);
         qt_mouseGrb = 0;
     }
 }
@@ -403,8 +423,8 @@ void QWidget::grabKeyboard()
 {
     if (keyboardGrb)
         keyboardGrb->releaseKeyboard();
-    if (windowHandle())
-        windowHandle()->setKeyboardGrabEnabled(true);
+    if (QWindow *window = grabberWindow(this))
+        window->setKeyboardGrabEnabled(true);
     keyboardGrb = this;
 }
 
@@ -413,14 +433,15 @@ bool QWidgetPrivate::stealKeyboardGrab(bool grab)
     // This is like a combination of grab/releaseKeyboard() but with error
     // checking and it has no effect on the result of keyboardGrabber().
     Q_Q(QWidget);
-    return q->windowHandle() ? q->windowHandle()->setKeyboardGrabEnabled(grab) : false;
+    QWindow *window = grabberWindow(q);
+    return window ? window->setKeyboardGrabEnabled(grab) : false;
 }
 
 void QWidget::releaseKeyboard()
 {
     if (keyboardGrb == this) {
-        if (windowHandle())
-            windowHandle()->setKeyboardGrabEnabled(false);
+        if (QWindow *window = grabberWindow(this))
+            window->setKeyboardGrabEnabled(false);
         keyboardGrb = 0;
     }
 }
@@ -684,10 +705,13 @@ void QWidgetPrivate::setFocus_sys()
 {
     Q_Q(QWidget);
     // Embedded native widget may have taken the focus; get it back to toplevel if that is the case
-    if (QWindow *nativeWindow = q->window()->windowHandle()) {
-        if (nativeWindow != QGuiApplication::focusWindow()
-            && q->testAttribute(Qt::WA_WState_Created)) {
-            nativeWindow->requestActivateWindow();
+    const QWidget *topLevel = q->window();
+    if (topLevel->windowType() != Qt::Popup) {
+        if (QWindow *nativeWindow = q->window()->windowHandle()) {
+            if (nativeWindow != QGuiApplication::focusWindow()
+                && q->testAttribute(Qt::WA_WState_Created)) {
+                nativeWindow->requestActivateWindow();
+            }
         }
     }
 }
@@ -925,8 +949,13 @@ void QWidgetPrivate::createTLSysExtra()
     Q_Q(QWidget);
     extra->topextra->screenIndex = 0;
     extra->topextra->window = 0;
-    if (q->testAttribute(Qt::WA_NativeWindow) || q->isWindow())
+    if (q->testAttribute(Qt::WA_NativeWindow) || q->isWindow()) {
         extra->topextra->window = new QWidgetWindow(q);
+        if (extra->minw || extra->minh)
+            extra->topextra->window->setMinimumSize(QSize(extra->minw, extra->minh));
+        if (extra->maxw != QWIDGETSIZE_MAX || extra->maxh != QWIDGETSIZE_MAX)
+            extra->topextra->window->setMaximumSize(QSize(extra->maxw, extra->maxh));
+    }
 }
 
 void QWidgetPrivate::deleteTLSysExtra()
@@ -1035,9 +1064,7 @@ void QWidgetPrivate::setModal_sys()
 static inline void applyCursor(QWidget *w, QCursor c)
 {
     if (QWindow *window = w->windowHandle())
-        if (const QScreen *screen = window->screen())
-            if (QPlatformCursor *cursor = screen->handle()->cursor())
-                cursor->changeCursor(&c, window);
+        window->setCursor(c);
 }
 
 void qt_qpa_set_cursor(QWidget *w, bool force)
@@ -1068,10 +1095,7 @@ void qt_qpa_set_cursor(QWidget *w, bool force)
         return;
 
     if (w->isWindow() || w->testAttribute(Qt::WA_SetCursor)) {
-        QCursor *oc = QApplication::overrideCursor();
-        if (oc)
-            applyCursor(nativeParent, *oc);
-        else if (w->isEnabled())
+        if (w->isEnabled())
             applyCursor(nativeParent, w->cursor());
         else
             // Enforce the windows behavior of clearing the cursor on

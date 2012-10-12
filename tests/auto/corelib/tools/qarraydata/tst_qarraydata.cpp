@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -84,6 +84,7 @@ private slots:
     void arrayOps2();
     void setSharable_data();
     void setSharable();
+    void fromRawData_data();
     void fromRawData();
     void literals();
     void variadicLiterals();
@@ -1421,53 +1422,106 @@ void tst_QArrayData::setSharable()
     QVERIFY(array->ref.isSharable());
 }
 
-void tst_QArrayData::fromRawData()
+struct ResetOnDtor
 {
-    static const int array[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    ResetOnDtor()
+        : value_()
+    {
+    }
+
+    ResetOnDtor(int value)
+        : value_(value)
+    {
+    }
+
+    ~ResetOnDtor()
+    {
+        value_ = 0;
+    }
+
+    int value_;
+};
+
+bool operator==(const ResetOnDtor &lhs, const ResetOnDtor &rhs)
+{
+    return lhs.value_ == rhs.value_;
+}
+
+template <class T>
+void fromRawData_impl()
+{
+    static const T array[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
     {
         // Default: Immutable, sharable
-        SimpleVector<int> raw = SimpleVector<int>::fromRawData(array,
+        SimpleVector<T> raw = SimpleVector<T>::fromRawData(array,
                 sizeof(array)/sizeof(array[0]), QArrayData::Default);
 
         QCOMPARE(raw.size(), size_t(11));
-        QCOMPARE((const int *)raw.constBegin(), array);
-        QCOMPARE((const int *)raw.constEnd(), (const int *)(array + sizeof(array)/sizeof(array[0])));
+        QCOMPARE((const T *)raw.constBegin(), array);
+        QCOMPARE((const T *)raw.constEnd(), (const T *)(array + sizeof(array)/sizeof(array[0])));
 
         QVERIFY(!raw.isShared());
-        QVERIFY(SimpleVector<int>(raw).isSharedWith(raw));
+        QVERIFY(SimpleVector<T>(raw).isSharedWith(raw));
         QVERIFY(!raw.isShared());
 
         // Detach
-        QCOMPARE(raw.back(), 11);
-        QVERIFY((const int *)raw.constBegin() != array);
+        QCOMPARE(raw.back(), T(11));
+        QVERIFY((const T *)raw.constBegin() != array);
     }
 
     {
         // Immutable, unsharable
-        SimpleVector<int> raw = SimpleVector<int>::fromRawData(array,
+        SimpleVector<T> raw = SimpleVector<T>::fromRawData(array,
                 sizeof(array)/sizeof(array[0]), QArrayData::Unsharable);
 
         QCOMPARE(raw.size(), size_t(11));
-        QCOMPARE((const int *)raw.constBegin(), array);
-        QCOMPARE((const int *)raw.constEnd(), (const int *)(array + sizeof(array)/sizeof(array[0])));
+        QCOMPARE((const T *)raw.constBegin(), array);
+        QCOMPARE((const T *)raw.constEnd(), (const T *)(array + sizeof(array)/sizeof(array[0])));
 
-        SimpleVector<int> copy(raw);
+        SimpleVector<T> copy(raw);
         QVERIFY(!copy.isSharedWith(raw));
         QVERIFY(!raw.isShared());
 
         QCOMPARE(copy.size(), size_t(11));
 
-        for (size_t i = 0; i < 11; ++i)
+        for (size_t i = 0; i < 11; ++i) {
             QCOMPARE(const_(copy)[i], const_(raw)[i]);
+            QCOMPARE(const_(copy)[i], T(i + 1));
+        }
 
         QCOMPARE(raw.size(), size_t(11));
-        QCOMPARE((const int *)raw.constBegin(), array);
-        QCOMPARE((const int *)raw.constEnd(), (const int *)(array + sizeof(array)/sizeof(array[0])));
+        QCOMPARE((const T *)raw.constBegin(), array);
+        QCOMPARE((const T *)raw.constEnd(), (const T *)(array + sizeof(array)/sizeof(array[0])));
 
         // Detach
-        QCOMPARE(raw.back(), 11);
-        QVERIFY((const int *)raw.constBegin() != array);
+        QCOMPARE(raw.back(), T(11));
+        QVERIFY((const T *)raw.constBegin() != array);
+    }
+}
+
+void tst_QArrayData::fromRawData_data()
+{
+    QTest::addColumn<int>("type");
+
+    QTest::newRow("int") << 0;
+    QTest::newRow("ResetOnDtor") << 1;
+}
+void tst_QArrayData::fromRawData()
+{
+    QFETCH(int, type);
+
+    switch (type)
+    {
+        case 0:
+            fromRawData_impl<int>();
+            break;
+        case 1:
+            fromRawData_impl<ResetOnDtor>();
+            break;
+
+        default:
+            QFAIL("Unexpected type data");
     }
 }
 
@@ -1654,26 +1708,47 @@ void tst_QArrayData::grow()
     SimpleVector<int> vector;
 
     QCOMPARE(vector.size(), size_t(0));
+    QCOMPARE(vector.capacity(), size_t(0));
 
-    size_t previousCapacity = vector.capacity();
+    size_t previousCapacity = 0;
     size_t allocations = 0;
-    for (size_t i = 1; i <=  (1 << 20); ++i) {
+    for (size_t i = 1; i < (1 << 20); ++i) {
         int source[1] = { int(i) };
         vector.append(source, source + 1);
         QCOMPARE(vector.size(), i);
         if (vector.capacity() != previousCapacity) {
+            // Don't re-allocate until necessary
+            QVERIFY(previousCapacity < i);
+
             previousCapacity = vector.capacity();
             ++allocations;
+
+            // Going element-wise is slow under valgrind
+            if (previousCapacity - i > 10) {
+                i = previousCapacity - 5;
+                vector.back() = -i;
+                vector.resize(i);
+
+                // It's still not the time to re-allocate
+                QCOMPARE(vector.capacity(), previousCapacity);
+            }
         }
     }
-    QCOMPARE(vector.size(), size_t(1 << 20));
+    QVERIFY(vector.size() >= size_t(1 << 20));
 
     // QArrayData::Grow prevents excessive allocations on a growing container
     QVERIFY(allocations > 20 / 2);
     QVERIFY(allocations < 20 * 2);
 
-    for (size_t i = 0; i < (1 << 20); ++i)
-        QCOMPARE(const_(vector).at(i), int(i + 1));
+    for (size_t i = 0; i < vector.size(); ++i) {
+        int value = const_(vector).at(i);
+        if (value < 0) {
+            i = -value;
+            continue;
+        }
+
+        QCOMPARE(value, int(i + 1));
+    }
 }
 
 QTEST_APPLESS_MAIN(tst_QArrayData)

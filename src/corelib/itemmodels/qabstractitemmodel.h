@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -58,42 +58,38 @@ class QPersistentModelIndex;
 class Q_CORE_EXPORT QModelIndex
 {
     friend class QAbstractItemModel;
-    friend class QProxyModel;
 public:
-    inline QModelIndex() : r(-1), c(-1), p(0), m(0) {}
-    inline QModelIndex(const QModelIndex &other)
-        : r(other.r), c(other.c), p(other.p), m(other.m) {}
-    inline ~QModelIndex() { p = 0; m = 0; }
-    inline int row() const { return r; }
-    inline int column() const { return c; }
-    inline void *internalPointer() const { return p; }
-    inline qint64 internalId() const { return reinterpret_cast<qint64>(p); }
+    Q_DECL_CONSTEXPR inline QModelIndex() : r(-1), c(-1), i(0), m(0) {}
+    // compiler-generated copy/move ctors/assignment operators are fine!
+    Q_DECL_CONSTEXPR inline int row() const { return r; }
+    Q_DECL_CONSTEXPR inline int column() const { return c; }
+    Q_DECL_CONSTEXPR inline quintptr internalId() const { return i; }
+    inline void *internalPointer() const { return reinterpret_cast<void*>(i); }
     inline QModelIndex parent() const;
     inline QModelIndex sibling(int row, int column) const;
     inline QModelIndex child(int row, int column) const;
     inline QVariant data(int role = Qt::DisplayRole) const;
     inline Qt::ItemFlags flags() const;
-    inline const QAbstractItemModel *model() const { return m; }
-    inline bool isValid() const { return (r >= 0) && (c >= 0) && (m != 0); }
-    inline bool operator==(const QModelIndex &other) const
-        { return (other.r == r) && (other.p == p) && (other.c == c) && (other.m == m); }
-    inline bool operator!=(const QModelIndex &other) const
+    Q_DECL_CONSTEXPR inline const QAbstractItemModel *model() const { return m; }
+    Q_DECL_CONSTEXPR inline bool isValid() const { return (r >= 0) && (c >= 0) && (m != 0); }
+    Q_DECL_CONSTEXPR inline bool operator==(const QModelIndex &other) const
+        { return (other.r == r) && (other.i == i) && (other.c == c) && (other.m == m); }
+    Q_DECL_CONSTEXPR inline bool operator!=(const QModelIndex &other) const
         { return !(*this == other); }
-    inline bool operator<(const QModelIndex &other) const
+    Q_DECL_CONSTEXPR inline bool operator<(const QModelIndex &other) const
         {
-          if (r < other.r) return true;
-          if (r == other.r) {
-              if (c < other.c) return true;
-              if (c == other.c) {
-                  if (p < other.p) return true;
-                  if (p == other.p) return m < other.m;
-              }
-          }
-          return false; }
+            return  r <  other.r
+                || (r == other.r && (c <  other.c
+                                 || (c == other.c && (i <  other.i
+                                                  || (i == other.i && m < other.m )))));
+        }
 private:
-    inline QModelIndex(int row, int column, void *ptr, const QAbstractItemModel *model);
+    inline QModelIndex(int arow, int acolumn, void *ptr, const QAbstractItemModel *amodel)
+        : r(arow), c(acolumn), i(reinterpret_cast<quintptr>(ptr)), m(amodel) {}
+    Q_DECL_CONSTEXPR inline QModelIndex(int arow, int acolumn, quintptr id, const QAbstractItemModel *amodel)
+        : r(arow), c(acolumn), i(id), m(amodel) {}
     int r, c;
-    void *p;
+    quintptr i;
     const QAbstractItemModel *m;
 };
 Q_DECLARE_TYPEINFO(QModelIndex, Q_MOVABLE_TYPE);
@@ -124,7 +120,7 @@ public:
     int row() const;
     int column() const;
     void *internalPointer() const;
-    qint64 internalId() const;
+    quintptr internalId() const;
     QModelIndex parent() const;
     QModelIndex sibling(int row, int column) const;
     QModelIndex child(int row, int column) const;
@@ -160,6 +156,7 @@ template <class Key, class T> class QMap;
 class Q_CORE_EXPORT QAbstractItemModel : public QObject
 {
     Q_OBJECT
+    Q_ENUMS(LayoutChangeHints)
 
     friend class QPersistentModelIndexData;
     friend class QAbstractItemViewPrivate;
@@ -174,9 +171,7 @@ public:
                               const QModelIndex &parent = QModelIndex()) const = 0;
     virtual QModelIndex parent(const QModelIndex &child) const = 0;
 
-    inline QModelIndex sibling(int row, int column, const QModelIndex &idx) const
-        { return index(row, column, parent(idx)); }
-
+    virtual QModelIndex sibling(int row, int column, const QModelIndex &idx) const;
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const = 0;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const = 0;
     virtual bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
@@ -243,11 +238,18 @@ public:
     using QObject::parent;
 #endif
 
+    enum LayoutChangeHint
+    {
+        NoLayoutChangeHint,
+        VerticalSortHint,
+        HorizontalSortHint
+    };
+
 Q_SIGNALS:
     void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>());
     void headerDataChanged(Qt::Orientation orientation, int first, int last);
-    void layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>());
-    void layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>());
+    void layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
+    void layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
 
     void rowsAboutToBeInserted(const QModelIndex &parent, int first, int last
 #if !defined(qdoc)
@@ -334,8 +336,7 @@ protected:
     QAbstractItemModel(QAbstractItemModelPrivate &dd, QObject *parent = 0);
 
     inline QModelIndex createIndex(int row, int column, void *data = 0) const;
-    inline QModelIndex createIndex(int row, int column, int id) const;
-    inline QModelIndex createIndex(int row, int column, quint32 id) const;
+    inline QModelIndex createIndex(int row, int column, quintptr id) const;
 
     void encodeData(const QModelIndexList &indexes, QDataStream &stream) const;
     bool decodeData(int row, int column, const QModelIndex &parent, QDataStream &stream);
@@ -405,25 +406,8 @@ inline bool QAbstractItemModel::moveColumn(const QModelIndex &sourceParent, int 
 { return moveRows(sourceParent, sourceColumn, 1, destinationParent, destinationChild); }
 inline QModelIndex QAbstractItemModel::createIndex(int arow, int acolumn, void *adata) const
 { return QModelIndex(arow, acolumn, adata, this); }
-inline QModelIndex QAbstractItemModel::createIndex(int arow, int acolumn, int aid) const
-#if defined(Q_CC_MSVC)
-#pragma warning( push )
-#pragma warning( disable : 4312 ) // avoid conversion warning on 64-bit
-#endif
-{ return QModelIndex(arow, acolumn, reinterpret_cast<void*>(aid), this); }
-#if defined(Q_CC_MSVC)
-#pragma warning( pop )
-#endif
-inline QModelIndex QAbstractItemModel::createIndex(int arow, int acolumn, quint32 aid) const
-#if defined(Q_CC_MSVC)
-#pragma warning( push )
-#pragma warning( disable : 4312 ) // avoid conversion warning on 64-bit
-#endif
-{ return QModelIndex(arow, acolumn, reinterpret_cast<void*>(aid), this); }
-#if defined(Q_CC_MSVC)
-#pragma warning( pop )
-#endif
-
+inline QModelIndex QAbstractItemModel::createIndex(int arow, int acolumn, quintptr aid) const
+{ return QModelIndex(arow, acolumn, aid, this); }
 
 class Q_CORE_EXPORT QAbstractTableModel : public QAbstractItemModel
 {
@@ -468,15 +452,11 @@ private:
 
 // inline implementations
 
-inline QModelIndex::QModelIndex(int arow, int acolumn, void *adata,
-                                const QAbstractItemModel *amodel)
-    : r(arow), c(acolumn), p(adata), m(amodel) {}
-
 inline QModelIndex QModelIndex::parent() const
 { return m ? m->parent(*this) : QModelIndex(); }
 
 inline QModelIndex QModelIndex::sibling(int arow, int acolumn) const
-{ return m ? (r == arow && c == acolumn) ? *this : m->index(arow, acolumn, m->parent(*this)) : QModelIndex(); }
+{ return m ? (r == arow && c == acolumn) ? *this : m->sibling(arow, acolumn, *this) : QModelIndex(); }
 
 inline QModelIndex QModelIndex::child(int arow, int acolumn) const
 { return m ? m->index(arow, acolumn, *this) : QModelIndex(); }

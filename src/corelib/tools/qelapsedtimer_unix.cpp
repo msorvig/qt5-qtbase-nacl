@@ -1,48 +1,54 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
+// ask for the latest POSIX, just in case
+#define _POSIX_C_SOURCE 200809L
+
 #include "qelapsedtimer.h"
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <qatomic.h>
+#include "private/qcore_unix_p.h"
 
 #if defined(QT_NO_CLOCK_MONOTONIC) || defined(QT_BOOTSTRAPPED)
 // turn off the monotonic clock
@@ -54,83 +60,111 @@
 
 QT_BEGIN_NAMESPACE
 
-#if (_POSIX_MONOTONIC_CLOCK-0 != 0)
-static const bool monotonicClockChecked = true;
-static const bool monotonicClockAvailable = _POSIX_MONOTONIC_CLOCK > 0;
-#else
-static int monotonicClockChecked = false;
-static int monotonicClockAvailable = false;
-#endif
+/*
+ * Design:
+ *
+ * POSIX offers a facility to select the system's monotonic clock when getting
+ * the current timestamp. Whereas the functions are mandatory in POSIX.1-2008,
+ * the presence of a monotonic clock is a POSIX Option (see the document
+ *  http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap02.html#tag_02_01_06 )
+ *
+ * The macro _POSIX_MONOTONIC_CLOCK can therefore assume the following values:
+ *  -1          monotonic clock is never supported on this sytem
+ *   0          monotonic clock might be supported, runtime check is needed
+ *  >1          (such as 200809L) monotonic clock is always supported
+ *
+ * The unixCheckClockType() function will return the clock to use: either
+ * CLOCK_MONOTONIC or CLOCK_REALTIME. In the case the POSIX option has a value
+ * of zero, then this function stores a static that contains the clock to be
+ * used.
+ *
+ * There's one extra case, which is when CLOCK_REALTIME isn't defined. When
+ * that's the case, we'll emulate the clock_gettime function with gettimeofday.
+ *
+ * Conforming to:
+ *  POSIX.1b-1993 section "Clocks and Timers"
+ *  included in UNIX98 (Single Unix Specification v2)
+ *  included in POSIX.1-2001
+ *  see http://pubs.opengroup.org/onlinepubs/9699919799/functions/clock_getres.html
+ */
 
-#ifdef Q_CC_GNU
-# define is_likely(x) __builtin_expect((x), 1)
-#else
-# define is_likely(x) (x)
-#endif
-#define load_acquire(x) ((volatile const int&)(x))
-#define store_release(x,v) ((volatile int&)(x) = (v))
-
-static void unixCheckClockType()
+#ifndef CLOCK_REALTIME
+#  define CLOCK_REALTIME 0
+static inline void qt_clock_gettime(int, struct timespec *ts)
 {
-#if (_POSIX_MONOTONIC_CLOCK-0 == 0)
-    if (is_likely(load_acquire(monotonicClockChecked)))
-        return;
+    // support clock_gettime with gettimeofday
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    ts->tv_sec = tv.tv_sec;
+    ts->tv_nsec = tv.tv_usec * 1000;
+}
 
-# if defined(_SC_MONOTONIC_CLOCK)
-    // detect if the system support monotonic timers
-    long x = sysconf(_SC_MONOTONIC_CLOCK);
-    store_release(monotonicClockAvailable, x >= 200112L);
-# endif
+#  ifdef _POSIX_MONOTONIC_CLOCK
+#    undef _POSIX_MONOTONIC_CLOCK
+#    define _POSIX_MONOTONIC_CLOCK -1
+#  endif
+#else
+static inline void qt_clock_gettime(clockid_t clock, struct timespec *ts)
+{
+    clock_gettime(clock, ts);
+}
+#endif
 
-    store_release(monotonicClockChecked, true);
+static int unixCheckClockType()
+{
+#if (_POSIX_MONOTONIC_CLOCK-0 == 0) && defined(_SC_MONOTONIC_CLOCK)
+    // we need a value we can store in a clockid_t that isn't a valid clock
+    // check if the valid ones are both non-negative or both non-positive
+#  if CLOCK_MONOTONIC >= 0 && CLOCK_REALTIME >= 0
+#    define IS_VALID_CLOCK(clock)    (clock >= 0)
+#    define INVALID_CLOCK            -1
+#  elif CLOCK_MONOTONIC <= 0 && CLOCK_REALTIME <= 0
+#    define IS_VALID_CLOCK(clock)    (clock <= 0)
+#    define INVALID_CLOCK            1
+#  else
+#    error "Sorry, your system has weird values for CLOCK_MONOTONIC and CLOCK_REALTIME"
+#  endif
+
+    static QBasicAtomicInt clockToUse = Q_BASIC_ATOMIC_INITIALIZER(INVALID_CLOCK);
+    int clock = clockToUse.loadAcquire();
+    if (Q_LIKELY(IS_VALID_CLOCK(clock)))
+        return clock;
+
+    // detect if the system supports monotonic timers
+    clock = sysconf(_SC_MONOTONIC_CLOCK) > 0 ? CLOCK_MONOTONIC : CLOCK_REALTIME;
+    clockToUse.storeRelease(clock);
+    return clock;
+
+#  undef INVALID_CLOCK
+#  undef IS_VALID_CLOCK
+#elif (_POSIX_MONOTONIC_CLOCK-0) > 0
+    return CLOCK_MONOTONIC;
+#else
+    return CLOCK_REALTIME;
 #endif
 }
 
 static inline qint64 fractionAdjustment()
 {
-    // disabled, but otherwise indicates bad usage of QElapsedTimer
-    //Q_ASSERT(monotonicClockChecked);
-
-    if (monotonicClockAvailable) {
-        // the monotonic timer is measured in nanoseconds
-        // 1 ms = 1000000 ns
-        return 1000*1000ull;
-    } else {
-        // gettimeofday is measured in microseconds
-        // 1 ms = 1000 us
-        return 1000;
-    }
+    return 1000*1000ull;
 }
 
 bool QElapsedTimer::isMonotonic() Q_DECL_NOTHROW
 {
-    unixCheckClockType();
-    return monotonicClockAvailable;
+    return clockType() == MonotonicClock;
 }
 
 QElapsedTimer::ClockType QElapsedTimer::clockType() Q_DECL_NOTHROW
 {
-    unixCheckClockType();
-    return monotonicClockAvailable ? MonotonicClock : SystemTime;
+    return unixCheckClockType() == CLOCK_REALTIME ? SystemTime : MonotonicClock;
 }
 
 static inline void do_gettime(qint64 *sec, qint64 *frac)
 {
-#if (_POSIX_MONOTONIC_CLOCK-0 >= 0)
-    unixCheckClockType();
-    if (is_likely(monotonicClockAvailable)) {
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        *sec = ts.tv_sec;
-        *frac = ts.tv_nsec;
-        return;
-    }
-#endif
-    // use gettimeofday
-    timeval tv;
-    ::gettimeofday(&tv, 0);
-    *sec = tv.tv_sec;
-    *frac = tv.tv_usec;
+    timespec ts;
+    qt_clock_gettime(unixCheckClockType(), &ts);
+    *sec = ts.tv_sec;
+    *frac = ts.tv_nsec;
 }
 
 // used in qcore_unix.cpp and qeventdispatcher_unix.cpp
@@ -141,11 +175,23 @@ timeval qt_gettime() Q_DECL_NOTHROW
 
     timeval tv;
     tv.tv_sec = sec;
-    tv.tv_usec = frac;
-    if (monotonicClockAvailable)
-        tv.tv_usec /= 1000;
+    tv.tv_usec = frac / 1000;
 
     return tv;
+}
+
+void qt_nanosleep(timespec amount)
+{
+    // We'd like to use clock_nanosleep.
+    //
+    // But clock_nanosleep is from POSIX.1-2001 and both are *not*
+    // affected by clock changes when using relative sleeps, even for
+    // CLOCK_REALTIME.
+    //
+    // nanosleep is POSIX.1-1993
+
+    int r;
+    EINTR_LOOP(r, nanosleep(&amount, &amount));
 }
 
 static qint64 elapsedAndRestart(qint64 sec, qint64 frac,
@@ -173,8 +219,6 @@ qint64 QElapsedTimer::nsecsElapsed() const Q_DECL_NOTHROW
     do_gettime(&sec, &frac);
     sec = sec - t1;
     frac = frac - t2;
-    if (!monotonicClockAvailable)
-        frac *= 1000;
     return sec * Q_INT64_C(1000000000) + frac;
 }
 

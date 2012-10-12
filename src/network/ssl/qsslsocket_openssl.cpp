@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -87,7 +87,7 @@ bool QSslSocketPrivate::s_loadRootCertsOnDemand = false;
     locking_function(int mode, int n, const char *file, int line) is needed to
     perform locking on shared data structures.  (Note that OpenSSL uses a
     number of global data structures that will be implicitly shared
-    when-whenever ever multiple threads use OpenSSL.)  Multi-threaded
+    whenever multiple threads use OpenSSL.)  Multi-threaded
     applications will crash at random if it is not set.  ...
     ...
     id_function(void) is a function that returns a thread ID. It is not
@@ -197,6 +197,10 @@ QSslCipher QSslSocketBackendPrivate::QSslCipher_from_SSL_CIPHER(SSL_CIPHER *ciph
             ciph.d->protocol = QSsl::SslV2;
         else if (protoString == QLatin1String("TLSv1"))
             ciph.d->protocol = QSsl::TlsV1_0;
+        else if (protoString == QLatin1String("TLSv1.1"))
+            ciph.d->protocol = QSsl::TlsV1_1;
+        else if (protoString == QLatin1String("TLSv1.2"))
+            ciph.d->protocol = QSsl::TlsV1_2;
 
         if (descriptionList.at(2).startsWith(QLatin1String("Kx=")))
             ciph.d->keyExchangeMethod = descriptionList.at(2).mid(3);
@@ -317,6 +321,20 @@ init_context:
         break;
     case QSsl::TlsV1_0:
         ctx = q_SSL_CTX_new(client ? q_TLSv1_client_method() : q_TLSv1_server_method());
+        break;
+    case QSsl::TlsV1_1:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+        ctx = q_SSL_CTX_new(client ? q_TLSv1_1_client_method() : q_TLSv1_1_server_method());
+#else
+        ctx = 0; // TLS 1.1 not supported by the system, but chosen deliberately -> error
+#endif
+        break;
+    case QSsl::TlsV1_2:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+        ctx = q_SSL_CTX_new(client ? q_TLSv1_2_client_method() : q_TLSv1_2_server_method());
+#else
+        ctx = 0; // TLS 1.2 not supported by the system, but chosen deliberately -> error
+#endif
         break;
     }
     if (!ctx) {
@@ -473,6 +491,8 @@ init_context:
 #if OPENSSL_VERSION_NUMBER >= 0x0090806fL && !defined(OPENSSL_NO_TLSEXT)
     if ((configuration.protocol == QSsl::TlsV1SslV3 ||
         configuration.protocol == QSsl::TlsV1_0 ||
+        configuration.protocol == QSsl::TlsV1_1 ||
+        configuration.protocol == QSsl::TlsV1_2 ||
         configuration.protocol == QSsl::SecureProtocols ||
         configuration.protocol == QSsl::AnyProtocol) &&
         client && q_SSLeay() >= 0x00090806fL) {
@@ -613,6 +633,7 @@ void QSslSocketPrivate::ensureCiphersAndCertsLoaded()
 
     resetDefaultCiphers();
 
+#ifndef QT_NO_LIBRARY
     //load symbols needed to receive certificates from system store
 #if defined(Q_OS_MAC) && !defined(Q_OS_IOS)
     QLibrary securityLib("/System/Library/Frameworks/Security.framework/Versions/Current/Security");
@@ -660,6 +681,7 @@ void QSslSocketPrivate::ensureCiphersAndCertsLoaded()
         }
     }
 #endif
+#endif //QT_NO_LIBRARY
     // if on-demand loading was not enabled, load the certs now
     if (!s_loadRootCertsOnDemand)
         setDefaultCaCertificates(systemCaCertificates());

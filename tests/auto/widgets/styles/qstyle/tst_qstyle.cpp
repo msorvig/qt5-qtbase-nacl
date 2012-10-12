@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -57,8 +57,6 @@
 
 #include <qplastiquestyle.h>
 #include <qwindowsstyle.h>
-#include <qcdestyle.h>
-#include <qmotifstyle.h>
 #include <qcommonstyle.h>
 #include <qproxystyle.h>
 #include <qstylefactory.h>
@@ -72,6 +70,7 @@
 #include <qradiobutton.h>
 #include <qlineedit.h>
 #include <qmdiarea.h>
+#include <qscrollarea.h>
 
 #include <QCleanlooksStyle>
 
@@ -120,16 +119,10 @@ private slots:
     void cleanupTestCase();
     void init();
     void cleanup();
-#ifndef QT_NO_STYLE_MOTIF
-    void testMotifStyle();
-#endif
 #ifndef QT_NO_STYLE_PLASTIQUE
     void testPlastiqueStyle();
 #endif
     void testWindowsStyle();
-#ifndef QT_NO_STYLE_CDE
-    void testCDEStyle();
-#endif
 #ifndef QT_NO_STYLE_WINDOWSXP
     void testWindowsXPStyle();
 #endif
@@ -148,6 +141,7 @@ private slots:
 #endif
     void defaultFont();
     void testDrawingShortcuts();
+    void testFrameOnlyAroundContents();
 private:
     void lineUpLayoutTest(QStyle *);
     QWidget *testWidget;
@@ -193,23 +187,14 @@ void tst_QStyle::cleanupTestCase()
 void tst_QStyle::testStyleFactory()
 {
     QStringList keys = QStyleFactory::keys();
-#ifndef QT_NO_STYLE_MOTIF
-    QVERIFY(keys.contains("Motif"));
-#endif
 #ifndef QT_NO_STYLE_CLEANLOOKS
     QVERIFY(keys.contains("Cleanlooks"));
 #endif
 #ifndef QT_NO_STYLE_PLASTIQUE
     QVERIFY(keys.contains("Plastique"));
 #endif
-#ifndef QT_NO_STYLE_CDE
-    QVERIFY(keys.contains("CDE"));
-#endif
 #ifndef QT_NO_STYLE_WINDOWS
     QVERIFY(keys.contains("Windows"));
-#endif
-#ifndef QT_NO_STYLE_MOTIF
-    QVERIFY(keys.contains("Motif"));
 #endif
 #ifdef Q_OS_WIN
     if (QSysInfo::WindowsVersion >= QSysInfo::WV_XP &&
@@ -567,22 +552,6 @@ void tst_QStyle::testMacStyle()
 #endif
 }
 
-#ifndef QT_NO_STYLE_MOTIF
-void tst_QStyle::testMotifStyle()
-{
-    QMotifStyle mstyle;
-    QVERIFY(testAllFunctions(&mstyle));
-}
-#endif
-
-#ifndef QT_NO_STYLE_CDE
-void tst_QStyle::testCDEStyle()
-{
-    QCDEStyle cstyle;
-    QVERIFY(testAllFunctions(&cstyle));
-}
-#endif
-
 void tst_QStyle::testWindowsCEStyle()
 {
 #if defined(Q_OS_WINCE)
@@ -763,6 +732,7 @@ public:
     int alignment;
 };
 
+
 void tst_QStyle::testDrawingShortcuts()
 {
     {   
@@ -795,6 +765,42 @@ void tst_QStyle::testDrawingShortcuts()
         delete dts;
      }   
 }
+
+#define SCROLLBAR_SPACING 33
+
+class FrameTestStyle : public QWindowsStyle {
+    int styleHint(StyleHint hint, const QStyleOption *opt, const QWidget *widget, QStyleHintReturn *returnData) const {
+        if (hint == QStyle::SH_ScrollView_FrameOnlyAroundContents)
+            return 1;
+        return QWindowsStyle ::styleHint(hint, opt, widget, returnData);
+    }
+
+    int pixelMetric(PixelMetric pm, const QStyleOption *option, const QWidget *widget) const {
+        if (pm == QStyle::PM_ScrollView_ScrollBarSpacing)
+            return SCROLLBAR_SPACING;
+        return QWindowsStyle ::pixelMetric(pm, option ,widget);
+    }
+};
+
+void tst_QStyle::testFrameOnlyAroundContents()
+{
+    QScrollArea area;
+    area.setGeometry(0, 0, 200, 200);
+    QWindowsStyle winStyle;
+    FrameTestStyle frameStyle;
+    QWidget *widget = new QWidget(&area);
+    widget->setGeometry(0, 0, 400, 400);
+    area.setStyle(&winStyle);
+    area.verticalScrollBar()->setStyle(&winStyle);
+    area.setWidget(widget);
+    area.setVisible(true);
+    int viewPortWidth = area.viewport()->width();
+    area.verticalScrollBar()->setStyle(&frameStyle);
+    area.setStyle(&frameStyle);
+    // Test that we reserve space for scrollbar spacing
+    QVERIFY(viewPortWidth == area.viewport()->width() + SCROLLBAR_SPACING);
+}
+
 
 QTEST_MAIN(tst_QStyle)
 #include "tst_qstyle.moc"

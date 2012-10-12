@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,6 +48,7 @@
 #ifndef QT_NO_ACCESSIBILITY
 
 #include <QtCore/QPointer>
+#include <QtCore/QPair>
 
 QT_BEGIN_NAMESPACE
 
@@ -63,10 +64,63 @@ class QAbstractItemView;
 class QDockWidget;
 class QDockWidgetLayout;
 class QMainWindow;
+class QTextCursor;
+class QTextDocument;
+
+#ifndef QT_NO_CURSOR
+class QAccessibleTextWidget : public QAccessibleWidget,
+                              public QAccessibleTextInterface,
+                              public QAccessibleEditableTextInterface
+{
+public:
+    QAccessibleTextWidget(QWidget *o, QAccessible::Role r = QAccessible::EditableText, const QString &name = QString());
+
+    // QAccessibleTextInterface
+    //  selection
+    void selection(int selectionIndex, int *startOffset, int *endOffset) const;
+    int selectionCount() const;
+    void addSelection(int startOffset, int endOffset);
+    void removeSelection(int selectionIndex);
+    void setSelection(int selectionIndex, int startOffset, int endOffset);
+
+    // cursor
+    int cursorPosition() const;
+    void setCursorPosition(int position);
+
+    // text
+    QString text(int startOffset, int endOffset) const;
+    QString textBeforeOffset(int offset, QAccessible2::BoundaryType boundaryType,
+                             int *startOffset, int *endOffset) const;
+    QString textAfterOffset(int offset, QAccessible2::BoundaryType boundaryType,
+                            int *startOffset, int *endOffset) const;
+    QString textAtOffset(int offset, QAccessible2::BoundaryType boundaryType,
+                         int *startOffset, int *endOffset) const;
+    int characterCount() const;
+
+    // character <-> geometry
+    QRect characterRect(int offset) const;
+    int offsetAtPoint(const QPoint &point) const;
+
+    QString attributes(int offset, int *startOffset, int *endOffset) const;
+
+    // QAccessibleEditableTextInterface
+    void deleteText(int startOffset, int endOffset);
+    void insertText(int offset, const QString &text);
+    void replaceText(int startOffset, int endOffset, const QString &text);
+
+protected:
+    QTextCursor textCursorForRange(int startOffset, int endOffset) const;
+    QPair<int, int> getBoundaries(int offset, QAccessible2::BoundaryType boundaryType) const;
+    virtual QPoint scrollBarsCurrentPosition() const;
+    virtual QTextCursor textCursor() const = 0;
+    virtual void setTextCursor(const QTextCursor &) = 0;
+    virtual QTextDocument *textDocument() const = 0;
+    virtual QWidget *viewport() const = 0;
+};
+#endif  //QT_NO_CURSOR
 
 #ifndef QT_NO_TEXTEDIT
-class QAccessibleTextEdit : public QAccessibleWidget, public QAccessibleTextInterface,
-                            public QAccessibleEditableTextInterface
+class QAccessibleTextEdit : public QAccessibleTextWidget
 {
 public:
     explicit QAccessibleTextEdit(QWidget *o);
@@ -78,34 +132,16 @@ public:
     void *interface_cast(QAccessible::InterfaceType t);
 
     // QAccessibleTextInterface
-    void addSelection(int startOffset, int endOffset);
-    QString attributes(int offset, int *startOffset, int *endOffset) const;
-    int cursorPosition() const;
-    QRect characterRect(int offset) const;
-    int selectionCount() const;
-    int offsetAtPoint(const QPoint &point) const;
-    void selection(int selectionIndex, int *startOffset, int *endOffset) const;
-    QString text(int startOffset, int endOffset) const;
-    QString textBeforeOffset (int offset, QAccessible2::BoundaryType boundaryType,
-            int *startOffset, int *endOffset) const;
-    QString textAfterOffset(int offset, QAccessible2::BoundaryType boundaryType,
-            int *startOffset, int *endOffset) const;
-    QString textAtOffset(int offset, QAccessible2::BoundaryType boundaryType,
-            int *startOffset, int *endOffset) const;
-    void removeSelection(int selectionIndex);
-    void setCursorPosition(int position);
-    void setSelection(int selectionIndex, int startOffset, int endOffset);
-    int characterCount() const;
     void scrollToSubstring(int startIndex, int endIndex);
-
-    // QAccessibleEditableTextInterface
-    void deleteText(int startOffset, int endOffset);
-    void insertText(int offset, const QString &text);
-    void replaceText(int startOffset, int endOffset, const QString &text);
 
 protected:
     QTextEdit *textEdit() const;
 
+    QPoint scrollBarsCurrentPosition() const;
+    QTextCursor textCursor() const;
+    void setTextCursor(const QTextCursor &textCursor);
+    QTextDocument *textDocument() const;
+    QWidget *viewport() const;
 private:
     int childOffset;
 };

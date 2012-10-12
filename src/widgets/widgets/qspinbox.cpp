@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -123,9 +123,10 @@ public:
     manually. The spin box supports integer values but can be extended to
     use different strings with validate(), textFromValue() and valueFromText().
 
-    Every time the value changes QSpinBox emits the valueChanged()
-    signals. The current value can be fetched with value() and set
-    with setValue().
+    Every time the value changes QSpinBox emits two valueChanged() signals,
+    one providing an int and the other a QString. The QString overload
+    provides the value with both prefix() and suffix().
+    The current value can be fetched with value() and set with setValue().
 
     Clicking the up/down buttons or using the keyboard accelerator's
     up and down arrows will increase or decrease the current value in
@@ -190,8 +191,7 @@ public:
 
     \overload
 
-    The new value is passed literally in \a text with no prefix() or
-    suffix().
+    The new value is passed in \a text with prefix() and suffix().
 */
 
 /*!
@@ -215,7 +215,8 @@ QSpinBox::QSpinBox(QWidget *parent)
     \brief the value of the spin box
 
     setValue() will emit valueChanged() if the new value is different
-    from the old one.
+    from the old one. The value property has a second notifier
+    signal which includes the spin box's prefix and suffix.
 */
 
 int QSpinBox::value() const
@@ -378,7 +379,7 @@ void QSpinBox::setMinimum(int minimum)
 
     \brief the maximum value of the spin box
 
-    When setting this property the \l minimum is adjusted
+    When setting this property the minimum is adjusted
     if necessary, to ensure that the range remains valid.
 
     The default maximum value is 99.
@@ -510,8 +511,10 @@ void QSpinBox::fixup(QString &input) const
     values but can be extended to use different strings with
     validate(), textFromValue() and valueFromText().
 
-    Every time the value changes QDoubleSpinBox emits the
-    valueChanged() signal. The current value can be fetched with
+    Every time the value changes QDoubleSpinBox emits two
+    valueChanged() signals, one taking providing a double and the other
+    a QString. The QString overload provides the value with both
+    prefix() and suffix(). The current value can be fetched with
     value() and set with setValue().
 
     Note: QDoubleSpinBox will round numbers so they can be displayed
@@ -559,8 +562,7 @@ void QSpinBox::fixup(QString &input) const
 
     \overload
 
-    The new value is passed literally in \a text with no prefix() or
-    suffix().
+    The new value is passed in \a text with prefix() and suffix().
 */
 
 /*!
@@ -582,7 +584,8 @@ QDoubleSpinBox::QDoubleSpinBox(QWidget *parent)
     \brief the value of the spin box
 
     setValue() will emit valueChanged() if the new value is different
-    from the old one.
+    from the old one. The value property has a second notifier
+    signal which includes the spin box's prefix and suffix.
 
     Note: The value will be rounded so it can be displayed with the
     current setting of decimals.

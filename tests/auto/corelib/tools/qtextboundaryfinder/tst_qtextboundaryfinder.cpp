@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -72,8 +72,12 @@ private slots:
     void lineBoundaries_manual();
 
     void fastConstructor();
+    void assignmentOperator();
+    void wordBoundaries_qtbug6498();
     void isAtSoftHyphen_data();
     void isAtSoftHyphen();
+    void isAtMandatoryBreak_data();
+    void isAtMandatoryBreak();
     void thaiLineBreak();
 };
 
@@ -113,6 +117,7 @@ inline char *toString(const QList<int> &list)
 } // namespace QTest
 QT_END_NAMESPACE
 
+#ifdef QT_BUILD_INTERNAL
 static void generateDataFromFile(const QString &fname)
 {
     QTest::addColumn<QString>("testString");
@@ -185,7 +190,6 @@ static void generateDataFromFile(const QString &fname)
     }
 }
 
-#ifdef QT_BUILD_INTERNAL
 QT_BEGIN_NAMESPACE
 extern Q_AUTOTEST_EXPORT int qt_initcharattributes_default_algorithm_only;
 QT_END_NAMESPACE
@@ -544,6 +548,91 @@ void tst_QTextBoundaryFinder::fastConstructor()
     QCOMPARE(finder.boundaryReasons(), QTextBoundaryFinder::NotAtBoundary);
 }
 
+void tst_QTextBoundaryFinder::assignmentOperator()
+{
+    QString text(QLatin1String("Hello World"));
+
+    QTextBoundaryFinder invalidFinder;
+    QVERIFY(!invalidFinder.isValid());
+    QCOMPARE(invalidFinder.string(), QString());
+
+    QTextBoundaryFinder validFinder(QTextBoundaryFinder::Word, text);
+    QVERIFY(validFinder.isValid());
+    QCOMPARE(validFinder.string(), text);
+
+    QTextBoundaryFinder finder(QTextBoundaryFinder::Line, QLatin1String("dummy"));
+    QVERIFY(finder.isValid());
+
+    finder = invalidFinder;
+    QVERIFY(!finder.isValid());
+    QCOMPARE(finder.string(), QString());
+
+    finder = validFinder;
+    QVERIFY(finder.isValid());
+    QCOMPARE(finder.string(), text);
+}
+
+void tst_QTextBoundaryFinder::wordBoundaries_qtbug6498()
+{
+    // text with trailing space
+    QString text("Please test me. Finish ");
+    QTextBoundaryFinder finder(QTextBoundaryFinder::Word, text);
+
+    QCOMPARE(finder.position(), 0);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::StartWord);
+
+    QCOMPARE(finder.toNextBoundary(), 6);
+    QCOMPARE(finder.position(), 6);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::EndWord);
+
+    QCOMPARE(finder.toNextBoundary(), 7);
+    QCOMPARE(finder.position(), 7);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::StartWord);
+
+    QCOMPARE(finder.toNextBoundary(), 11);
+    QCOMPARE(finder.position(), 11);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::EndWord);
+
+    QCOMPARE(finder.toNextBoundary(), 12);
+    QCOMPARE(finder.position(), 12);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::StartWord);
+
+    QCOMPARE(finder.toNextBoundary(), 14);
+    QCOMPARE(finder.position(), 14);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::EndWord);
+
+    QCOMPARE(finder.toNextBoundary(), 15);
+    QCOMPARE(finder.position(), 15);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() == QTextBoundaryFinder::NotAtBoundary);
+
+    QCOMPARE(finder.toNextBoundary(), 16);
+    QCOMPARE(finder.position(), 16);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::StartWord);
+
+    QCOMPARE(finder.toNextBoundary(), 22);
+    QCOMPARE(finder.position(), 22);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() & QTextBoundaryFinder::EndWord);
+
+    QCOMPARE(finder.toNextBoundary(), 23);
+    QCOMPARE(finder.position(), 23);
+    QVERIFY(finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() == QTextBoundaryFinder::NotAtBoundary);
+
+    QCOMPARE(finder.toNextBoundary(), -1);
+    QCOMPARE(finder.position(), -1);
+    QVERIFY(!finder.isAtBoundary());
+    QVERIFY(finder.boundaryReasons() == QTextBoundaryFinder::NotAtBoundary);
+}
+
 void tst_QTextBoundaryFinder::isAtSoftHyphen_data()
 {
     QTest::addColumn<QString>("testString");
@@ -568,7 +657,42 @@ void tst_QTextBoundaryFinder::isAtSoftHyphen()
         QVERIFY(expectedBreakPositions.contains(i + 1));
         boundaryFinder.setPosition(i + 1);
         QVERIFY(boundaryFinder.isAtBoundary());
-        QVERIFY(boundaryFinder.boundaryReasons() == QTextBoundaryFinder::SoftHyphen);
+        QVERIFY(boundaryFinder.boundaryReasons() & QTextBoundaryFinder::SoftHyphen);
+    }
+}
+
+void tst_QTextBoundaryFinder::isAtMandatoryBreak_data()
+{
+    QTest::addColumn<QString>("testString");
+    QTest::addColumn<QList<int> >("expectedBreakPositions");
+
+    {
+        QChar s[] = { 0x000D, 0x0308, 0x000A, 0x000A };
+        QString testString(s, sizeof(s)/sizeof(s[0]));
+        QList<int> expectedBreakPositions;
+        expectedBreakPositions << 0 << 1 << 3 << 4;
+
+        QTest::newRow("+CR+FExLF+LF+") << testString << expectedBreakPositions;
+    }
+    {
+        QString testString(QString::fromUtf8("Aaa bbb ccc.\r\nDdd eee fff."));
+        QList<int> expectedBreakPositions;
+        expectedBreakPositions << 0 << 14 << 26;
+
+        QTest::newRow("data1") << testString << expectedBreakPositions;
+    }
+}
+
+void tst_QTextBoundaryFinder::isAtMandatoryBreak()
+{
+    QFETCH(QString, testString);
+    QFETCH(QList<int>, expectedBreakPositions);
+
+    QTextBoundaryFinder boundaryFinder(QTextBoundaryFinder::Line, testString);
+    for (int i = 0; i <= testString.size(); ++i) {
+        boundaryFinder.setPosition(i);
+        if (boundaryFinder.boundaryReasons() & QTextBoundaryFinder::MandatoryBreak)
+            QVERIFY(expectedBreakPositions.contains(i));
     }
 }
 

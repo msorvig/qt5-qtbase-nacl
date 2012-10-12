@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -238,7 +238,7 @@ void QXcbWindow::create()
     {
 #if defined(XCB_USE_GLX)
         XVisualInfo *visualInfo = qglx_findVisualInfo(DISPLAY_FROM_XCB(m_screen), m_screen->screenNumber(), &m_format);
-        if (!visualInfo)
+        if (!visualInfo && window()->surfaceType() == QSurface::OpenGLSurface)
             qFatal("Could not initialize GLX");
 #elif defined(XCB_USE_EGL)
         EGLDisplay eglDisplay = connection()->egl_display();
@@ -254,26 +254,30 @@ void QXcbWindow::create()
         XVisualInfo *visualInfo;
         int matchingCount = 0;
         visualInfo = XGetVisualInfo(DISPLAY_FROM_XCB(this), VisualIDMask, &visualInfoTemplate, &matchingCount);
-        if (!visualInfo)
+        if (!visualInfo && window()->surfaceType() == QSurface::OpenGLSurface)
             qFatal("Could not initialize EGL");
 #endif //XCB_USE_GLX
-        m_depth = visualInfo->depth;
-        m_imageFormat = imageFormatForDepth(m_depth);
-        Colormap cmap = XCreateColormap(DISPLAY_FROM_XCB(this), xcb_parent_id, visualInfo->visual, AllocNone);
+        if (visualInfo) {
+            m_depth = visualInfo->depth;
+            m_imageFormat = imageFormatForDepth(m_depth);
+            Colormap cmap = XCreateColormap(DISPLAY_FROM_XCB(this), xcb_parent_id, visualInfo->visual, AllocNone);
 
-        XSetWindowAttributes a;
-        a.background_pixel = WhitePixel(DISPLAY_FROM_XCB(this), m_screen->screenNumber());
-        a.border_pixel = BlackPixel(DISPLAY_FROM_XCB(this), m_screen->screenNumber());
-        a.colormap = cmap;
+            XSetWindowAttributes a;
+            a.background_pixel = WhitePixel(DISPLAY_FROM_XCB(this), m_screen->screenNumber());
+            a.border_pixel = BlackPixel(DISPLAY_FROM_XCB(this), m_screen->screenNumber());
+            a.colormap = cmap;
 
-        m_visualId = visualInfo->visualid;
+            m_visualId = visualInfo->visualid;
 
-        m_window = XCreateWindow(DISPLAY_FROM_XCB(this), xcb_parent_id, rect.x(), rect.y(), rect.width(), rect.height(),
-                                  0, visualInfo->depth, InputOutput, visualInfo->visual,
-                                  CWBackPixel|CWBorderPixel|CWColormap, &a);
+            m_window = XCreateWindow(DISPLAY_FROM_XCB(this), xcb_parent_id, rect.x(), rect.y(), rect.width(), rect.height(),
+                                      0, visualInfo->depth, InputOutput, visualInfo->visual,
+                                      CWBackPixel|CWBorderPixel|CWColormap, &a);
 
-        XFree(visualInfo);
-    } else
+            XFree(visualInfo);
+        }
+    }
+
+    if (!m_window)
 #endif //defined(XCB_USE_GLX) || defined(XCB_USE_EGL)
     {
         m_window = xcb_generate_id(xcb_connection());
@@ -302,7 +306,7 @@ void QXcbWindow::create()
 
     propagateSizeHints();
 
-    xcb_atom_t properties[4];
+    xcb_atom_t properties[5];
     int propertyCount = 0;
     properties[propertyCount++] = atom(QXcbAtom::WM_DELETE_WINDOW);
     properties[propertyCount++] = atom(QXcbAtom::WM_TAKE_FOCUS);
@@ -409,6 +413,7 @@ void QXcbWindow::destroy()
         }
         connection()->removeWindow(m_window);
         Q_XCB_CALL(xcb_destroy_window(xcb_connection(), m_window));
+        m_window = 0;
     }
     m_mapped = false;
 
@@ -780,9 +785,7 @@ void QXcbWindow::setMotifWindowFlags(Qt::WindowFlags flags)
         if (!(flags & Qt::FramelessWindowHint) && !(customize && !(flags & Qt::WindowTitleHint))) {
             mwmhints.decorations |= MWM_DECOR_BORDER;
             mwmhints.decorations |= MWM_DECOR_RESIZEH;
-
-            if (flags & Qt::WindowTitleHint)
-                mwmhints.decorations |= MWM_DECOR_TITLE;
+            mwmhints.decorations |= MWM_DECOR_TITLE;
 
             if (flags & Qt::WindowSystemMenuHint)
                 mwmhints.decorations |= MWM_DECOR_MENU;
@@ -1108,9 +1111,6 @@ WId QXcbWindow::winId() const
 
 void QXcbWindow::setParent(const QPlatformWindow *parent)
 {
-    // re-create for compatibility
-    create();
-
     QPoint topLeft = geometry().topLeft();
 
     xcb_window_t xcb_parent_id = parent ? static_cast<const QXcbWindow *>(parent)->xcb_window() : m_screen->root();

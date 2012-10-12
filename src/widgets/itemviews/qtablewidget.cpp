@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -45,6 +45,8 @@
 #include <qitemdelegate.h>
 #include <qpainter.h>
 #include <private/qtablewidget_p.h>
+
+#include <algorithm>
 
 QT_BEGIN_NAMESPACE
 
@@ -519,8 +521,8 @@ void QTableModel::sort(int column, Qt::SortOrder order)
                  : unsortable.at(i - sortable.count()));
         for (int c = 0; c < columnCount(); ++c) {
             sorted_table[tableIndex(i, c)] = item(r, c);
-            from.append(createIndex(r, c, 0));
-            to.append(createIndex(i, c, 0));
+            from.append(createIndex(r, c));
+            to.append(createIndex(i, c));
         }
     }
 
@@ -671,8 +673,8 @@ QVector<QTableWidgetItem*>::iterator QTableModel::sortedInsertionIterator(
     Qt::SortOrder order, QTableWidgetItem *item)
 {
     if (order == Qt::AscendingOrder)
-        return qLowerBound(begin, end, item, QTableModelLessThan());
-    return qLowerBound(begin, end, item, QTableModelGreaterThan());
+        return std::lower_bound(begin, end, item, QTableModelLessThan());
+    return std::lower_bound(begin, end, item, QTableModelGreaterThan());
 }
 
 bool QTableModel::itemLessThan(const QPair<QTableWidgetItem*,int> &left,
@@ -2350,9 +2352,9 @@ QList<QTableWidgetSelectionRange> QTableWidget::selectedRanges() const
   \sa selectedIndexes()
 */
 
-QList<QTableWidgetItem*> QTableWidget::selectedItems()
+QList<QTableWidgetItem*> QTableWidget::selectedItems() const
 {
-    Q_D(QTableWidget);
+    Q_D(const QTableWidget);
     QModelIndexList indexes = selectionModel()->selectedIndexes();
     QList<QTableWidgetItem*> items;
     for (int i = 0; i < indexes.count(); ++i) {

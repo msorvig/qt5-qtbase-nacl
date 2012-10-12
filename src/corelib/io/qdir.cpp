@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -232,9 +232,20 @@ bool QDirSortItemComparator::operator()(const QDirSortItem &n1, const QDirSortIt
                  | (qt_cmp_si_sort_flags & QDir::Type);
 
     switch (sortBy) {
-      case QDir::Time:
-        r = f1->item.lastModified().secsTo(f2->item.lastModified());
+      case QDir::Time: {
+        QDateTime firstModified = f1->item.lastModified();
+        QDateTime secondModified = f2->item.lastModified();
+
+        // QDateTime by default will do all sorts of conversions on these to
+        // find timezones, which is incredibly expensive. As we aren't
+        // presenting these to the user, we don't care (at all) about the
+        // local timezone, so force them to UTC to avoid that conversion.
+        firstModified.setTimeSpec(Qt::UTC);
+        secondModified.setTimeSpec(Qt::UTC);
+
+        r = firstModified.secsTo(secondModified);
         break;
+      }
       case QDir::Size:
           r = int(qBound<qint64>(-1, f2->item.size() - f1->item.size(), 1));
         break;
@@ -331,6 +342,7 @@ inline void QDirPrivate::initFileEngine()
 
 /*!
     \class QDir
+    \inmodule QtCore
     \brief The QDir class provides access to directory structures and their contents.
 
     \ingroup io
@@ -501,7 +513,7 @@ inline void QDirPrivate::initFileEngine()
 
     \snippet qdir-listfiles/main.cpp 0
 
-    \sa QFileInfo, QFile, QFileDialog, QApplication::applicationDirPath(), {Find Files Example}
+    \sa QFileInfo, QFile, QFileDialog, QCoreApplication::applicationDirPath(), {Find Files Example}
 */
 
 /*!
@@ -537,7 +549,7 @@ QDir::QDir(const QString &path) : d_ptr(new QDirPrivate(path))
 
     Note that \a path need not exist.
 
-    \sa exists(), setPath(), setNameFilter(), setFilter(), setSorting()
+    \sa exists(), setPath(), setNameFilters(), setFilter(), setSorting()
 */
 QDir::QDir(const QString &path, const QString &nameFilter,
            SortFlags sort, Filters filters)
@@ -2147,7 +2159,8 @@ void QDir::refresh() const
     d->clearFileLists();
 }
 
-/*! \internal
+/*!
+    \internal
 */
 QDirPrivate* QDir::d_func()
 {
@@ -2242,7 +2255,7 @@ QDebug operator<<(QDebug debug, QDir::Filters filters)
         if (filters & QDir::System) flags << QLatin1String("System");
         if (filters & QDir::CaseSensitive) flags << QLatin1String("CaseSensitive");
     }
-    debug << "QDir::Filters(" << qPrintable(flags.join(QLatin1String("|"))) << ')';
+    debug << "QDir::Filters(" << qPrintable(flags.join(QLatin1Char('|'))) << ')';
     return debug;
 }
 
@@ -2265,7 +2278,7 @@ static QDebug operator<<(QDebug debug, QDir::SortFlags sorting)
         if (sorting & QDir::Type) flags << QLatin1String("Type");
         debug << "QDir::SortFlags(" << qPrintable(type)
               << '|'
-              << qPrintable(flags.join(QLatin1String("|"))) << ')';
+              << qPrintable(flags.join(QLatin1Char('|'))) << ')';
     }
     return debug;
 }
@@ -2274,7 +2287,7 @@ QDebug operator<<(QDebug debug, const QDir &dir)
 {
     debug.maybeSpace() << "QDir(" << dir.path()
                        << ", nameFilters = {"
-                       << qPrintable(dir.nameFilters().join(QLatin1String(",")))
+                       << qPrintable(dir.nameFilters().join(QLatin1Char(',')))
                        << "}, "
                        << dir.sorting()
                        << ','

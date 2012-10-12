@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,6 +48,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QTimer
+    \inmodule QtCore
     \brief The QTimer class provides repetitive and single-shot timers.
 
     \ingroup events
@@ -55,7 +56,7 @@ QT_BEGIN_NAMESPACE
 
     The QTimer class provides a high-level programming interface for
     timers. To use it, create a QTimer, connect its timeout() signal
-    to the appropriate slots, and call start(). From then on it will
+    to the appropriate slots, and call start(). From then on, it will
     emit the timeout() signal at constant intervals.
 
     Example for a one second (1000 millisecond) timer (from the
@@ -91,13 +92,13 @@ QT_BEGIN_NAMESPACE
     \snippet timers/timers.cpp 5
     \snippet timers/timers.cpp 6
 
-    \c processOneThing() will from then on be called repeatedly. It
+    From then on, \c processOneThing() will be called repeatedly. It
     should be written in such a way that it always returns quickly
     (typically after processing one data item) so that Qt can deliver
-    events to widgets and stop the timer as soon as it has done all
+    events to the user interface and stop the timer as soon as it has done all
     its work. This is the traditional way of implementing heavy work
-    in GUI applications; multithreading is now becoming available on
-    more and more platforms, and we expect that zero-millisecond
+    in GUI applications, but as multithreading is nowadays becoming available on
+    more and more platforms, we expect that zero-millisecond
     QTimers will gradually be replaced by \l{QThread}s.
 
     \section1 Accuracy and Timer Resolution
@@ -123,8 +124,8 @@ QT_BEGIN_NAMESPACE
     disadvantage is that timerEvent() does not support such
     high-level features as single-shot timers or signals.
 
-    Another alternative to using QTimer is to use QBasicTimer. It is
-    typically less cumbersome than using QObject::startTimer()
+    Another alternative is QBasicTimer. It is typically less
+    cumbersome than using QObject::startTimer()
     directly. See \l{Timers} for an overview of all three approaches.
 
     Some operating systems limit the number of timers that may be
@@ -256,14 +257,14 @@ class QSingleShotTimer : public QObject
     int timerId;
 public:
     ~QSingleShotTimer();
-    QSingleShotTimer(int msec, Qt::TimerType timerType, QObject *r, const char * m);
+    QSingleShotTimer(int msec, Qt::TimerType timerType, const QObject *r, const char * m);
 Q_SIGNALS:
     void timeout();
 protected:
     void timerEvent(QTimerEvent *);
 };
 
-QSingleShotTimer::QSingleShotTimer(int msec, Qt::TimerType timerType, QObject *receiver, const char *member)
+QSingleShotTimer::QSingleShotTimer(int msec, Qt::TimerType timerType, const QObject *receiver, const char *member)
     : QObject(QAbstractEventDispatcher::instance())
 {
     connect(this, SIGNAL(timeout()), receiver, member);
@@ -291,10 +292,6 @@ void QSingleShotTimer::timerEvent(QTimerEvent *)
     qDeleteInEventHandler(this);
 }
 
-QT_BEGIN_INCLUDE_NAMESPACE
-#include "qtimer.moc"
-QT_END_INCLUDE_NAMESPACE
-
 /*!
     \reentrant
     This static function calls a slot after a given time interval.
@@ -315,7 +312,7 @@ QT_END_INCLUDE_NAMESPACE
     \sa start()
 */
 
-void QTimer::singleShot(int msec, QObject *receiver, const char *member)
+void QTimer::singleShot(int msec, const QObject *receiver, const char *member)
 {
     // coarse timers are worst in their first firing
     // so we prefer a high precision timer for something that happens only once
@@ -337,7 +334,7 @@ void QTimer::singleShot(int msec, QObject *receiver, const char *member)
 
     \sa start()
 */
-void QTimer::singleShot(int msec, Qt::TimerType timerType, QObject *receiver, const char *member)
+void QTimer::singleShot(int msec, Qt::TimerType timerType, const QObject *receiver, const char *member)
 {
     if (receiver && member) {
         if (msec == 0) {
@@ -348,7 +345,7 @@ void QTimer::singleShot(int msec, Qt::TimerType timerType, QObject *receiver, co
                 return;
             }
             QByteArray methodName(member+1, bracketPosition - 1 - member); // extract method name
-            QMetaObject::invokeMethod(receiver, methodName.constData(), Qt::QueuedConnection);
+            QMetaObject::invokeMethod(const_cast<QObject *>(receiver), methodName.constData(), Qt::QueuedConnection);
             return;
         }
         (void) new QSingleShotTimer(msec, timerType, receiver, member);
@@ -415,3 +412,5 @@ int QTimer::remainingTime() const
 */
 
 QT_END_NAMESPACE
+
+#include "qtimer.moc"

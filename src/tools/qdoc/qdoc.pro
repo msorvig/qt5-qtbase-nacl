@@ -42,6 +42,9 @@ HEADERS += atom.h \
            openedlist.h \
            plaincodemarker.h \
            puredocparser.h \
+           qdocdatabase.h \
+           qdoctagfiles.h \
+           qdocindexfiles.h \
            quoter.h \
            separator.h \
            text.h \
@@ -67,12 +70,16 @@ SOURCES += atom.cpp \
            openedlist.cpp \
            plaincodemarker.cpp \
            puredocparser.cpp \
+           qdocdatabase.cpp \
+           qdoctagfiles.cpp \
+           qdocindexfiles.cpp \
            quoter.cpp \
            separator.cpp \
            text.cpp \
            tokenizer.cpp \
            tree.cpp \
            yyindent.cpp \
+           ../../corelib/tools/qcryptographichash.cpp \
            ../../xml/dom/qdom.cpp \
            ../../xml/sax/qxml.cpp
 
@@ -116,10 +123,5 @@ QMAKE_EXTRA_TARGETS += html-docs qch-docs
 
 target.path = $$[QT_HOST_BINS]
 INSTALLS += target
-
-# Ensure that qdoc is built before we generate the docs
-docs.commands =
-docs.depends = first
-QMAKE_EXTRA_TARGET += docs
 
 load(qt_targets)

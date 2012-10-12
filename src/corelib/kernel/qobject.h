@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -246,7 +246,7 @@ public:
 
         return connectImpl(sender, reinterpret_cast<void **>(&signal),
                            receiver, reinterpret_cast<void **>(&slot),
-                           new QSlotObject<Func2, typename QtPrivate::List_Left<typename SignalType::Arguments, SlotType::ArgumentCount>::Value,
+                           new QtPrivate::QSlotObject<Func2, typename QtPrivate::List_Left<typename SignalType::Arguments, SlotType::ArgumentCount>::Value,
                                            typename SignalType::ReturnType>(slot),
                             type, types, &SignalType::Object::staticMetaObject);
     }
@@ -268,7 +268,7 @@ public:
                           "Return type of the slot is not compatible with the return type of the signal.");
 
         return connectImpl(sender, reinterpret_cast<void **>(&signal), sender, 0,
-                           new QStaticSlotObject<Func2,
+                           new QtPrivate::QStaticSlotObject<Func2,
                                                  typename QtPrivate::List_Left<typename SignalType::Arguments, SlotType::ArgumentCount>::Value,
                                                  typename SignalType::ReturnType>(slot),
                            Qt::DirectConnection, 0, &SignalType::Object::staticMetaObject);
@@ -282,7 +282,7 @@ public:
         typedef QtPrivate::FunctionPointer<Func1> SignalType;
 
         return connectImpl(sender, reinterpret_cast<void **>(&signal), sender, 0,
-                           new QFunctorSlotObject<Func2, SignalType::ArgumentCount, typename SignalType::Arguments, typename SignalType::ReturnType>(slot),
+                           new QtPrivate::QFunctorSlotObject<Func2, SignalType::ArgumentCount, typename SignalType::Arguments, typename SignalType::ReturnType>(slot),
                            Qt::DirectConnection, 0, &SignalType::Object::staticMetaObject);
     }
 #endif //Q_QDOC
@@ -394,56 +394,10 @@ private:
     Q_DISABLE_COPY(QObject)
     Q_PRIVATE_SLOT(d_func(), void _q_reregisterTimers(void *))
 
-    private:
-    // internal base class (interface) containing functions required to call a slot managed by a pointer to function.
-    struct Q_CORE_EXPORT QSlotObjectBase {
-        QAtomicInt ref;
-        QSlotObjectBase() : ref(1) {}
-        virtual ~QSlotObjectBase();
-        virtual void call(QObject *receiver, void **a) = 0;
-        virtual bool compare(void **);
-    };
-    // implementation of QSlotObjectBase for which the slot is a pointer to member function of a QObject
-    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
-    template<typename Func, typename Args, typename R> struct QSlotObject : QSlotObjectBase
-    {
-        typedef QtPrivate::FunctionPointer<Func> FuncType;
-        Func function;
-        QSlotObject(Func f) : function(f) {}
-        virtual void call(QObject *receiver, void **a) {
-            FuncType::template call<Args, R>(function, static_cast<typename FuncType::Object *>(receiver), a);
-        }
-        virtual bool compare(void **f) {
-            return *reinterpret_cast<Func *>(f) == function;
-        }
-    };
-    // implementation of QSlotObjectBase for which the slot is a static function
-    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
-    template<typename Func, typename Args, typename R> struct QStaticSlotObject : QSlotObjectBase
-    {
-        typedef QtPrivate::FunctionPointer<Func> FuncType;
-        Func function;
-        QStaticSlotObject(Func f) : function(f) {}
-        virtual void call(QObject *receiver, void **a) {
-            FuncType::template call<Args, R>(function, receiver, a);
-        }
-    };
-    // implementation of QSlotObjectBase for which the slot is a functor (or lambda)
-    // N is the number of arguments
-    // Args and R are the List of arguments and the returntype of the signal to which the slot is connected.
-    template<typename Func, int N, typename Args, typename R> struct QFunctorSlotObject : QSlotObjectBase
-    {
-        typedef QtPrivate::Functor<Func, N> FuncType;
-        Func function;
-        QFunctorSlotObject(const Func &f) : function(f) {}
-        virtual void call(QObject *receiver, void **a) {
-            FuncType::template call<Args, R>(function, receiver, a);
-        }
-    };
-
+private:
     static QMetaObject::Connection connectImpl(const QObject *sender, void **signal,
                                                const QObject *receiver, void **slotPtr,
-                                               QSlotObjectBase *slot, Qt::ConnectionType type,
+                                               QtPrivate::QSlotObjectBase *slot, Qt::ConnectionType type,
                                                const int *types, const QMetaObject *senderMetaObject);
 
     static bool disconnectImpl(const QObject *sender, void **signal, const QObject *receiver, void **slot,

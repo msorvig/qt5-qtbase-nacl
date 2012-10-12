@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -106,6 +106,10 @@ private slots:
     void msecsTo();
     void operator_eqeq_data();
     void operator_eqeq();
+#ifndef Q_OS_WINCE
+    void operator_insert_extract_data();
+    void operator_insert_extract();
+#endif
     void currentDateTime();
     void currentDateTimeUtc();
     void currentDateTimeUtc2();
@@ -893,6 +897,14 @@ void tst_QDateTime::daysTo()
 void tst_QDateTime::secsTo_data()
 {
     addSecs_data();
+
+    QTest::newRow("disregard milliseconds #1")
+        << QDateTime(QDate(2012, 3, 7), QTime(0, 58, 0, 0)) << 60
+        << QDateTime(QDate(2012, 3, 7), QTime(0, 59, 0, 400));
+
+    QTest::newRow("disregard milliseconds #2")
+        << QDateTime(QDate(2012, 3, 7), QTime(0, 59, 0, 0)) << 60
+        << QDateTime(QDate(2012, 3, 7), QTime(1, 0, 0, 400));
 }
 
 void tst_QDateTime::secsTo()
@@ -904,8 +916,8 @@ void tst_QDateTime::secsTo()
 #ifdef Q_OS_IRIX
     QEXPECT_FAIL("cet4", "IRIX databases say 1970 had DST", Abort);
 #endif
-    QCOMPARE(dt.secsTo(result), nsecs);
-    QCOMPARE(result.secsTo(dt), -nsecs);
+    QCOMPARE(dt.secsTo(result), (qint64)nsecs);
+    QCOMPARE(result.secsTo(dt), (qint64)-nsecs);
     QVERIFY((dt == result) == (0 == nsecs));
     QVERIFY((dt != result) == (0 != nsecs));
     QVERIFY((dt < result) == (0 < nsecs));
@@ -1220,6 +1232,82 @@ void tst_QDateTime::operator_eqeq()
         QVERIFY(dt1 == dt2.toLocalTime());
     }
 }
+
+#ifndef Q_OS_WINCE
+void tst_QDateTime::operator_insert_extract_data()
+{
+    QTest::addColumn<QDateTime>("dateTime");
+    QTest::addColumn<QString>("serialiseAs");
+    QTest::addColumn<QString>("deserialiseAs");
+
+    const QDateTime positiveYear(QDateTime(QDate(2012, 8, 14), QTime(8, 0, 0), Qt::LocalTime));
+    const QDateTime negativeYear(QDateTime(QDate(-2012, 8, 14), QTime(8, 0, 0), Qt::LocalTime));
+
+    const QString westernAustralia(QString::fromLatin1("AWST-8AWDT-9,M10.5.0,M3.5.0/03:00:00"));
+    const QString hawaii(QString::fromLatin1("HAW10"));
+
+    QTest::newRow("14/08/2012 08:00 WA => HAWAII") << positiveYear << westernAustralia << hawaii;
+    QTest::newRow("14/08/2012 08:00 WA => HAWAII") << positiveYear << westernAustralia << hawaii;
+    QTest::newRow("14/08/2012 08:00 WA => HAWAII") << positiveYear << westernAustralia << hawaii;
+    QTest::newRow("14/08/2012 08:00 WA => WA") << positiveYear << westernAustralia << westernAustralia;
+    QTest::newRow("14/08/-2012 08:00 HAWAII => WA") << negativeYear << hawaii << westernAustralia;
+    QTest::newRow("14/08/-2012 08:00 HAWAII => WA") << negativeYear << hawaii << westernAustralia;
+    QTest::newRow("14/08/-2012 08:00 HAWAII => WA") << negativeYear << hawaii << westernAustralia;
+    QTest::newRow("14/08/2012 08:00 HAWAII => HAWAII") << positiveYear << hawaii << hawaii;
+}
+
+void tst_QDateTime::operator_insert_extract()
+{
+    QFETCH(QDateTime, dateTime);
+    QFETCH(QString, serialiseAs);
+    QFETCH(QString, deserialiseAs);
+
+    QString previousTimeZone = qgetenv("TZ");
+    qputenv("TZ", serialiseAs.toLocal8Bit().constData());
+    tzset();
+    QDateTime dateTimeAsUTC(dateTime.toUTC());
+
+    QByteArray byteArray;
+    {
+        QDataStream dataStream(&byteArray, QIODevice::WriteOnly);
+        dataStream << dateTime;
+        dataStream << dateTime;
+    }
+
+    // Ensure that a change in timezone between serialisation and deserialisation
+    // still results in identical UTC-converted datetimes.
+    qputenv("TZ", deserialiseAs.toLocal8Bit().constData());
+    tzset();
+    QDateTime expectedLocalTime(dateTimeAsUTC.toLocalTime());
+    {
+        // Deserialise whole QDateTime at once.
+        QDataStream dataStream(&byteArray, QIODevice::ReadOnly);
+        QDateTime deserialised;
+        dataStream >> deserialised;
+        // Ensure local time is still correct.
+        QCOMPARE(deserialised, expectedLocalTime);
+        // Sanity check UTC times.
+        QCOMPARE(deserialised.toUTC(), expectedLocalTime.toUTC());
+
+        // Deserialise each component individually.
+        QDate deserialisedDate;
+        dataStream >> deserialisedDate;
+        QTime deserialisedTime;
+        dataStream >> deserialisedTime;
+        qint8 deserialisedSpec;
+        dataStream >> deserialisedSpec;
+        deserialised = QDateTime(deserialisedDate, deserialisedTime, Qt::UTC);
+        deserialised = deserialised.toTimeSpec(static_cast<Qt::TimeSpec>(deserialisedSpec));
+        // Ensure local time is still correct.
+        QCOMPARE(deserialised, expectedLocalTime);
+        // Sanity check UTC times.
+        QCOMPARE(deserialised.toUTC(), expectedLocalTime.toUTC());
+    }
+
+    qputenv("TZ", previousTimeZone.toLocal8Bit().constData());
+    tzset();
+}
+#endif
 
 void tst_QDateTime::toString_strformat_data()
 {

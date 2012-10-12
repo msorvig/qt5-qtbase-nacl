@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -50,6 +50,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \class QEvent
+    \inmodule QtCore
     \brief The QEvent class is the base class of all
     event classes. Event objects contain event parameters.
 
@@ -81,7 +82,7 @@ QT_BEGIN_NAMESPACE
     the particular event.
 
     \sa QObject::event(), QObject::installEventFilter(),
-        QWidget::event(), QCoreApplication::sendEvent(),
+        QCoreApplication::sendEvent(),
         QCoreApplication::postEvent(), QCoreApplication::processEvents()
 */
 
@@ -118,15 +119,19 @@ QT_BEGIN_NAMESPACE
     \value DragLeave                        The cursor leaves a widget during a drag and drop operation (QDragLeaveEvent).
     \value DragMove                         A drag and drop operation is in progress (QDragMoveEvent).
     \value Drop                             A drag and drop operation is completed (QDropEvent).
+    \value DynamicPropertyChange            A dynamic property was added, changed, or removed from the object.
     \value EnabledChange                    Widget's enabled state has changed.
     \value Enter                            Mouse enters widget's boundaries.
     \value EnterEditFocus                   An editor widget gains focus for editing. QT_KEYPAD_NAVIGATION must be defined.
     \value EnterWhatsThisMode               Send to toplevel widgets when the application enters "What's This?" mode.
     \value Expose                           Sent to a window when its on-screen contents are invalidated and need to be flushed from the backing store.
     \value FileOpen                         File open request (QFileOpenEvent).
-    \value FocusIn                          Widget gains keyboard focus (QFocusEvent).
-    \value FocusOut                         Widget loses keyboard focus (QFocusEvent).
+    \value FocusIn                          Widget or Window gains keyboard focus (QFocusEvent).
+    \value FocusOut                         Widget or Window loses keyboard focus (QFocusEvent).
+    \value FocusAboutToChange               Widget or Window focus is about to change (QFocusEvent)
     \value FontChange                       Widget's font has changed.
+    \value Gesture                          A gesture was triggered (QGestureEvent).
+    \value GestureOverride                  A gesture override was triggered (QGestureEvent).
     \value GrabKeyboard                     Item gains keyboard grab (QGraphicsItem only).
     \value GrabMouse                        Item gains mouse grab (QGraphicsItem only).
     \value GraphicsSceneContextMenu         Context popup menu over a graphics scene (QGraphicsSceneContextMenuEvent).
@@ -142,8 +147,8 @@ QT_BEGIN_NAMESPACE
     \value GraphicsSceneMouseMove           Move mouse in a graphics scene (QGraphicsSceneMouseEvent).
     \value GraphicsSceneMousePress          Mouse press in a graphics scene (QGraphicsSceneMouseEvent).
     \value GraphicsSceneMouseRelease        Mouse release in a graphics scene (QGraphicsSceneMouseEvent).
-    \value GraphicsSceneMove          Widget was moved (QGraphicsSceneMoveEvent).
-    \value GraphicsSceneResize          Widget was resized (QGraphicsSceneResizeEvent).
+    \value GraphicsSceneMove                Widget was moved (QGraphicsSceneMoveEvent).
+    \value GraphicsSceneResize              Widget was resized (QGraphicsSceneResizeEvent).
     \value GraphicsSceneWheel               Mouse wheel rolled in a graphics scene (QGraphicsSceneWheelEvent).
     \value Hide                             Widget was hidden (QHideEvent).
     \value HideToParent                     A child widget has been hidden.
@@ -153,6 +158,8 @@ QT_BEGIN_NAMESPACE
     \value IconDrag                         The main icon of a window has been dragged away (QIconDragEvent).
     \value IconTextChange                   Widget's icon text has been changed.
     \value InputMethod                      An input method is being used (QInputMethodEvent).
+    \value InputMethodQuery                 A input method query event (QInputMethodQueryEvent)
+    \value KeyboardLayoutChange             The keyboard layout has changed.
     \value KeyPress                         Key press (QKeyEvent).
     \value KeyRelease                       Key release (QKeyEvent).
     \value LanguageChange                   The application translation changed.
@@ -175,20 +182,25 @@ QT_BEGIN_NAMESPACE
     \value MouseMove                        Mouse move (QMouseEvent).
     \value MouseTrackingChange              The mouse tracking state has changed.
     \value Move                             Widget's position changed (QMoveEvent).
+    \value OrientationChange                The screens orientation has changes (QScreenOrientationChangeEvent)
     \value Paint                            Screen update necessary (QPaintEvent).
     \value PaletteChange                    Palette of the widget changed.
     \value ParentAboutToChange              The widget parent is about to change.
     \value ParentChange                     The widget parent has changed.
+    \value PlatformPanel                    A platform specific panel has been requested.
     \value Polish                           The widget is polished.
     \value PolishRequest                    The widget should be polished.
     \value QueryWhatsThis                   The widget should accept the event if it has "What's This?" help.
     \value RequestSoftwareInputPanel        A widget wants to open a software input panel (SIP).
     \value Resize                           Widget's size changed (QResizeEvent).
+    \value ScrollPrepare                    The object needs to fill in its geometry information (QScrollPrepareEvent).
+    \value Scroll                           The object needs to scroll to the supplied position (QScrollEvent).
     \value Shortcut                         Key press in child for shortcut key handling (QShortcutEvent).
     \value ShortcutOverride                 Key press in child, for overriding shortcut key handling (QKeyEvent).
     \value Show                             Widget was shown on screen (QShowEvent).
     \value ShowToParent                     A child widget has been shown.
     \value SockAct                          Socket activated, used to implement QSocketNotifier.
+    \omitvalue SockClose
     \value StateMachineSignal               A signal delivered to a state machine (QStateMachine::SignalEvent).
     \value StateMachineWrapped              The event is a wrapper for, i.e., contains, another event (QStateMachine::WrappedEvent).
     \value StatusTip                        A status tip is requested (QStatusTipEvent).
@@ -199,11 +211,16 @@ QT_BEGIN_NAMESPACE
     \value OkRequest                        Ok button in decoration pressed. Supported only for Windows CE.
     \value TabletEnterProximity             Wacom tablet enter proximity event (QTabletEvent), sent to QApplication.
     \value TabletLeaveProximity             Wacom tablet leave proximity event (QTabletEvent), sent to QApplication.
+    \omitvalue ThemeChange
     \value ThreadChange                     The object is moved to another thread. This is the last event sent to this object in the previous thread. See QObject::moveToThread().
     \value Timer                            Regular timer events (QTimerEvent).
     \value ToolBarChange                    The toolbar button is toggled on Mac OS X.
     \value ToolTip                          A tooltip was requested (QHelpEvent).
     \value ToolTipChange                    The widget's tooltip has changed.
+    \value TouchBegin                       Beginning of a sequence of touch-screen or track-pad events (QTouchEvent).
+    \value TouchCancel                      Cancellation of touch-event sequence (QTouchEvent).
+    \value TouchEnd                         End of touch-event sequence (QTouchEvent).
+    \value TouchUpdate                      Touch-screen event (QTouchEvent).
     \value UngrabKeyboard                   Item loses keyboard grab (QGraphicsItem only).
     \value UngrabMouse                      Item loses mouse grab (QGraphicsItem only).
     \value UpdateLater                      The widget should be queued to be repainted at a later time.
@@ -216,21 +233,11 @@ QT_BEGIN_NAMESPACE
     \value WindowBlocked                    The window is blocked by a modal dialog.
     \value WindowDeactivate                 Window was deactivated.
     \value WindowIconChange                 The window's icon has changed.
-    \value WindowStateChange                The \l{QWidget::windowState()}{window's state} (minimized, maximized or full-screen) has changed (QWindowStateChangeEvent).
+    \value WindowStateChange                The \l{QWindow::windowState()}{window's state} (minimized, maximized or full-screen) has changed (QWindowStateChangeEvent).
     \value WindowTitleChange                The window title has changed.
     \value WindowUnblocked                  The window is unblocked after a modal dialog exited.
+    \value WinIdChange                      The window system identifer for this native widget has changed.
     \value ZOrderChange                     The widget's z-order has changed. This event is never sent to top level windows.
-    \value KeyboardLayoutChange             The keyboard layout has changed.
-    \value DynamicPropertyChange            A dynamic property was added, changed or removed from the object.
-    \value TouchBegin                       Beginning of a sequence of touch-screen and/or track-pad events (QTouchEvent)
-    \value TouchUpdate                      Touch-screen event (QTouchEvent)
-    \value TouchEnd                         End of touch-event sequence (QTouchEvent)
-    \value TouchCancel                      Cancellation of touch-event sequence (QTouchEvent)
-    \value WinIdChange                      The window system identifer for this native widget has changed
-    \value Gesture                          A gesture was triggered (QGestureEvent)
-    \value GestureOverride                  A gesture override was triggered (QGestureEvent)
-    \value ScrollPrepare                    The object needs to fill in its geometry information (QScrollPrepareEvent)
-    \value Scroll                           The object needs to scroll to the supplied position (QScrollEvent)
 
     User events should have values between \c User and \c{MaxUser}:
 
@@ -255,6 +262,7 @@ QT_BEGIN_NAMESPACE
     \omitvalue ShowWindowRequest
     \omitvalue Speech
     \omitvalue Style
+    \omitvalue StyleAnimationUpdate
     \omitvalue ZeroTimerEvent
     \omitvalue ApplicationActivated
     \omitvalue ApplicationDeactivated
@@ -424,6 +432,7 @@ int QEvent::registerEventType(int hint)
 
 /*!
     \class QTimerEvent
+    \inmodule QtCore
     \brief The QTimerEvent class contains parameters that describe a
     timer event.
 
@@ -450,7 +459,8 @@ QTimerEvent::QTimerEvent(int timerId)
     : QEvent(Timer), id(timerId)
 {}
 
-/*! \internal
+/*!
+    \internal
 */
 QTimerEvent::~QTimerEvent()
 {
@@ -465,6 +475,7 @@ QTimerEvent::~QTimerEvent()
 
 /*!
     \class QChildEvent
+    \inmodule QtCore
     \brief The QChildEvent class contains event parameters for child object
     events.
 
@@ -495,7 +506,8 @@ QChildEvent::QChildEvent(Type type, QObject *child)
     : QEvent(type), c(child)
 {}
 
-/*! \internal
+/*!
+    \internal
 */
 QChildEvent::~QChildEvent()
 {
@@ -531,6 +543,7 @@ QChildEvent::~QChildEvent()
 
 /*!
     \class QDynamicPropertyChangeEvent
+    \inmodule QtCore
     \since 4.2
     \brief The QDynamicPropertyChangeEvent class contains event parameters for dynamic
     property change events.
@@ -574,7 +587,9 @@ QDeferredDeleteEvent::QDeferredDeleteEvent()
     , level(0)
 { }
 
-/*! \internal */
+/*!
+    \internal
+*/
 QDeferredDeleteEvent::~QDeferredDeleteEvent()
 { }
 

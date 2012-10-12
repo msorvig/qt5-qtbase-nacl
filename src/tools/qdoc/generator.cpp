@@ -6,33 +6,33 @@
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,24 +42,22 @@
 /*
   generator.cpp
 */
-#include <QDir>
-#include <QDebug>
+#include <qdir.h>
+#include <qdebug.h>
 #include "codemarker.h"
 #include "config.h"
 #include "ditaxmlgenerator.h"
 #include "doc.h"
 #include "editdistance.h"
 #include "generator.h"
-#include "node.h"
 #include "openedlist.h"
 #include "quoter.h"
 #include "separator.h"
 #include "tokenizer.h"
-#include "tree.h"
+#include "qdocdatabase.h"
 
 QT_BEGIN_NAMESPACE
 
-QString Generator::baseDir_;
 Generator* Generator::currentGenerator_;
 QStringList Generator::exampleDirs;
 QStringList Generator::exampleImgExts;
@@ -96,19 +94,54 @@ QString Generator::sinceTitles[] =
 };
 QStringList Generator::styleDirs;
 QStringList Generator::styleFiles;
+bool Generator::debugging_ = false;
+bool Generator::noLinkErrors_ = false;
 
+void Generator::setDebugSegfaultFlag(bool b)
+{
+    if (b)
+        qDebug() << "DEBUG: Setting debug flag.";
+    else
+        qDebug() << "DEBUG: Clearing debug flag.";
+    debugging_ = b;
+}
 
+/*!
+  Prints \a message as an aid to debugging the release version.
+ */
+void Generator::debugSegfault(const QString& message)
+{
+    if (debugging())
+        qDebug() << "DEBUG:" << message;
+}
+
+/*!
+  Constructs the generator base class. Prepends the newly
+  constructed generator to the list of output generators.
+  Sets a pointer to the QDoc database singleton, which is
+  available to the generator subclasses.
+ */
 Generator::Generator()
     : amp("&amp;"),
       gt("&gt;"),
       lt("&lt;"),
       quot("&quot;"),
       tag("</?@[^>]*>"),
-      tree_(0)
+      inLink_(false),
+      inContents_(false),
+      inSectionHeading_(false),
+      inTableHeader_(false),
+      threeColumnEnumValueTable_(true),
+      numTableRows_(0)
 {
+    qdb_ = QDocDatabase::qdocDB();
     generators.prepend(this);
 }
 
+/*!
+  Destroys the generator after removing it from the list of
+  output generators.
+ */
 Generator::~Generator()
 {
     generators.removeAll(this);
@@ -117,14 +150,13 @@ Generator::~Generator()
 void Generator::appendFullName(Text& text,
                                const Node *apparentNode,
                                const Node *relative,
-                               CodeMarker *marker,
                                const Node *actualNode)
 {
     if (actualNode == 0)
         actualNode = apparentNode;
     text << Atom(Atom::LinkNode, CodeMarker::stringForNode(actualNode))
          << Atom(Atom::FormattingLeft, ATOM_FORMATTING_LINK)
-         << Atom(Atom::String, marker->plainFullName(apparentNode, relative))
+         << Atom(Atom::String, apparentNode->plainFullName(relative))
          << Atom(Atom::FormattingRight, ATOM_FORMATTING_LINK);
 }
 
@@ -141,24 +173,18 @@ void Generator::appendFullName(Text& text,
          << Atom(Atom::FormattingRight, ATOM_FORMATTING_LINK);
 }
 
-void Generator::appendFullNames(Text& text,
-                                const NodeList& nodes,
-                                const Node* relative,
-                                CodeMarker* marker)
+void Generator::appendFullNames(Text& text, const NodeList& nodes, const Node* relative)
 {
     NodeList::ConstIterator n = nodes.constBegin();
     int index = 0;
     while (n != nodes.constEnd()) {
-        appendFullName(text,*n,relative,marker);
+        appendFullName(text,*n,relative);
         text << comma(index++,nodes.count());
         ++n;
     }
 }
 
-void Generator::appendSortedNames(Text& text,
-                                  const ClassNode *classe,
-                                  const QList<RelatedClass> &classes,
-                                  CodeMarker *marker)
+void Generator::appendSortedNames(Text& text, const ClassNode *classe, const QList<RelatedClass> &classes)
 {
     QList<RelatedClass>::ConstIterator r;
     QMap<QString,Text> classMap;
@@ -170,7 +196,7 @@ void Generator::appendSortedNames(Text& text,
                 (*r).node->status() != Node::Internal
                 && !(*r).node->doc().isEmpty()) {
             Text className;
-            appendFullName(className, (*r).node, classe, marker);
+            appendFullName(className, (*r).node, classe);
             classMap[className.toString().toLower()] = className;
         }
         ++r;
@@ -185,10 +211,7 @@ void Generator::appendSortedNames(Text& text,
     }
 }
 
-void Generator::appendSortedQmlNames(Text& text,
-                                     const Node* base,
-                                     const NodeList& subs,
-                                     CodeMarker *marker)
+void Generator::appendSortedQmlNames(Text& text, const Node* base, const NodeList& subs)
 {
     QMap<QString,Text> classMap;
     int index = 0;
@@ -197,7 +220,7 @@ void Generator::appendSortedQmlNames(Text& text,
         Text t;
         if (!base->isQtQuickNode() || !subs[i]->isQtQuickNode() ||
                 (base->qmlModuleIdentifier() == subs[i]->qmlModuleIdentifier())) {
-            appendFullName(t, subs[i], base, marker);
+            appendFullName(t, subs[i], base);
             classMap[t.toString().toLower()] = t;
         }
     }
@@ -241,6 +264,7 @@ void Generator::beginSubPage(const InnerNode* node, const QString& fileName)
     if (!node->outputSubdirectory().isEmpty())
         path += node->outputSubdirectory() + QLatin1Char('/');
     path += fileName;
+    Generator::debugSegfault("Writing: " + path);
     outFileNames.insert(fileName,fileName);
     QFile* outFile = new QFile(path);
     if (!outFile->open(QFile::WriteOnly))
@@ -263,11 +287,6 @@ void Generator::endSubPage()
     outStreamStack.top()->flush();
     delete outStreamStack.top()->device();
     delete outStreamStack.pop();
-}
-
-void Generator::endText(const Node * /* relative */,
-                        CodeMarker * /* marker */)
-{
 }
 
 QString Generator::fileBase(const Node *node) const
@@ -300,12 +319,12 @@ QString Generator::fileBase(const Node *node) const
                 (p->subType() == Node::QmlBasicType)) {
             base.prepend(outputPrefix(QLatin1String("QML")));
         }
-        if (!pp || pp->name().isEmpty() || pp->type() == Node::Fake)
+        if (!pp || pp->name().isEmpty() || pp->type() == Node::Document)
             break;
         base.prepend(QLatin1Char('-'));
         p = pp;
     }
-    if (node->type() == Node::Fake) {
+    if (node->type() == Node::Document) {
         if (node->subType() == Node::Collision) {
             const NameCollisionNode* ncn = static_cast<const NameCollisionNode*>(node);
             if (ncn->currentChild())
@@ -371,93 +390,6 @@ QString Generator::fileName(const Node* node) const
     return name;
 }
 
-/*!
-  For generating the "New Classes... in x.y" section on the
-  What's New in Qt x.y" page.
- */
-void Generator::findAllSince(const InnerNode *node)
-{
-    NodeList::const_iterator child = node->childNodes().constBegin();
-
-    // Traverse the tree, starting at the node supplied.
-
-    while (child != node->childNodes().constEnd()) {
-
-        QString sinceString = (*child)->since();
-
-        if (((*child)->access() != Node::Private) && !sinceString.isEmpty()) {
-
-            // Insert a new entry into each map for each new since string found.
-            NewSinceMaps::iterator nsmap = newSinceMaps.find(sinceString);
-            if (nsmap == newSinceMaps.end())
-                nsmap = newSinceMaps.insert(sinceString,NodeMultiMap());
-
-            NewClassMaps::iterator ncmap = newClassMaps.find(sinceString);
-            if (ncmap == newClassMaps.end())
-                ncmap = newClassMaps.insert(sinceString,NodeMap());
-
-            NewClassMaps::iterator nqcmap = newQmlClassMaps.find(sinceString);
-            if (nqcmap == newQmlClassMaps.end())
-                nqcmap = newQmlClassMaps.insert(sinceString,NodeMap());
-
-            if ((*child)->type() == Node::Function) {
-                // Insert functions into the general since map.
-                FunctionNode *func = static_cast<FunctionNode *>(*child);
-                if ((func->status() > Node::Obsolete) &&
-                        (func->metaness() != FunctionNode::Ctor) &&
-                        (func->metaness() != FunctionNode::Dtor)) {
-                    nsmap.value().insert(func->name(),(*child));
-                }
-            }
-            else if ((*child)->url().isEmpty()) {
-                if ((*child)->type() == Node::Class && !(*child)->doc().isEmpty()) {
-                    // Insert classes into the since and class maps.
-                    QString className = (*child)->name();
-                    if ((*child)->parent() &&
-                            (*child)->parent()->type() == Node::Namespace &&
-                            !(*child)->parent()->name().isEmpty())
-                        className = (*child)->parent()->name()+"::"+className;
-
-                    nsmap.value().insert(className,(*child));
-                    ncmap.value().insert(className,(*child));
-                }
-                else if ((*child)->subType() == Node::QmlClass) {
-                    // Insert QML elements into the since and element maps.
-                    QString className = (*child)->name();
-                    if ((*child)->parent() &&
-                            (*child)->parent()->type() == Node::Namespace &&
-                            !(*child)->parent()->name().isEmpty())
-                        className = (*child)->parent()->name()+"::"+className;
-
-                    nsmap.value().insert(className,(*child));
-                    nqcmap.value().insert(className,(*child));
-                }
-                else if ((*child)->type() == Node::QmlProperty) {
-                    // Insert QML properties into the since map.
-                    QString propertyName = (*child)->name();
-                    nsmap.value().insert(propertyName,(*child));
-                }
-            }
-            else {
-                // Insert external documents into the general since map.
-                QString name = (*child)->name();
-                if ((*child)->parent() &&
-                        (*child)->parent()->type() == Node::Namespace &&
-                        !(*child)->parent()->name().isEmpty())
-                    name = (*child)->parent()->name()+"::"+name;
-
-                nsmap.value().insert(name,(*child));
-            }
-
-            // Find child nodes with since commands.
-            if ((*child)->isInnerNode()) {
-                findAllSince(static_cast<InnerNode *>(*child));
-            }
-        }
-        ++child;
-    }
-}
-
 QMap<QString, QString>& Generator::formattingLeftMap()
 {
     return fmtLeftMaps[format()];
@@ -502,7 +434,7 @@ QString Generator::fullDocumentLocation(const Node *node, bool subdir)
         else
             return QString();
     }
-    else if (node->type() == Node::Fake) {
+    else if (node->type() == Node::Document) {
         if ((node->subType() == Node::QmlClass) ||
                 (node->subType() == Node::QmlBasicType)) {
             QString fb = fileBase(node);
@@ -598,12 +530,8 @@ QString Generator::fullDocumentLocation(const Node *node, bool subdir)
     case Node::Variable:
         anchorRef = QLatin1Char('#') + node->name() + "-var";
         break;
-    case Node::Fake:
+    case Node::Document:
     {
-        /*
-              Use fileBase(node) for fake nodes because they are represented
-              by pages whose file names are lower-case.
-            */
         parentName = fileBase(node);
         parentName.replace(QLatin1Char('/'), QLatin1Char('-')).replace(QLatin1Char('.'), QLatin1Char('-'));
         parentName += QLatin1Char('.') + currentGenerator()->fileExtension();
@@ -630,26 +558,6 @@ QString Generator::fullDocumentLocation(const Node *node, bool subdir)
     }
 
     return fdl + parentName.toLower() + anchorRef;
-}
-
-QString Generator::fullName(const Node *node,
-                            const Node *relative,
-                            CodeMarker *marker) const
-{
-    if (node->type() == Node::Fake) {
-        const FakeNode* fn = static_cast<const FakeNode *>(node);
-
-        // Only print modulename::type on collision pages.
-        if (!fn->qmlModuleIdentifier().isEmpty() && relative != 0 && relative->isCollisionNode())
-            return fn->qmlModuleIdentifier() + "::" + fn->title();
-
-        return fn->title();
-    }
-    else if (node->type() == Node::Class &&
-             !(static_cast<const ClassNode *>(node))->serviceName().isEmpty())
-        return (static_cast<const ClassNode *>(node))->serviceName();
-    else
-        return marker->plainFullName(node, relative);
 }
 
 void Generator::generateAlsoList(const Node *node, CodeMarker *marker)
@@ -743,16 +651,15 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
 {
     bool quiet = false;
 
-    if (node->type() == Node::Fake) {
-        const FakeNode *fake = static_cast<const FakeNode *>(node);
-        if ((fake->subType() == Node::File) || (fake->subType() == Node::Image)) {
+    if (node->type() == Node::Document) {
+        const DocNode *dn = static_cast<const DocNode *>(node);
+        if ((dn->subType() == Node::File) || (dn->subType() == Node::Image)) {
             quiet = true;
         }
     }
     if (node->doc().isEmpty()) {
         if (!quiet && !node->isReimp()) { // ### might be unnecessary
-            node->location().warning(tr("No documentation for '%1'")
-                                     .arg(marker->plainFullName(node)));
+            node->location().warning(tr("No documentation for '%1'").arg(node->plainFullName()));
         }
     }
     else {
@@ -789,15 +696,12 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
                         if (!best.isEmpty() && !documentedItems.contains(best))
                             details = tr("Maybe you meant '%1'?").arg(best);
 
-                        node->doc().location().warning(
-                                    tr("No such enum item '%1' in %2").arg(*a).arg(marker->plainFullName(node)),
-                                    details);
+                        node->doc().location().warning(tr("No such enum item '%1' in %2").arg(*a).arg(node->plainFullName()), details);
                         if (*a == "Void")
                             qDebug() << "VOID:" << node->name() << definedItems;
                     }
                     else if (!documentedItems.contains(*a)) {
-                        node->doc().location().warning(
-                                    tr("Undocumented enum item '%1' in %2").arg(*a).arg(marker->plainFullName(node)));
+                        node->doc().location().warning(tr("Undocumented enum item '%1' in %2").arg(*a).arg(node->plainFullName()));
                     }
                     ++a;
                 }
@@ -832,7 +736,7 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
                             details = tr("Maybe you meant '%1'?").arg(best);
 
                         node->doc().location().warning(
-                                    tr("No such parameter '%1' in %2").arg(*a).arg(marker->plainFullName(node)),
+                                    tr("No such parameter '%1' in %2").arg(*a).arg(node->plainFullName()),
                                     details);
                     }
                     else if (!(*a).isEmpty() && !documentedParams.contains(*a)) {
@@ -853,7 +757,7 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
                         if (needWarning && !func->isReimp())
                             node->doc().location().warning(
                                         tr("Undocumented parameter '%1' in %2")
-                                        .arg(*a).arg(marker->plainFullName(node)));
+                                        .arg(*a).arg(node->plainFullName()));
                     }
                     ++a;
                 }
@@ -871,19 +775,19 @@ void Generator::generateBody(const Node *node, CodeMarker *marker)
         }
     }
 
-    if (node->type() == Node::Fake) {
-        const FakeNode *fake = static_cast<const FakeNode *>(node);
-        if (fake->subType() == Node::Example) {
-            generateExampleFiles(fake, marker);
+    if (node->type() == Node::Document) {
+        const DocNode *dn = static_cast<const DocNode *>(node);
+        if (dn->subType() == Node::Example) {
+            generateExampleFiles(dn, marker);
         }
-        else if (fake->subType() == Node::File) {
+        else if (dn->subType() == Node::File) {
             Text text;
             Quoter quoter;
-            Doc::quoteFromFile(fake->doc().location(), quoter, fake->name());
-            QString code = quoter.quoteTo(fake->location(), QString(), QString());
-            CodeMarker *codeMarker = CodeMarker::markerForFileName(fake->name());
+            Doc::quoteFromFile(dn->doc().location(), quoter, dn->name());
+            QString code = quoter.quoteTo(dn->location(), QString(), QString());
+            CodeMarker *codeMarker = CodeMarker::markerForFileName(dn->name());
             text << Atom(codeMarker->atomType(), code);
-            generateText(text, fake, codeMarker);
+            generateText(text, dn, codeMarker);
         }
     }
 }
@@ -892,15 +796,15 @@ void Generator::generateClassLikeNode(InnerNode* /* classe */, CodeMarker* /* ma
 {
 }
 
-void Generator::generateExampleFiles(const FakeNode *fake, CodeMarker *marker)
+void Generator::generateExampleFiles(const DocNode *dn, CodeMarker *marker)
 {
-    if (fake->childNodes().isEmpty())
+    if (dn->childNodes().isEmpty())
         return;
-    generateFileList(fake, marker, Node::File, QString("Files:"));
-    generateFileList(fake, marker, Node::Image, QString("Images:"));
+    generateFileList(dn, marker, Node::File, QString("Files:"));
+    generateFileList(dn, marker, Node::Image, QString("Images:"));
 }
 
-void Generator::generateFakeNode(FakeNode* /* fake */, CodeMarker* /* marker */)
+void Generator::generateDocNode(DocNode* /* dn */, CodeMarker* /* marker */)
 {
 }
 
@@ -911,7 +815,7 @@ void Generator::generateFakeNode(FakeNode* /* fake */, CodeMarker* /* marker */)
   by the example. The images are copied into a subtree of
   \c{...doc/html/images/used-in-examples/...}
  */
-void Generator::generateFileList(const FakeNode* fake,
+void Generator::generateFileList(const DocNode* dn,
                                  CodeMarker* marker,
                                  Node::SubType subtype,
                                  const QString& tag)
@@ -923,7 +827,7 @@ void Generator::generateFileList(const FakeNode* fake,
     text << Atom::ParaLeft << tag << Atom::ParaRight
          << Atom(Atom::ListLeft, openedList.styleString());
 
-    foreach (const Node* child, fake->childNodes()) {
+    foreach (const Node* child, dn->childNodes()) {
         if (child->subType() == subtype) {
             ++count;
             QString file = child->name();
@@ -931,7 +835,7 @@ void Generator::generateFileList(const FakeNode* fake,
                 if (!file.isEmpty()) {
                     QDir dirInfo;
                     QString userFriendlyFilePath;
-                    QString srcPath = Config::findFile(fake->location(),
+                    QString srcPath = Config::findFile(dn->location(),
                                                        QStringList(),
                                                        exampleDirs,
                                                        file,
@@ -941,10 +845,10 @@ void Generator::generateFileList(const FakeNode* fake,
 
                     QString imgOutDir = outDir_ + "/images/used-in-examples/" + userFriendlyFilePath;
                     if (!dirInfo.mkpath(imgOutDir))
-                        fake->location().fatal(tr("Cannot create output directory '%1'")
+                        dn->location().fatal(tr("Cannot create output directory '%1'")
                                                .arg(imgOutDir));
 
-                    QString imgOutName = Config::copyFile(fake->location(),
+                    QString imgOutName = Config::copyFile(dn->location(),
                                                           srcPath,
                                                           file,
                                                           imgOutDir);
@@ -966,7 +870,7 @@ void Generator::generateFileList(const FakeNode* fake,
     }
     text << Atom(Atom::ListRight, openedList.styleString());
     if (count > 0)
-        generateText(text, fake, marker);
+        generateText(text, dn, marker);
 }
 
 void Generator::generateInheritedBy(const ClassNode *classe, CodeMarker *marker)
@@ -978,7 +882,7 @@ void Generator::generateInheritedBy(const ClassNode *classe, CodeMarker *marker)
              << "Inherited by: "
              << Atom(Atom::FormattingRight,ATOM_FORMATTING_BOLD);
 
-        appendSortedNames(text, classe, classe->derivedClasses(), marker);
+        appendSortedNames(text, classe, classe->derivedClasses());
         text << Atom::ParaRight;
         generateText(text, classe, marker);
     }
@@ -1030,17 +934,17 @@ void Generator::generateInnerNode(InnerNode* node)
     if (!node->url().isNull())
         return;
 
-    if (node->type() == Node::Fake) {
-        FakeNode* fakeNode = static_cast<FakeNode*>(node);
-        if (fakeNode->subType() == Node::ExternalPage)
+    if (node->type() == Node::Document) {
+        DocNode* docNode = static_cast<DocNode*>(node);
+        if (docNode->subType() == Node::ExternalPage)
             return;
-        if (fakeNode->subType() == Node::Image)
+        if (docNode->subType() == Node::Image)
             return;
-        if (fakeNode->subType() == Node::QmlPropertyGroup)
+        if (docNode->subType() == Node::QmlPropertyGroup)
             return;
-        if (fakeNode->subType() == Node::Page) {
+        if (docNode->subType() == Node::Page) {
             if (node->count() > 0)
-                qDebug("PAGE %s HAS CHILDREN", qPrintable(fakeNode->title()));
+                qDebug("PAGE %s HAS CHILDREN", qPrintable(docNode->title()));
         }
     }
 
@@ -1055,7 +959,7 @@ void Generator::generateInnerNode(InnerNode* node)
           later in generateCollisionPages(). Each one is
           appended to a list for later.
          */
-        if ((node->type() == Node::Fake) && (node->subType() == Node::Collision)) {
+        if ((node->type() == Node::Document) && (node->subType() == Node::Collision)) {
             NameCollisionNode* ncn = static_cast<NameCollisionNode*>(node);
             collisionNodes.append(const_cast<NameCollisionNode*>(ncn));
         }
@@ -1064,8 +968,8 @@ void Generator::generateInnerNode(InnerNode* node)
             if (node->type() == Node::Namespace || node->type() == Node::Class) {
                 generateClassLikeNode(node, marker);
             }
-            else if (node->type() == Node::Fake) {
-                generateFakeNode(static_cast<FakeNode*>(node), marker);
+            else if (node->type() == Node::Document) {
+                generateDocNode(static_cast<DocNode*>(node), marker);
             }
             endSubPage();
         }
@@ -1115,7 +1019,7 @@ void Generator::generateQmlInheritedBy(const QmlClassNode* qcn,
         if (!subs.isEmpty()) {
             Text text;
             text << Atom::ParaLeft << "Inherited by ";
-            appendSortedQmlNames(text,qcn,subs,marker);
+            appendSortedQmlNames(text,qcn,subs);
             text << Atom::ParaRight;
             generateText(text, qcn, marker);
         }
@@ -1142,7 +1046,7 @@ bool Generator::generateQmlText(const Text& text,
     bool result = false;
 
     if (atom != 0) {
-        startText(relative, marker);
+        initializeTextOutput();
         while (atom) {
             if (atom->type() != Atom::QmlText)
                 atom = atom->next();
@@ -1155,7 +1059,6 @@ bool Generator::generateQmlText(const Text& text,
                 }
             }
         }
-        endText(relative, marker);
         result = true;
     }
     return result;
@@ -1200,7 +1103,7 @@ void Generator::generateSince(const Node *node, CodeMarker *marker)
             text << " " << since[0];
         } else {
             // Reconstruct the <project> <version> string.
-            text << " " << since.join(" ");
+            text << " " << since.join(' ');
         }
 
         text << "." << Atom::ParaRight;
@@ -1273,13 +1176,12 @@ bool Generator::generateText(const Text& text,
     bool result = false;
     if (text.firstAtom() != 0) {
         int numAtoms = 0;
-        startText(relative, marker);
+        initializeTextOutput();
         generateAtomList(text.firstAtom(),
                          relative,
                          marker,
                          true,
                          numAtoms);
-        endText(relative, marker);
         result = true;
     }
     return result;
@@ -1370,7 +1272,7 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
                 if (nonreentrant.isEmpty()) {
                     if (!threadsafe.isEmpty()) {
                         text << ", but ";
-                        appendFullNames(text,threadsafe,innerNode,marker);
+                        appendFullNames(text,threadsafe,innerNode);
                         singularPlural(text,threadsafe);
                         text << " also " << tlink << ".";
                     }
@@ -1379,13 +1281,13 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
                 }
                 else {
                     text << ", except for ";
-                    appendFullNames(text,nonreentrant,innerNode,marker);
+                    appendFullNames(text,nonreentrant,innerNode);
                     text << ", which";
                     singularPlural(text,nonreentrant);
                     text << " nonreentrant.";
                     if (!threadsafe.isEmpty()) {
                         text << " ";
-                        appendFullNames(text,threadsafe,innerNode,marker);
+                        appendFullNames(text,threadsafe,innerNode);
                         singularPlural(text,threadsafe);
                         text << " " << tlink << ".";
                     }
@@ -1395,7 +1297,7 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
                 if (!nonreentrant.isEmpty() || !reentrant.isEmpty()) {
                     text << ", except for ";
                     if (!reentrant.isEmpty()) {
-                        appendFullNames(text,reentrant,innerNode,marker);
+                        appendFullNames(text,reentrant,innerNode);
                         text << ", which";
                         singularPlural(text,reentrant);
                         text << " only " << rlink;
@@ -1403,7 +1305,7 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
                             text << ", and ";
                     }
                     if (!nonreentrant.isEmpty()) {
-                        appendFullNames(text,nonreentrant,innerNode,marker);
+                        appendFullNames(text,nonreentrant,innerNode);
                         text << ", which";
                         singularPlural(text,nonreentrant);
                         text << " nonreentrant.";
@@ -1426,12 +1328,11 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
 }
 
 /*!
-  This function is recursive.
+  Traverses the database recursivly to generate all the documentation.
  */
-void Generator::generateTree(Tree *tree)
+void Generator::generateTree()
 {
-    tree_ = tree;
-    generateInnerNode(tree->root());
+    generateInnerNode(qdb_->treeRoot());
 }
 
 Generator *Generator::generatorForFormat(const QString& format)
@@ -1462,7 +1363,7 @@ QString Generator::getCollisionLink(const Atom* atom)
     if (!atom->string().contains("::"))
         return link;
     QStringList path = atom->string().split("::");
-    NameCollisionNode* ncn = tree_->findCollisionNode(path[0]);
+    NameCollisionNode* ncn = qdb_->findCollisionNode(path[0]);
     if (ncn) {
         QString label;
         if (atom->next() && atom->next()->next()) {
@@ -1525,9 +1426,12 @@ QStringList Generator::getMetadataElements(const InnerNode* inner, const QString
 QString Generator::imageFileName(const Node *relative, const QString& fileBase)
 {
     QString userFriendlyFilePath;
-    QString filePath = Config::findFile(
-                relative->doc().location(), imageFiles, imageDirs, fileBase,
-                imgFileExts[format()], userFriendlyFilePath);
+    QString filePath = Config::findFile(relative->doc().location(),
+                                        imageFiles,
+                                        imageDirs,
+                                        fileBase,
+                                        imgFileExts[format()],
+                                        userFriendlyFilePath);
 
     if (filePath.isEmpty())
         return QString();
@@ -1572,12 +1476,10 @@ void Generator::initialize(const Config &config)
     outputFormats = config.getOutputFormats();
     if (!outputFormats.isEmpty()) {
         outDir_ = config.getOutputDir();
-        baseDir_ = config.getString(CONFIG_BASEDIR);
-        if (!baseDir_.isEmpty())
-            config.location().warning(tr("\"basedir\" specified in config file. "
-                                         "All output will be in module directories of the output directory"));
+
         if (outDir_.isEmpty())
-            config.lastLocation().fatal(tr("No output directory specified in configuration file or on the command line"));
+            config.lastLocation().fatal(tr("No output directory specified in "
+                                           "configuration file or on the command line"));
 
         QDir dirInfo;
         if (dirInfo.exists(outDir_)) {
@@ -1590,17 +1492,13 @@ void Generator::initialize(const Config &config)
         }
 
         if (!dirInfo.mkdir(outDir_ + "/images"))
-            config.lastLocation().fatal(tr("Cannot create output directory '%1'")
-                                        .arg(outDir_ + "/images"));
+            config.lastLocation().fatal(tr("Cannot create output directory '%1'").arg(outDir_ + "/images"));
         if (!dirInfo.mkdir(outDir_ + "/images/used-in-examples"))
-            config.lastLocation().fatal(tr("Cannot create output directory '%1'")
-                                        .arg(outDir_ + "/images/used-in-examples"));
+            config.lastLocation().fatal(tr("Cannot create output directory '%1'").arg(outDir_ + "/images/used-in-examples"));
         if (!dirInfo.mkdir(outDir_ + "/scripts"))
-            config.lastLocation().fatal(tr("Cannot create output directory '%1'")
-                                        .arg(outDir_ + "/scripts"));
+            config.lastLocation().fatal(tr("Cannot create output directory '%1'").arg(outDir_ + "/scripts"));
         if (!dirInfo.mkdir(outDir_ + "/style"))
-            config.lastLocation().fatal(tr("Cannot create output directory '%1'")
-                                        .arg(outDir_ + "/style"));
+            config.lastLocation().fatal(tr("Cannot create output directory '%1'").arg(outDir_ + "/style"));
     }
 
     imageFiles = config.getCleanPathList(CONFIG_IMAGES);
@@ -1610,16 +1508,13 @@ void Generator::initialize(const Config &config)
     styleFiles = config.getCleanPathList(CONFIG_STYLES);
     styleDirs = config.getCleanPathList(CONFIG_STYLEDIRS);
     exampleDirs = config.getCleanPathList(CONFIG_EXAMPLEDIRS);
-    exampleImgExts = config.getStringList(CONFIG_EXAMPLES + Config::dot +
-                                          CONFIG_IMAGEEXTENSIONS);
+    exampleImgExts = config.getStringList(CONFIG_EXAMPLES + Config::dot + CONFIG_IMAGEEXTENSIONS);
 
-    QString imagesDotFileExtensions =
-            CONFIG_IMAGES + Config::dot + CONFIG_FILEEXTENSIONS;
+    QString imagesDotFileExtensions = CONFIG_IMAGES + Config::dot + CONFIG_FILEEXTENSIONS;
     QSet<QString> formats = config.subVars(imagesDotFileExtensions);
     QSet<QString>::ConstIterator f = formats.constBegin();
     while (f != formats.constEnd()) {
-        imgFileExts[*f] = config.getStringList(imagesDotFileExtensions +
-                                               Config::dot + *f);
+        imgFileExts[*f] = config.getStringList(imagesDotFileExtensions + Config::dot + *f);
         ++f;
     }
 
@@ -1628,8 +1523,7 @@ void Generator::initialize(const Config &config)
         if (outputFormats.contains((*g)->format())) {
             currentGenerator_ = (*g);
             (*g)->initializeGenerator(config);
-            QStringList extraImages =
-                    config.getCleanPathList(CONFIG_EXTRAIMAGES+Config::dot+(*g)->format());
+            QStringList extraImages = config.getCleanPathList(CONFIG_EXTRAIMAGES+Config::dot+(*g)->format());
             QStringList::ConstIterator e = extraImages.constBegin();
             while (e != extraImages.constEnd()) {
                 QString userFriendlyFilePath;
@@ -1649,14 +1543,19 @@ void Generator::initialize(const Config &config)
             }
 
             // Documentation template handling
-            QString templateDir = config.getString(
-                        (*g)->format() + Config::dot + CONFIG_TEMPLATEDIR);
+            QString templateDir = config.getString((*g)->format() + Config::dot + CONFIG_TEMPLATEDIR);
 
+            QStringList searchDirs;
             if (!templateDir.isEmpty()) {
+                searchDirs.append(templateDir);
+            }
+            if (!Config::installDir.isEmpty()) {
+                searchDirs.append(Config::installDir);
+            }
+
+            if (!searchDirs.isEmpty()) {
                 QStringList noExts;
-                QStringList searchDirs = QStringList() << templateDir;
-                QStringList scripts =
-                        config.getCleanPathList((*g)->format()+Config::dot+CONFIG_SCRIPTS);
+                QStringList scripts = config.getCleanPathList((*g)->format()+Config::dot+CONFIG_SCRIPTS);
                 e = scripts.constBegin();
                 while (e != scripts.constEnd()) {
                     QString userFriendlyFilePath;
@@ -1675,12 +1574,7 @@ void Generator::initialize(const Config &config)
                     ++e;
                 }
 
-                if (!Config::installDir.isEmpty()) {
-                    searchDirs.append(Config::installDir);
-                }
-
-                QStringList styles =
-                        config.getCleanPathList((*g)->format()+Config::dot+CONFIG_STYLESHEETS);
+                QStringList styles = config.getCleanPathList((*g)->format()+Config::dot+CONFIG_STYLESHEETS);
                 e = styles.constBegin();
                 while (e != styles.constEnd()) {
                     QString userFriendlyFilePath;
@@ -1708,16 +1602,13 @@ void Generator::initialize(const Config &config)
     QSet<QString>::ConstIterator n = formattingNames.constBegin();
     while (n != formattingNames.constEnd()) {
         QString formattingDotName = CONFIG_FORMATTING + Config::dot + *n;
-
         QSet<QString> formats = config.subVars(formattingDotName);
         QSet<QString>::ConstIterator f = formats.constBegin();
         while (f != formats.constEnd()) {
-            QString def = config.getString(formattingDotName +
-                                           Config::dot + *f);
+            QString def = config.getString(formattingDotName + Config::dot + *f);
             if (!def.isEmpty()) {
                 int numParams = Config::numParams(def);
                 int numOccs = def.count("\1");
-
                 if (numParams != 1) {
                     config.lastLocation().warning(tr("Formatting '%1' must "
                                                      "have exactly one "
@@ -1747,10 +1638,26 @@ void Generator::initialize(const Config &config)
     QStringList prefixes = config.getStringList(CONFIG_OUTPUTPREFIXES);
     if (!prefixes.isEmpty()) {
         foreach (const QString &prefix, prefixes)
-            outputPrefixes[prefix] = config.getString(
-                        CONFIG_OUTPUTPREFIXES + Config::dot + prefix);
-    } else
+            outputPrefixes[prefix] = config.getString(CONFIG_OUTPUTPREFIXES + Config::dot + prefix);
+    }
+    else
         outputPrefixes[QLatin1String("QML")] = QLatin1String("qml-");
+    noLinkErrors_ = config.getBool(QLatin1String(CONFIG_NOLINKERRORS));
+}
+
+/*!
+  Appends each directory path in \a moreImageDirs to the
+  list of image directories.
+ */
+void Generator::augmentImageDirs(QSet<QString>& moreImageDirs)
+{
+    if (moreImageDirs.isEmpty())
+        return;
+    QSet<QString>::const_iterator i = moreImageDirs.begin();
+    while (i != moreImageDirs.end()) {
+        imageDirs.append(*i);
+        ++i;
+    }
 }
 
 void Generator::initializeGenerator(const Config & /* config */)
@@ -1915,9 +1822,19 @@ int Generator::skipAtoms(const Atom *atom, Atom::Type type) const
     return skipAhead;
 }
 
-void Generator::startText(const Node * /* relative */,
-                          CodeMarker * /* marker */)
+/*!
+  Resets the variables used during text output.
+ */
+void Generator::initializeTextOutput()
 {
+    inLink_ = false;
+    inContents_ = false;
+    inSectionHeading_ = false;
+    inTableHeader_ = false;
+    numTableRows_ = 0;
+    threeColumnEnumValueTable_ = true;
+    link_.clear();
+    sectionNumber_.clear();
 }
 
 void Generator::supplementAlsoList(const Node *node, QList<Text> &alsoList)
@@ -2013,7 +1930,7 @@ QString Generator::typeString(const Node *node)
         return "namespace";
     case Node::Class:
         return "class";
-    case Node::Fake:
+    case Node::Document:
     {
         switch (node->subType()) {
         case Node::QmlClass:

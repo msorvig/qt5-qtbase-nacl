@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Intel Corporation
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -672,6 +672,56 @@ qt_urlRecode(QString &appendTo, const QChar *begin, const QChar *end,
 
     return recode(appendTo, reinterpret_cast<const ushort *>(begin), reinterpret_cast<const ushort *>(end),
                   encoding, actionTable, false);
+}
+
+/*!
+    \internal
+    \since 5.0
+
+    \a ba contains an 8-bit form of the component and it might be
+    percent-encoded already. We can't use QString::fromUtf8 because it might
+    contain non-UTF8 sequences. We can't use QByteArray::toPercentEncoding
+    because it might already contain percent-encoded sequences. We can't use
+    qt_urlRecode because it needs UTF-16 input.
+*/
+Q_AUTOTEST_EXPORT
+QString qt_urlRecodeByteArray(const QByteArray &ba)
+{
+    if (ba.isNull())
+        return QString();
+
+    // scan ba for anything above or equal to 0x80
+    // control points below 0x20 are fine in QString
+    const char *in = ba.constData();
+    const char *const end = ba.constEnd();
+    for ( ; in < end; ++in) {
+        if (*in & 0x80)
+            break;
+    }
+
+    if (in == end) {
+        // no non-ASCII found, we're safe to convert to QString
+        return QString::fromLatin1(ba, ba.size());
+    }
+
+    // we found something that we need to encode
+    QByteArray intermediate = ba;
+    intermediate.resize(ba.size() * 3 - (in - ba.constData()));
+    uchar *out = reinterpret_cast<uchar *>(intermediate.data() + (in - ba.constData()));
+    for ( ; in < end; ++in) {
+        if (*in & 0x80) {
+            // encode
+            *out++ = '%';
+            *out++ = encodeNibble(uchar(*in) >> 4);
+            *out++ = encodeNibble(uchar(*in) & 0xf);
+        } else {
+            // keep
+            *out++ = uchar(*in);
+        }
+    }
+
+    // now it's safe to call fromLatin1
+    return QString::fromLatin1(intermediate, out - reinterpret_cast<uchar *>(intermediate.data()));
 }
 
 QT_END_NAMESPACE

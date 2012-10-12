@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -60,6 +60,7 @@
 #include <qsortfilterproxymodel.h>
 #include <qlineedit.h>
 #include <qlayout.h>
+#include <qmenu.h>
 #include "../../../../../src/widgets/dialogs/qsidebar_p.h"
 #include "../../../../../src/widgets/dialogs/qfilesystemmodel_p.h"
 #include "../../../../../src/widgets/dialogs/qfiledialog_p.h"
@@ -99,18 +100,27 @@ public slots:
     void cleanup();
 
 private slots:
-    void listRoot();
-    void heapCorruption();
+#ifdef QT_BUILD_INTERNAL
     void deleteDirAndFiles();
+    void listRoot();
+    void task227304_proxyOnFileDialog();
+    void task236402_dontWatchDeletedDir();
+    void task251321_sideBarHiddenEntries();
+    void task251341_sideBarRemoveEntries();
+    void task257579_sideBarWithNonCleanUrls();
+#endif
+    void heapCorruption();
     void filter();
     void showNameFilterDetails();
     void unc();
     void emptyUncPath();
 
+#if !defined(QT_NO_CONTEXTMENU) && !defined(QT_NO_MENU)
+    void task143519_deleteAndRenameActionBehavior();
+#endif
     void task178897_minimumSize();
     void task180459_lastDirectory_data();
     void task180459_lastDirectory();
-    void task227304_proxyOnFileDialog();
     void task227930_correctNavigationKeyboardBehavior();
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
     void task226366_lowerCaseHardDriveWindows();
@@ -118,15 +128,11 @@ private slots:
     void completionOnLevelAfterRoot();
     void task233037_selectingDirectory();
     void task235069_hideOnEscape();
-    void task236402_dontWatchDeletedDir();
     void task203703_returnProperSeparator();
     void task228844_ensurePreviousSorting();
     void task239706_editableFilterCombo();
     void task218353_relativePaths();
-    void task251321_sideBarHiddenEntries();
-    void task251341_sideBarRemoveEntries();
     void task254490_selectFileMultipleTimes();
-    void task257579_sideBarWithNonCleanUrls();
     void task259105_filtersCornerCases();
 
     void QTBUG4419_lineEditSelectAll();
@@ -176,9 +182,9 @@ void tst_QFileDialog2::cleanup()
     settings.setValue(QLatin1String("filedialog"), userSettings);
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::listRoot()
 {
-#if defined QT_BUILD_INTERNAL
     QFileInfoGatherer fileInfoGatherer;
     fileInfoGatherer.start();
     QTest::qWait(1500);
@@ -194,8 +200,8 @@ void tst_QFileDialog2::listRoot()
     QTest::qWait(500);
 #endif
     QCOMPARE(qt_test_isFetchedRoot(),true);
-#endif
 }
+#endif
 
 void tst_QFileDialog2::heapCorruption()
 {
@@ -214,9 +220,9 @@ struct FriendlyQFileDialog : public QNonNativeFileDialog
 };
 
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::deleteDirAndFiles()
 {
-#if defined QT_BUILD_INTERNAL
     QString tempPath = tempDir.path() + "/QFileDialogTestDir4FullDelete";
     QDir dir;
     QVERIFY(dir.mkpath(tempPath + "/foo"));
@@ -243,8 +249,8 @@ void tst_QFileDialog2::deleteDirAndFiles()
     QFileInfo info(tempPath);
     QTest::qWait(2000);
     QVERIFY(!info.exists());
-#endif
 }
+#endif
 
 void tst_QFileDialog2::filter()
 {
@@ -311,6 +317,101 @@ void tst_QFileDialog2::emptyUncPath()
     QFileSystemModel *model = qFindChild<QFileSystemModel*>(&fd, "qt_filesystem_model");
     QVERIFY(model);
 }
+
+#if !defined(QT_NO_CONTEXTMENU) && !defined(QT_NO_MENU)
+struct MenuCloser {
+    QWidget *w;
+    explicit MenuCloser(QWidget *w) : w(w) {}
+    void operator()() const
+    {
+        QMenu *menu = qFindChild<QMenu*>(w);
+        if (!menu) {
+            qDebug("%s: cannot find file dialog child of type QMenu", Q_FUNC_INFO);
+            w->close();
+        }
+        QTest::keyClick(menu, Qt::Key_Escape);
+    }
+};
+static bool openContextMenu(QFileDialog &fd)
+{
+    QListView *list = qFindChild<QListView*>(&fd, "listView");
+    if (!list) {
+        qDebug("%s: didn't find file dialog child \"listView\"", Q_FUNC_INFO);
+        return false;
+    }
+    QTimer timer;
+    timer.setInterval(300);
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, MenuCloser(&fd));
+    timer.start();
+    QContextMenuEvent cme(QContextMenuEvent::Mouse, QPoint(10, 10));
+    qApp->sendEvent(list->viewport(), &cme); // blocks until menu is closed again.
+    return true;
+}
+
+void tst_QFileDialog2::task143519_deleteAndRenameActionBehavior()
+{
+    // test based on task233037_selectingDirectory
+
+    struct TestContext {
+        TestContext()
+            : current(QDir::current()) {}
+        ~TestContext() {
+            file.remove();
+            current.rmdir(test.dirName());
+        }
+        QDir current;
+        QDir test;
+        QFile file;
+    } ctx;
+
+    // setup testbed
+    QVERIFY(ctx.current.mkdir("task143519_deleteAndRenameActionBehavior_test")); // ensure at least one item
+    ctx.test = ctx.current;
+    QVERIFY(ctx.test.cd("task143519_deleteAndRenameActionBehavior_test"));
+    ctx.file.setFileName(ctx.test.absoluteFilePath("hello"));
+    QVERIFY(ctx.file.open(QIODevice::WriteOnly));
+    QVERIFY(ctx.file.permissions() & QFile::WriteUser);
+    ctx.file.close();
+
+    QNonNativeFileDialog fd;
+    fd.setViewMode(QFileDialog::List);
+    fd.setDirectory(ctx.test.absolutePath());
+    fd.show();
+
+    QTest::qWaitForWindowActive(&fd);
+
+    // grab some internals:
+    QAction *rm = qFindChild<QAction*>(&fd, "qt_delete_action");
+    QVERIFY(rm);
+    QAction *mv = qFindChild<QAction*>(&fd, "qt_rename_action");
+    QVERIFY(mv);
+
+    // these are the real test cases:
+
+    // defaults
+    QVERIFY(openContextMenu(fd));
+    QCOMPARE(fd.selectedFiles().size(), 1);
+    QCOMPARE(rm->isEnabled(), !fd.isReadOnly());
+    QCOMPARE(mv->isEnabled(), !fd.isReadOnly());
+
+    // change to non-defaults:
+    fd.setReadOnly(!fd.isReadOnly());
+
+    QVERIFY(openContextMenu(fd));
+    QCOMPARE(fd.selectedFiles().size(), 1);
+    QCOMPARE(rm->isEnabled(), !fd.isReadOnly());
+    QCOMPARE(mv->isEnabled(), !fd.isReadOnly());
+
+    // and changed back to defaults:
+    fd.setReadOnly(!fd.isReadOnly());
+
+    QVERIFY(openContextMenu(fd));
+    QCOMPARE(fd.selectedFiles().size(), 1);
+    QCOMPARE(rm->isEnabled(), !fd.isReadOnly());
+    QCOMPARE(mv->isEnabled(), !fd.isReadOnly());
+}
+#endif // !QT_NO_CONTEXTMENU && !QT_NO_MENU
 
 void tst_QFileDialog2::task178897_minimumSize()
 {
@@ -453,9 +554,9 @@ QString &dir, const QString &filter)
         }
 };
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::task227304_proxyOnFileDialog()
 {
-#if defined QT_BUILD_INTERNAL
     QNonNativeFileDialog fd(0, "", QDir::currentPath(), 0);
     fd.setProxyModel(new FilterDirModel(QDir::currentPath()));
     fd.show();
@@ -489,8 +590,8 @@ void tst_QFileDialog2::task227304_proxyOnFileDialog()
     QTest::mouseClick(sidebar->viewport(), Qt::LeftButton, 0, sidebar->visualRect(sidebar->model()->index(1, 0)).center());
     QTest::qWait(250);
     //We shouldn't crash
-#endif
 }
+#endif
 
 void tst_QFileDialog2::task227930_correctNavigationKeyboardBehavior()
 {
@@ -670,9 +771,9 @@ void tst_QFileDialog2::task235069_hideOnEscape()
     QCOMPARE(fd2.isVisible(), false);
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::task236402_dontWatchDeletedDir()
 {
-#if defined QT_BUILD_INTERNAL
     //THIS TEST SHOULD NOT DISPLAY WARNINGS
     QDir current = QDir::currentPath();
     //make sure it is the first on the list
@@ -692,8 +793,8 @@ void tst_QFileDialog2::task236402_dontWatchDeletedDir()
     QTest::qWait(200);
     fd.d_func()->removeDirectory(current.absolutePath() + "/aaaaaaaaaa/");
     QTest::qWait(1000);
-#endif
 }
+#endif
 
 void tst_QFileDialog2::task203703_returnProperSeparator()
 {
@@ -862,9 +963,9 @@ void tst_QFileDialog2::task218353_relativePaths()
     appDir.rmdir("test");
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::task251321_sideBarHiddenEntries()
 {
-#if defined QT_BUILD_INTERNAL
     QNonNativeFileDialog fd;
 
     QDir current = QDir::currentPath();
@@ -899,8 +1000,8 @@ void tst_QFileDialog2::task251321_sideBarHiddenEntries()
     hiddenSubDir.rmdir("happy");
     hiddenDir.rmdir("subdir");
     current.rmdir(".hidden");
-#endif
 }
+#endif
 
 #if defined QT_BUILD_INTERNAL
 class MyQSideBar : public QSidebar
@@ -922,9 +1023,9 @@ public :
 };
 #endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::task251341_sideBarRemoveEntries()
 {
-#if defined QT_BUILD_INTERNAL
     QNonNativeFileDialog fd;
 
     QDir current = QDir::currentPath();
@@ -984,8 +1085,8 @@ void tst_QFileDialog2::task251341_sideBarRemoveEntries()
     QCOMPARE(mySideBar.urls(), expected);
 
     current.rmdir("testDir");
-#endif
 }
+#endif
 
 void tst_QFileDialog2::task254490_selectFileMultipleTimes()
 {
@@ -1019,9 +1120,9 @@ void tst_QFileDialog2::task254490_selectFileMultipleTimes()
     t->deleteLater();
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileDialog2::task257579_sideBarWithNonCleanUrls()
 {
-#if defined QT_BUILD_INTERNAL
     QDir dir(tempDir.path());
     QLatin1String dirname("autotest_task257579");
     dir.rmdir(dirname); //makes sure it doesn't exist any more
@@ -1042,8 +1143,8 @@ void tst_QFileDialog2::task257579_sideBarWithNonCleanUrls()
 
     //all tests are finished, we can remove the temporary dir
     QVERIFY(dir.rmdir(dirname));
-#endif
 }
+#endif
 
 void tst_QFileDialog2::task259105_filtersCornerCases()
 {

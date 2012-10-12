@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -318,6 +318,18 @@ QList<QNetworkProxy> QGlobalNetworkProxy::proxyForQuery(const QNetworkProxyQuery
     QMutexLocker locker(&mutex);
 
     QList<QNetworkProxy> result;
+
+    // don't look for proxies for a local connection
+    QHostAddress parsed;
+    QString hostname = query.url().host();
+    if (hostname == QLatin1String("localhost")
+        || hostname.startsWith(QLatin1String("localhost."))
+        || (parsed.setAddress(hostname)
+            && (parsed.isLoopback()))) {
+        result << QNetworkProxy(QNetworkProxy::NoProxy);
+        return result;
+    }
+
     if (!applicationLevelProxyFactory) {
         if (applicationLevelProxy
             && applicationLevelProxy->type() != QNetworkProxy::DefaultProxy)
@@ -1522,6 +1534,12 @@ void QNetworkProxyFactory::setApplicationProxyFactory(QNetworkProxyFactory *fact
     SOCKS server for all queries. If SOCKS isn't enabled, it will use
     the HTTPS proxy for all TcpSocket and UrlRequest queries.
 
+    On BlackBerry, this function obtains proxy settings for the default
+    configuration using system configuration. The type will be set based on
+    protocol tag "http", "https", "ftp", respectively. By default, it
+    assumes http type. Proxy username and password are also set during
+    the query using system configuration.
+
     On other systems, this function will pick up proxy settings from
     the "http_proxy" environment variable. This variable must be a URL
     using one of the following schemes: "http", "socks5" or "socks5h".
@@ -1538,6 +1556,11 @@ void QNetworkProxyFactory::setApplicationProxyFactory(QNetworkProxyFactory *fact
 
     \li On Windows platforms, this function may take several seconds to
     execute depending on the configuration of the user's system.
+
+    \li On BlackBerry, this function ignores network configuration specified
+    in \a query. Only UrlRequest quieries are supported. SOCKS is not supported.
+    The proxy information is retrieved only for the default configuration.
+    Also, PAC and exclusion lists are currently not supported.
     \endlist
 */
 
@@ -1598,7 +1621,7 @@ QDebug operator<<(QDebug debug, const QNetworkProxy &proxy)
         scaps << QStringLiteral("Caching");
     if (caps & QNetworkProxy::HostNameLookupCapability)
         scaps << QStringLiteral("NameLookup");
-    debug << "[" << scaps.join(QStringLiteral(" ")) << "]";
+    debug << "[" << scaps.join(QLatin1Char(' ')) << "]";
     return debug;
 }
 #endif

@@ -1,7 +1,7 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Giuseppe D'Angelo <dangelog@gmail.com>.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
@@ -17,10 +17,10 @@
 **     notice, this list of conditions and the following disclaimer in
 **     the documentation and/or other materials provided with the
 **     distribution.
-**   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-**     the names of its contributors may be used to endorse or promote
-**     products derived from this software without specific prior written
-**     permission.
+**   * Neither the name of Digia Plc and its Subsidiary(-ies) nor the names
+**     of its contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
 **
 ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -267,7 +267,7 @@ for (int i = 0; i <= match.lastCapturedIndex(); ++i) {
 //! [28]
 
 //! [29]
-QRegularExpression("(\d\d) (?<name>\w+)");
+QRegularExpression("(\\d\\d) (?<name>\\w+)");
 QRegularExpressionMatch match = re.match("23 Jordan");
 if (match.hasMatch()) {
     QString number = match.captured(1); // first == "23"
@@ -277,7 +277,7 @@ if (match.hasMatch()) {
 
 //! [30]
 // extracts the words
-QRegularExpression re("(\w+)");
+QRegularExpression re("(\\w+)");
 QString subject("the quick fox");
 QRegularExpressionMatchIterator i = re.globalMatch(subject);
 while (i.hasNext()) {

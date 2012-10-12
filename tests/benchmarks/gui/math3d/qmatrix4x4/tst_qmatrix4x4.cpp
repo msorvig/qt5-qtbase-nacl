@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -96,7 +96,7 @@ private slots:
     void compareRotateAfterScale();
 };
 
-static qreal const generalValues[16] =
+static float const generalValues[16] =
     {1.0f, 2.0f, 3.0f, 4.0f,
      5.0f, 6.0f, 7.0f, 8.0f,
      9.0f, 10.0f, 11.0f, 12.0f,
@@ -171,9 +171,9 @@ void tst_QMatrix4x4::multiplyDirect()
 
     QMatrix4x4 m3;
 
-    const qreal *m1data = m1.constData();
-    const qreal *m2data = m2.constData();
-    qreal *m3data = m3.data();
+    const float *m1data = m1.constData();
+    const float *m2data = m2.constData();
+    float *m3data = m3.data();
 
     QBENCHMARK {
         for (int row = 0; row < 4; ++row) {
@@ -266,9 +266,9 @@ void tst_QMatrix4x4::mapVectorDirect()
 {
     QFETCH(QMatrix4x4, m1);
 
-    const qreal *m1data = m1.constData();
-    qreal v[4] = {10.5f, -2.0f, 3.0f, 1.0f};
-    qreal result[4];
+    const float *m1data = m1.constData();
+    float v[4] = {10.5f, -2.0f, 3.0f, 1.0f};
+    float result[4];
 
     QBENCHMARK {
         for (int row = 0; row < 4; ++row) {
@@ -310,9 +310,9 @@ void tst_QMatrix4x4::compareTranslate()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, translation);
 
-    qreal x = translation.x();
-    qreal y = translation.y();
-    qreal z = translation.z();
+    float x = translation.x();
+    float y = translation.y();
+    float z = translation.z();
 
     if (useQTransform) {
         QTransform t;
@@ -343,9 +343,9 @@ void tst_QMatrix4x4::compareTranslateAfterScale()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, translation);
 
-    qreal x = translation.x();
-    qreal y = translation.y();
-    qreal z = translation.z();
+    float x = translation.x();
+    float y = translation.y();
+    float z = translation.z();
 
     if (useQTransform) {
         QTransform t;
@@ -379,9 +379,9 @@ void tst_QMatrix4x4::compareTranslateAfterRotate()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, translation);
 
-    qreal x = translation.x();
-    qreal y = translation.y();
-    qreal z = translation.z();
+    float x = translation.x();
+    float y = translation.y();
+    float z = translation.z();
 
     if (useQTransform) {
         QTransform t;
@@ -431,9 +431,9 @@ void tst_QMatrix4x4::compareScale()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, scale);
 
-    qreal x = scale.x();
-    qreal y = scale.y();
-    qreal z = scale.z();
+    float x = scale.x();
+    float y = scale.y();
+    float z = scale.z();
 
     if (useQTransform) {
         QTransform t;
@@ -464,9 +464,9 @@ void tst_QMatrix4x4::compareScaleAfterTranslate()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, scale);
 
-    qreal x = scale.x();
-    qreal y = scale.y();
-    qreal z = scale.z();
+    float x = scale.x();
+    float y = scale.y();
+    float z = scale.z();
 
     if (useQTransform) {
         QTransform t;
@@ -500,9 +500,9 @@ void tst_QMatrix4x4::compareScaleAfterRotate()
     QFETCH(bool, useQTransform);
     QFETCH(QVector3D, scale);
 
-    qreal x = scale.x();
-    qreal y = scale.y();
-    qreal z = scale.z();
+    float x = scale.x();
+    float y = scale.y();
+    float z = scale.z();
 
     if (useQTransform) {
         QTransform t;
@@ -530,65 +530,65 @@ void tst_QMatrix4x4::compareScaleAfterRotate()
 void tst_QMatrix4x4::compareRotate_data()
 {
     QTest::addColumn<bool>("useQTransform");
-    QTest::addColumn<qreal>("angle");
+    QTest::addColumn<float>("angle");
     QTest::addColumn<QVector3D>("rotation");
     QTest::addColumn<int>("axis");
 
     QTest::newRow("QTransform::rotate(0, ZAxis)")
-        << true << qreal(0.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << true << 0.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
     QTest::newRow("QMatrix4x4::rotate(0, ZAxis)")
-        << false << qreal(0.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << false << 0.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
 
     QTest::newRow("QTransform::rotate(45, ZAxis)")
-        << true << qreal(45.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << true << 45.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
     QTest::newRow("QMatrix4x4::rotate(45, ZAxis)")
-        << false << qreal(45.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << false << 45.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
 
     QTest::newRow("QTransform::rotate(90, ZAxis)")
-        << true << qreal(90.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << true << 90.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
     QTest::newRow("QMatrix4x4::rotate(90, ZAxis)")
-        << false << qreal(90.0f) << QVector3D(0, 0, 1) << int(Qt::ZAxis);
+        << false << 90.0f << QVector3D(0, 0, 1) << int(Qt::ZAxis);
 
     QTest::newRow("QTransform::rotate(0, YAxis)")
-        << true << qreal(0.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << true << 0.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
     QTest::newRow("QMatrix4x4::rotate(0, YAxis)")
-        << false << qreal(0.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << false << 0.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
 
     QTest::newRow("QTransform::rotate(45, YAxis)")
-        << true << qreal(45.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << true << 45.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
     QTest::newRow("QMatrix4x4::rotate(45, YAxis)")
-        << false << qreal(45.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << false << 45.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
 
     QTest::newRow("QTransform::rotate(90, YAxis)")
-        << true << qreal(90.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << true << 90.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
     QTest::newRow("QMatrix4x4::rotate(90, YAxis)")
-        << false << qreal(90.0f) << QVector3D(0, 1, 0) << int(Qt::YAxis);
+        << false << 90.0f << QVector3D(0, 1, 0) << int(Qt::YAxis);
 
     QTest::newRow("QTransform::rotate(0, XAxis)")
-        << true << qreal(0.0f) << QVector3D(0, 1, 0) << int(Qt::XAxis);
+        << true << 0.0f << QVector3D(0, 1, 0) << int(Qt::XAxis);
     QTest::newRow("QMatrix4x4::rotate(0, XAxis)")
-        << false << qreal(0.0f) << QVector3D(0, 1, 0) << int(Qt::XAxis);
+        << false << 0.0f << QVector3D(0, 1, 0) << int(Qt::XAxis);
 
     QTest::newRow("QTransform::rotate(45, XAxis)")
-        << true << qreal(45.0f) << QVector3D(1, 0, 0) << int(Qt::XAxis);
+        << true << 45.0f << QVector3D(1, 0, 0) << int(Qt::XAxis);
     QTest::newRow("QMatrix4x4::rotate(45, XAxis)")
-        << false << qreal(45.0f) << QVector3D(1, 0, 0) << int(Qt::XAxis);
+        << false << 45.0f << QVector3D(1, 0, 0) << int(Qt::XAxis);
 
     QTest::newRow("QTransform::rotate(90, XAxis)")
-        << true << qreal(90.0f) << QVector3D(1, 0, 0) << int(Qt::XAxis);
+        << true << 90.0f << QVector3D(1, 0, 0) << int(Qt::XAxis);
     QTest::newRow("QMatrix4x4::rotate(90, XAxis)")
-        << false << qreal(90.0f) << QVector3D(1, 0, 0) << int(Qt::XAxis);
+        << false << 90.0f << QVector3D(1, 0, 0) << int(Qt::XAxis);
 }
 void tst_QMatrix4x4::compareRotate()
 {
     QFETCH(bool, useQTransform);
-    QFETCH(qreal, angle);
+    QFETCH(float, angle);
     QFETCH(QVector3D, rotation);
     QFETCH(int, axis);
 
-    qreal x = rotation.x();
-    qreal y = rotation.y();
-    qreal z = rotation.z();
+    float x = rotation.x();
+    float y = rotation.y();
+    float z = rotation.z();
 
     if (useQTransform) {
         QTransform t;
@@ -612,13 +612,13 @@ void tst_QMatrix4x4::compareRotateAfterTranslate_data()
 void tst_QMatrix4x4::compareRotateAfterTranslate()
 {
     QFETCH(bool, useQTransform);
-    QFETCH(qreal, angle);
+    QFETCH(float, angle);
     QFETCH(QVector3D, rotation);
     QFETCH(int, axis);
 
-    qreal x = rotation.x();
-    qreal y = rotation.y();
-    qreal z = rotation.z();
+    float x = rotation.x();
+    float y = rotation.y();
+    float z = rotation.z();
 
     if (useQTransform) {
         QTransform t;
@@ -644,13 +644,13 @@ void tst_QMatrix4x4::compareRotateAfterScale_data()
 void tst_QMatrix4x4::compareRotateAfterScale()
 {
     QFETCH(bool, useQTransform);
-    QFETCH(qreal, angle);
+    QFETCH(float, angle);
     QFETCH(QVector3D, rotation);
     QFETCH(int, axis);
 
-    qreal x = rotation.x();
-    qreal y = rotation.y();
-    qreal z = rotation.z();
+    float x = rotation.x();
+    float y = rotation.y();
+    float z = rotation.z();
 
     if (useQTransform) {
         QTransform t;

@@ -771,6 +771,7 @@ void HB_FreeFace(HB_Face face)
     free(face);
 }
 
+#ifndef NO_OPENTYPE
 HB_Bool HB_SelectScript(HB_ShaperItem *shaper_item, const HB_OpenTypeFeature *features)
 {
     HB_Script script = shaper_item->item.script;
@@ -884,7 +885,7 @@ HB_Bool HB_SelectScript(HB_ShaperItem *shaper_item, const HB_OpenTypeFeature *fe
 
 static HB_Bool containsSurrogates(HB_ShaperItem *item)
 {
-    for (hb_uint32 i=0; i<item->stringLength; ++i) {
+    for (hb_uint32 i=item->item.pos; i<item->item.pos+item->item.length; ++i) {
         HB_UChar16 ucs = item->string[i];
         if ( HB_IsHighSurrogate(ucs) || HB_IsLowSurrogate(ucs) )
             return true;
@@ -1085,6 +1086,7 @@ HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool do
 #endif
     return true;
 }
+#endif // NO_OPENTYPE
 
 HB_Bool HB_ShapeItem(HB_ShaperItem *shaper_item)
 {

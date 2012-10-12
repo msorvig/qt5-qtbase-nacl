@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -175,13 +175,13 @@ public:
     inline QModelIndex modelIndex(int row) const;
     inline int rowCount() const;
 
-    inline QStyleOptionViewItemV4 viewOptions() const;
+    inline QStyleOptionViewItem viewOptions() const;
     inline QWidget *viewport() const;
     inline QRect clipRect() const;
 
     inline QSize cachedItemSize() const;
     inline QRect viewItemRect(const QListViewItem &item) const;
-    inline QSize itemSize(const QStyleOptionViewItemV2 &opt, const QModelIndex &idx) const;
+    inline QSize itemSize(const QStyleOptionViewItem &opt, const QModelIndex &idx) const;
     inline QAbstractItemDelegate *delegate(const QModelIndex &idx) const;
 
     inline bool isHidden(int row) const;
@@ -394,6 +394,8 @@ public:
         }
     }
 
+    QStyleOptionViewItem viewOptions() const;
+
     void scrollElasticBandBy(int dx, int dy);
 
     QItemViewPaintPairs draggablePaintPairs(const QModelIndexList &indexes, QRect *r) const;
@@ -468,13 +470,13 @@ inline QModelIndex QCommonListViewBase::modelIndex(int row) const
     { return dd->model->index(row, dd->column, dd->root); }
 inline int QCommonListViewBase::rowCount() const { return dd->model->rowCount(dd->root); }
 
-inline QStyleOptionViewItemV4 QCommonListViewBase::viewOptions() const { return dd->viewOptionsV4(); }
+inline QStyleOptionViewItem QCommonListViewBase::viewOptions() const { return dd->viewOptions(); }
 inline QWidget *QCommonListViewBase::viewport() const { return dd->viewport; }
 inline QRect QCommonListViewBase::clipRect() const { return dd->clipRect(); }
 
 inline QSize QCommonListViewBase::cachedItemSize() const { return dd->cachedItemSize; }
 inline QRect QCommonListViewBase::viewItemRect(const QListViewItem &item) const { return dd->viewItemRect(item); }
-inline QSize QCommonListViewBase::itemSize(const QStyleOptionViewItemV2 &opt, const QModelIndex &idx) const
+inline QSize QCommonListViewBase::itemSize(const QStyleOptionViewItem &opt, const QModelIndex &idx) const
     { return dd->itemSize(opt, idx); }
 
 inline QAbstractItemDelegate *QCommonListViewBase::delegate(const QModelIndex &idx) const

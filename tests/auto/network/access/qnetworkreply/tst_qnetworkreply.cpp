@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -297,13 +297,17 @@ private Q_SLOTS:
 
     void httpCanReadLine();
 
+#ifdef QT_BUILD_INTERNAL
     void rateControl_data();
     void rateControl();
+#endif
 
     void downloadProgress_data();
     void downloadProgress();
+#ifdef QT_BUILD_INTERNAL
     void uploadProgress_data();
     void uploadProgress();
+#endif
 
     void chaining_data();
     void chaining();
@@ -376,6 +380,9 @@ private Q_SLOTS:
     void qtbug18232gzipContentLengthZero();
     void qtbug22660gzipNoContentLengthEmptyContent();
 
+    void qtbug27161httpHeaderMayBeDamaged_data();
+    void qtbug27161httpHeaderMayBeDamaged();
+
     void synchronousRequest_data();
     void synchronousRequest();
 #ifndef QT_NO_SSL
@@ -399,12 +406,14 @@ private Q_SLOTS:
     void ftpAuthentication_data();
     void ftpAuthentication();
 
+#ifdef QT_BUILD_INTERNAL
     void backgroundRequest_data();
     void backgroundRequest();
     void backgroundRequestInterruption_data();
     void backgroundRequestInterruption();
     void backgroundRequestConnectInBackground_data();
     void backgroundRequestConnectInBackground();
+#endif
 
     // NOTE: This test must be last!
     void parentingRepliesToTheApp();
@@ -4670,6 +4679,7 @@ void tst_QNetworkReply::httpCanReadLine()
     QVERIFY(!reply->canReadLine());
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::rateControl_data()
 {
     QTest::addColumn<int>("rate");
@@ -4682,17 +4692,15 @@ void tst_QNetworkReply::rateControl_data()
     QTest::newRow("250") << 250;
     QTest::newRow("1024") << 1024;
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::rateControl()
 {
     QSKIP("Test disabled -- only for manual purposes");
     // this function tests that we aren't reading from the network
     // faster than the data is being consumed.
     QFETCH(int, rate);
-
-#if !defined(QT_BUILD_INTERNAL)
-    QSKIP("backend for testing not available!");
-#endif
 
     // ask for 20 seconds worth of data
     FastSender sender(20 * rate * 1024);
@@ -4731,6 +4739,7 @@ void tst_QNetworkReply::rateControl()
     QVERIFY(sender.transferRate >= minRate);
     QVERIFY(sender.transferRate <= maxRate);
 }
+#endif
 
 void tst_QNetworkReply::downloadProgress_data()
 {
@@ -4803,17 +4812,17 @@ void tst_QNetworkReply::downloadProgress()
     }
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::uploadProgress_data()
 {
     putToFile_data();
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::uploadProgress()
 {
     QFETCH(QByteArray, data);
-#if !defined(QT_BUILD_INTERNAL)
-    QSKIP("backend for testing not available!");
-#endif
     QTcpServer server;
     QVERIFY(server.listen());
 
@@ -4843,6 +4852,7 @@ void tst_QNetworkReply::uploadProgress()
     QCOMPARE(args.at(0).toInt(), data.size());
     QCOMPARE(args.at(1).toInt(), data.size());
 }
+#endif
 
 void tst_QNetworkReply::chaining_data()
 {
@@ -6438,6 +6448,77 @@ void tst_QNetworkReply::qtbug22660gzipNoContentLengthEmptyContent()
     QCOMPARE(reply->readAll(), QByteArray());
 }
 
+class QtBug27161Helper : public QObject {
+    Q_OBJECT
+public:
+    QtBug27161Helper(MiniHttpServer & server, const QByteArray & data):
+        m_server(server),
+        m_data(data)
+    {
+        connect(&m_server, SIGNAL(newConnection()), this, SLOT(newConnectionSlot()));
+    }
+public slots:
+    void newConnectionSlot(){
+        connect(m_server.client, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWrittenSlot()));
+    }
+
+    void bytesWrittenSlot(){
+        disconnect(m_server.client, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWrittenSlot()));
+        m_Timer.singleShot(100, this, SLOT(timeoutSlot()));
+    }
+
+    void timeoutSlot(){
+        m_server.doClose = true;
+        // we need to emulate the bytesWrittenSlot call if the data is empty.
+        if (m_data.size() == 0)
+            QMetaObject::invokeMethod(&m_server, "bytesWrittenSlot", Qt::QueuedConnection);
+        else
+            m_server.client->write(m_data);
+    }
+
+private:
+    MiniHttpServer & m_server;
+    QByteArray m_data;
+    QTimer m_Timer;
+};
+
+void tst_QNetworkReply::qtbug27161httpHeaderMayBeDamaged_data(){
+    QByteArray response("HTTP/1.0 200 OK\r\nServer: bogus\r\nContent-Length: 3\r\n\r\nABC");
+    QTest::addColumn<QByteArray>("firstPacket");
+    QTest::addColumn<QByteArray>("secondPacket");
+
+    for (int i = 1; i < response.size(); i++){
+        QByteArray dataTag("Iteration: ");
+        dataTag.append(QByteArray::number(i - 1));
+        QTest::newRow(dataTag.constData()) << response.left(i) << response.mid(i);
+    }
+}
+
+/*
+ * Purpose of this test is to check whether a content from server is parsed correctly
+ * if it is splitted into two parts.
+ */
+void tst_QNetworkReply::qtbug27161httpHeaderMayBeDamaged(){
+    QFETCH(QByteArray, firstPacket);
+    QFETCH(QByteArray, secondPacket);
+    MiniHttpServer server(firstPacket);
+    server.doClose = false;
+    QtBug27161Helper helper(server, secondPacket);
+
+    QNetworkRequest request(QUrl("http://localhost:" + QString::number(server.serverPort())));
+    QNetworkReplyPtr reply(manager.get(request));
+
+    QVERIFY(waitForFinish(reply) == Success);
+
+    QVERIFY(reply->isFinished());
+    QCOMPARE(reply->error(), QNetworkReply::NoError);
+    QCOMPARE(reply->size(), qint64(3));
+    QCOMPARE(reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(), qint64(3));
+    QCOMPARE(reply->rawHeader("Content-length"), QByteArray("3"));
+    QCOMPARE(reply->rawHeader("Server"), QByteArray("bogus"));
+    QCOMPARE(reply->readAll(), QByteArray("ABC"));
+}
+
 void tst_QNetworkReply::synchronousRequest_data()
 {
     QTest::addColumn<QUrl>("url");
@@ -6822,6 +6903,7 @@ void tst_QNetworkReply::ftpAuthentication()
     QCOMPARE(reply->error(), QNetworkReply::NetworkError(error));
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequest_data()
 {
     QTest::addColumn<QUrl>("url");
@@ -6851,11 +6933,12 @@ void tst_QNetworkReply::backgroundRequest_data()
     QTest::newRow("ftp, bg, nobg") << ftpurl << true << (int)QNetworkSession::NoBackgroundTrafficPolicy << QNetworkReply::BackgroundRequestNotAllowedError;
 
 }
+#endif
 
 //test purpose: background requests can't be started when not allowed
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequest()
 {
-#ifdef QT_BUILD_INTERNAL
 #ifndef QT_NO_BEARERMANAGEMENT
     QFETCH(QUrl, url);
     QFETCH(bool, background);
@@ -6889,9 +6972,10 @@ void tst_QNetworkReply::backgroundRequest()
     QVERIFY(reply->isFinished());
     QCOMPARE(reply->error(), error);
 #endif
-#endif
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequestInterruption_data()
 {
     QTest::addColumn<QUrl>("url");
@@ -6914,11 +6998,12 @@ void tst_QNetworkReply::backgroundRequestInterruption_data()
     QTest::newRow("ftp, bg, nobg") << ftpurl << true << QNetworkReply::BackgroundRequestNotAllowedError;
 
 }
+#endif
 
 //test purpose: background requests in progress are aborted when policy changes to disallow them
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequestInterruption()
 {
-#ifdef QT_BUILD_INTERNAL
 #ifndef QT_NO_BEARERMANAGEMENT
     QFETCH(QUrl, url);
     QFETCH(bool, background);
@@ -6961,9 +7046,10 @@ void tst_QNetworkReply::backgroundRequestInterruption()
     QVERIFY(reply->isFinished());
     QCOMPARE(reply->error(), error);
 #endif
-#endif
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequestConnectInBackground_data()
 {
     QTest::addColumn<QUrl>("url");
@@ -6978,11 +7064,12 @@ void tst_QNetworkReply::backgroundRequestConnectInBackground_data()
     QTest::newRow("ftp, fg") << ftpurl << false;
     QTest::newRow("ftp, bg") << ftpurl << true;
 }
+#endif
 
 //test purpose: check that backgroundness is propagated to the network session
+#ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequestConnectInBackground()
 {
-#ifdef QT_BUILD_INTERNAL
 #ifndef QT_NO_BEARERMANAGEMENT
     QFETCH(QUrl, url);
     QFETCH(bool, background);
@@ -7023,8 +7110,8 @@ void tst_QNetworkReply::backgroundRequestConnectInBackground()
 
     QVERIFY(reply->isFinished());
 #endif
-#endif
 }
+#endif
 
 // NOTE: This test must be last testcase in tst_qnetworkreply!
 void tst_QNetworkReply::parentingRepliesToTheApp()

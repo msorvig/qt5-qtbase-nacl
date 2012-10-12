@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2011 Thiago Macieira <thiago@kde.org>
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -97,21 +97,21 @@ template<> struct QAtomicIntegerTraits<unsigned int> { enum { IsInteger = 1 }; }
 
 template <int size> struct QBasicAtomicOps: QGenericAtomicOps<QBasicAtomicOps<size> >
 {
-    static inline bool isReferenceCountingNative() Q_DECL_NOTHROW { return true; }
-    static inline bool isReferenceCountingWaitFree() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isReferenceCountingNative() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isReferenceCountingWaitFree() Q_DECL_NOTHROW { return true; }
     template <typename T> static bool ref(T &_q_value) Q_DECL_NOTHROW;
     template <typename T> static bool deref(T &_q_value) Q_DECL_NOTHROW;
 
-    static inline bool isTestAndSetNative() Q_DECL_NOTHROW { return true; }
-    static inline bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isTestAndSetNative() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return true; }
     template <typename T> static bool testAndSetRelaxed(T &_q_value, T expectedValue, T newValue) Q_DECL_NOTHROW;
 
-    static inline bool isFetchAndStoreNative() Q_DECL_NOTHROW { return true; }
-    static inline bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isFetchAndStoreNative() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isFetchAndStoreWaitFree() Q_DECL_NOTHROW { return true; }
     template <typename T> static T fetchAndStoreRelaxed(T &_q_value, T newValue) Q_DECL_NOTHROW;
 
-    static inline bool isFetchAndAddNative() Q_DECL_NOTHROW { return true; }
-    static inline bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isFetchAndAddNative() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isFetchAndAddWaitFree() Q_DECL_NOTHROW { return true; }
     template <typename T> static
     T fetchAndAddRelaxed(T &_q_value, typename QAtomicAdditiveType<T>::AdditiveT valueToAdd) Q_DECL_NOTHROW;
 };
@@ -132,6 +132,12 @@ template<> struct QAtomicIntegerTraits<long> { enum { IsInteger = 1 }; };
 template<> struct QAtomicIntegerTraits<unsigned long> { enum { IsInteger = 1 }; };
 template<> struct QAtomicIntegerTraits<long long> { enum { IsInteger = 1 }; };
 template<> struct QAtomicIntegerTraits<unsigned long long> { enum { IsInteger = 1 }; };
+
+# ifdef Q_COMPILER_UNICODE_STRINGS
+template<> struct QAtomicIntegerTraits<char16_t> { enum { IsInteger = 1 }; };
+template<> struct QAtomicIntegerTraits<char32_t> { enum { IsInteger = 1 }; };
+# endif
+
 
 /*
  * Guide for the inline assembly below:
@@ -381,8 +387,8 @@ bool QBasicAtomicOps<8>::deref(T &_q_value) Q_DECL_NOTHROW
 // i386 architecture, emulate 64-bit support via cmpxchg8b
 template <> struct QBasicAtomicOps<8>: QGenericAtomicOps<QBasicAtomicOps<8> >
 {
-    static inline bool isTestAndSetNative() Q_DECL_NOTHROW { return true; }
-    static inline bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isTestAndSetNative() Q_DECL_NOTHROW { return true; }
+    static inline Q_DECL_CONSTEXPR bool isTestAndSetWaitFree() Q_DECL_NOTHROW { return true; }
     template <typename T> static inline
     bool testAndSetRelaxed(T &_q_value, T expectedValue, T newValue) Q_DECL_NOTHROW
     {

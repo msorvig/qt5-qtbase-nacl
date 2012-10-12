@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -684,8 +684,8 @@ QBitmap QPixmap::createMaskFromColor(const QColor &maskColor, Qt::MaskMode mode)
 
 /*!
     Loads a pixmap from the file with the given \a fileName. Returns
-    true if the pixmap was successfully loaded; otherwise returns
-    false.
+    true if the pixmap was successfully loaded; otherwise invalidates
+    the pixmap and returns false.
 
     The loader attempts to read the pixmap using the specified \a
     format. If the \a format is not specified (which is the default),
@@ -711,8 +711,10 @@ QBitmap QPixmap::createMaskFromColor(const QColor &maskColor, Qt::MaskMode mode)
 
 bool QPixmap::load(const QString &fileName, const char *format, Qt::ImageConversionFlags flags)
 {
-    if (fileName.isEmpty())
+    if (fileName.isEmpty()) {
+        data.reset();
         return false;
+    }
 
     QFileInfo info(fileName);
     QString key = QLatin1String("qt_pixmap")
@@ -723,19 +725,23 @@ bool QPixmap::load(const QString &fileName, const char *format, Qt::ImageConvers
 
     // Note: If no extension is provided, we try to match the
     // file against known plugin extensions
-    if (!info.completeSuffix().isEmpty() && !info.exists())
+    if (!info.completeSuffix().isEmpty() && !info.exists()) {
+        data.reset();
         return false;
+    }
 
-    if (QPixmapCache::find(key, *this))
+    if (QPixmapCache::find(key, this))
         return true;
 
-    QScopedPointer<QPlatformPixmap> tmp(QPlatformPixmap::create(0, 0, data ? data->type : QPlatformPixmap::PixmapType));
-    if (tmp->fromFile(fileName, format, flags)) {
-        data = tmp.take();
+    if (!data)
+        data = QPlatformPixmap::create(0, 0, QPlatformPixmap::PixmapType);
+
+    if (data->fromFile(fileName, format, flags)) {
         QPixmapCache::insert(key, *this);
         return true;
     }
 
+    data.reset();
     return false;
 }
 
@@ -744,7 +750,7 @@ bool QPixmap::load(const QString &fileName, const char *format, Qt::ImageConvers
 
     Loads a pixmap from the \a len first bytes of the given binary \a
     data.  Returns true if the pixmap was loaded successfully;
-    otherwise returns false.
+    otherwise invalidates the pixmap and returns false.
 
     The loader attempts to read the pixmap using the specified \a
     format. If the \a format is not specified (which is the default),
@@ -760,13 +766,19 @@ bool QPixmap::load(const QString &fileName, const char *format, Qt::ImageConvers
 
 bool QPixmap::loadFromData(const uchar *buf, uint len, const char *format, Qt::ImageConversionFlags flags)
 {
-    if (len == 0 || buf == 0)
+    if (len == 0 || buf == 0) {
+        data.reset();
         return false;
+    }
 
     if (!data)
         data = QPlatformPixmap::create(0, 0, QPlatformPixmap::PixmapType);
 
-    return data->fromData(buf, len, format, flags);
+    if (data->fromData(buf, len, format, flags))
+        return true;
+
+    data.reset();
+    return false;
 }
 
 /*!
@@ -832,22 +844,27 @@ bool QPixmap::doImageIO(QImageWriter *writer, int quality) const
     return writer->write(toImage());
 }
 
-/*!
-    \fn void QPixmap::fill(const QPaintDevice *device, int x, int y)
-    \overload
 
+/*!
     \obsolete
 
-    Fills the pixmap with the \a device's background color or pixmap.
-    The given point, (\a x, \a y), defines an offset in widget
-    coordinates to which the pixmap's top-left pixel will be mapped
-    to.
+    Use QPainter or the fill(QColor) overload instead.
 */
 
-void QPixmap::fill(const QPaintDevice *, const QPoint &)
+void QPixmap::fill(const QPaintDevice *device, const QPoint &p)
 {
-    qWarning() << "QPixmap::fill(const QPaintDevice *device, const QPoint &offset) is deprecated, ignored";
+    Q_UNUSED(device)
+    Q_UNUSED(p)
+    qWarning("%s is deprecated, ignored", Q_FUNC_INFO);
 }
+
+
+/*!
+    \fn void QPixmap::fill(const QPaintDevice *device, int x, int y)
+    \obsolete
+
+    Use QPainter or the fill(QColor) overload instead.
+*/
 
 
 /*!
@@ -931,6 +948,11 @@ static void sendResizeEvents(QWidget *target)
 }
 #endif
 
+/*!
+    \obsolete
+
+    Use QWidget::grab() instead.
+*/
 QPixmap QPixmap::grabWidget(QObject *widget, const QRect &rectangle)
 {
     QPixmap pixmap;
@@ -942,6 +964,13 @@ QPixmap QPixmap::grabWidget(QObject *widget, const QRect &rectangle)
                               Q_ARG(QRect, rectangle));
     return pixmap;
 }
+
+/*!
+    \fn QPixmap QPixmap::grabWidget(QObject *widget, int x, int y, int w, int h)
+    \obsolete
+
+    Use QWidget::grab() instead.
+*/
 
 /*****************************************************************************
   QPixmap stream functions
@@ -1214,11 +1243,6 @@ QPixmap QPixmap::transformed(const QMatrix &matrix, Qt::TransformationMode mode)
     one of QAbstractButton's subclasses (such as QPushButton and
     QToolButton). QLabel has a pixmap property, whereas
     QAbstractButton has an icon property.
-
-    In addition to the ordinary constructors, a QPixmap can be
-    constructed using the static grabWidget() and grabWindow()
-    functions which creates a QPixmap and paints the given widget, or
-    window, into it.
 
     QPixmap objects can be passed around by value since the QPixmap
     class uses implicit data sharing. For more information, see the \l
@@ -1630,5 +1654,17 @@ QDebug operator<<(QDebug dbg, const QPixmap &r)
     return dbg.space();
 }
 #endif
+
+/*!
+    \fn QPixmap QPixmap::alphaChannel() const
+
+    Most use cases for this can be achieved using a QPainter and QPainter::CompositionMode instead.
+*/
+
+/*!
+    \fn void QPixmap::setAlphaChannel(const QPixmap &p)
+
+    Most use cases for this can be achieved using \a p with QPainter and QPainter::CompositionMode instead.
+*/
 
 QT_END_NAMESPACE

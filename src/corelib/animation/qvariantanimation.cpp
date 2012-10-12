@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -46,12 +46,15 @@
 #include <QtCore/qline.h>
 #include <QtCore/qmutex.h>
 
+#include <algorithm>
+
 #ifndef QT_NO_ANIMATION
 
 QT_BEGIN_NAMESPACE
 
 /*!
     \class QVariantAnimation
+    \inmodule QtCore
     \ingroup animation
     \brief The QVariantAnimation class provides an abstract base class for animations.
     \since 4.6
@@ -145,13 +148,14 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    \fn void QVariantAnimation::updateCurrentValue(const QVariant &value) = 0;
-
-    This pure virtual function is called every time the animation's current
+    This virtual function is called every time the animation's current
     value changes. The \a value argument is the new current value.
+
+    The base class implementation does nothing.
 
     \sa currentValue
 */
+void QVariantAnimation::updateCurrentValue(const QVariant &) {}
 
 static bool animationValueLessThan(const QVariantAnimation::KeyValue &p1, const QVariantAnimation::KeyValue &p2)
 {
@@ -242,10 +246,10 @@ void QVariantAnimationPrivate::recalculateCurrentInterval(bool force/*=false*/)
     if (force || (currentInterval.start.first > 0 && progress < currentInterval.start.first)
         || (currentInterval.end.first < 1 && progress > currentInterval.end.first)) {
         //let's update currentInterval
-        QVariantAnimation::KeyValues::const_iterator it = qLowerBound(keyValues.constBegin(),
-                                                                      keyValues.constEnd(),
-                                                                      qMakePair(progress, QVariant()),
-                                                                      animationValueLessThan);
+        QVariantAnimation::KeyValues::const_iterator it = std::lower_bound(keyValues.constBegin(),
+                                                                           keyValues.constEnd(),
+                                                                           qMakePair(progress, QVariant()),
+                                                                           animationValueLessThan);
         if (it == keyValues.constBegin()) {
             //the item pointed to by it is the start element in the range    
             if (it->first == 0 && keyValues.count() > 1) {
@@ -320,7 +324,7 @@ void QVariantAnimationPrivate::setValueAt(qreal step, const QVariant &value)
 
     QVariantAnimation::KeyValue pair(step, value);
 
-    QVariantAnimation::KeyValues::iterator result = qLowerBound(keyValues.begin(), keyValues.end(), pair, animationValueLessThan);
+    QVariantAnimation::KeyValues::iterator result = std::lower_bound(keyValues.begin(), keyValues.end(), pair, animationValueLessThan);
     if (result == keyValues.end() || result->first != step) {
         keyValues.insert(result, pair);
     } else {
@@ -422,7 +426,8 @@ static QBasicMutex registeredInterpolatorsMutex;
 
 */
 
-/*! \internal
+/*!
+ * \internal
  * Registers a custom interpolator \a func for the specific \a interpolationType.
  * The interpolator has to be registered before the animation is constructed.
  * To unregister (and use the default interpolator) set \a func to 0.

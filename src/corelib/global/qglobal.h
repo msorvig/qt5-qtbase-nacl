@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -55,13 +55,12 @@
 */
 #define QT_VERSION_CHECK(major, minor, patch) ((major<<16)|(minor<<8)|(patch))
 
-#define QT_PACKAGEDATE_STR "YYYY-MM-DD"
-
-#define QT_PACKAGE_TAG ""
-
-#if !defined(QT_BUILD_MOC)
+#if !defined(QT_BUILD_MOC) && !defined(QT_BUILD_QMAKE) && !defined(QT_BUILD_CONFIGURE)
 #include <QtCore/qconfig.h>
 #endif
+
+#include <QtCore/qfeatures.h>
+#define QT_SUPPORTS(FEATURE) (!defined(QT_NO_##FEATURE))
 
 /* These two macros makes it possible to turn the builtin line expander into a
  * string literal. */
@@ -72,11 +71,15 @@
 #include <QtCore/qcompilerdetection.h>
 #include <QtCore/qprocessordetection.h>
 
+#if defined (__ELF__)
+#  define Q_OF_ELF
+#endif
+
 #ifdef __cplusplus
 
 #include <algorithm>
 
-#ifndef QT_NAMESPACE /* user namespace */
+#if !defined(QT_NAMESPACE) || defined(Q_MOC_RUN) /* user namespace */
 
 # define QT_PREPEND_NAMESPACE(name) ::name
 # define QT_USE_NAMESPACE
@@ -155,28 +158,6 @@ namespace QT_NAMESPACE {}
 #  define QT_LARGEFILE_SUPPORT 64
 #endif
 
-#ifndef Q_CONSTRUCTOR_FUNCTION
-# define Q_CONSTRUCTOR_FUNCTION0(AFUNC) \
-    namespace { \
-    static const struct AFUNC ## _ctor_class_ { \
-        inline AFUNC ## _ctor_class_() { AFUNC(); } \
-    } AFUNC ## _ctor_instance_; \
-    }
-
-# define Q_CONSTRUCTOR_FUNCTION(AFUNC) Q_CONSTRUCTOR_FUNCTION0(AFUNC)
-#endif
-
-#ifndef Q_DESTRUCTOR_FUNCTION
-# define Q_DESTRUCTOR_FUNCTION0(AFUNC) \
-    namespace { \
-    static const struct AFUNC ## _dtor_class_ { \
-        inline AFUNC ## _dtor_class_() { } \
-        inline ~ AFUNC ## _dtor_class_() { AFUNC(); } \
-    } AFUNC ## _dtor_instance_; \
-    }
-# define Q_DESTRUCTOR_FUNCTION(AFUNC) Q_DESTRUCTOR_FUNCTION0(AFUNC)
-#endif
-
 QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
@@ -215,6 +196,133 @@ typedef quint64 qulonglong;
 #  endif
 #endif
 
+/*
+   Useful type definitions for Qt
+*/
+
+QT_BEGIN_INCLUDE_NAMESPACE
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+QT_END_INCLUDE_NAMESPACE
+
+// This logic must match the one in qmetatype.h
+#if defined(QT_COORD_TYPE)
+typedef QT_COORD_TYPE qreal;
+#elif defined(QT_NO_FPU) || defined(Q_PROCESSOR_ARM) || defined(Q_OS_WINCE)
+typedef float qreal;
+#else
+typedef double qreal;
+#endif
+
+#if defined(QT_NO_DEPRECATED)
+#  undef QT_DEPRECATED
+#  undef QT_DEPRECATED_VARIABLE
+#  undef QT_DEPRECATED_CONSTRUCTOR
+#elif defined(QT_DEPRECATED_WARNINGS)
+#  undef QT_DEPRECATED
+#  define QT_DEPRECATED Q_DECL_DEPRECATED
+#  undef QT_DEPRECATED_VARIABLE
+#  define QT_DEPRECATED_VARIABLE Q_DECL_VARIABLE_DEPRECATED
+#  undef QT_DEPRECATED_CONSTRUCTOR
+#  define QT_DEPRECATED_CONSTRUCTOR explicit Q_DECL_CONSTRUCTOR_DEPRECATED
+#else
+#  undef QT_DEPRECATED
+#  define QT_DEPRECATED
+#  undef QT_DEPRECATED_VARIABLE
+#  define QT_DEPRECATED_VARIABLE
+#  undef QT_DEPRECATED_CONSTRUCTOR
+#  define QT_DEPRECATED_CONSTRUCTOR
+#endif
+
+#ifndef QT_DISABLE_DEPRECATED_BEFORE
+#define QT_DISABLE_DEPRECATED_BEFORE QT_VERSION_CHECK(5, 0, 0)
+#endif
+
+/*
+    QT_DEPRECATED_SINCE(major, minor) evaluates as true if the Qt version is greater than
+    the deprecation point specified.
+
+    Use it to specify from which version of Qt a function or class has been deprecated
+
+    Example:
+        #if QT_DEPRECATED_SINCE(5,1)
+            QT_DEPRECATED void deprecatedFunction(); //function deprecated since Qt 5.1
+        #endif
+
+*/
+#ifdef QT_DEPRECATED
+#define QT_DEPRECATED_SINCE(major, minor) (QT_VERSION_CHECK(major, minor, 0) > QT_DISABLE_DEPRECATED_BEFORE)
+#else
+#define QT_DEPRECATED_SINCE(major, minor) 0
+#endif
+
+/*
+   The Qt modules' export macros.
+   The options are:
+    - defined(QT_STATIC): Qt was built or is being built in static mode
+    - defined(QT_SHARED): Qt was built or is being built in shared/dynamic mode
+   If neither was defined, then QT_SHARED is implied. If Qt was compiled in static
+   mode, QT_STATIC is defined in qconfig.h. In shared mode, QT_STATIC is implied
+   for the bootstrapped tools.
+*/
+
+#ifdef QT_BOOTSTRAPPED
+#  ifdef QT_SHARED
+#    error "QT_SHARED and QT_BOOTSTRAPPED together don't make sense. Please fix the build"
+#  elif !defined(QT_STATIC)
+#    define QT_STATIC
+#  endif
+#endif
+
+#if defined(QT_SHARED) || !defined(QT_STATIC)
+#  ifdef QT_STATIC
+#    error "Both QT_SHARED and QT_STATIC defined, please make up your mind"
+#  endif
+#  ifndef QT_SHARED
+#    define QT_SHARED
+#  endif
+#  if defined(QT_BUILD_CORE_LIB)
+#    define Q_CORE_EXPORT Q_DECL_EXPORT
+#  else
+#    define Q_CORE_EXPORT Q_DECL_IMPORT
+#  endif
+#  if defined(QT_BUILD_GUI_LIB)
+#    define Q_GUI_EXPORT Q_DECL_EXPORT
+#  else
+#    define Q_GUI_EXPORT Q_DECL_IMPORT
+#  endif
+#  if defined(QT_BUILD_WIDGETS_LIB)
+#    define Q_WIDGETS_EXPORT Q_DECL_EXPORT
+#  else
+#    define Q_WIDGETS_EXPORT Q_DECL_IMPORT
+#  endif
+#  if defined(QT_BUILD_NETWORK_LIB)
+#    define Q_NETWORK_EXPORT Q_DECL_EXPORT
+#  else
+#    define Q_NETWORK_EXPORT Q_DECL_IMPORT
+#  endif
+#else
+#  define Q_CORE_EXPORT
+#  define Q_GUI_EXPORT
+#  define Q_WIDGETS_EXPORT
+#  define Q_NETWORK_EXPORT
+#endif
+
+/*
+   No, this is not an evil backdoor. QT_BUILD_INTERNAL just exports more symbols
+   for Qt's internal unit tests. If you want slower loading times and more
+   symbols that can vanish from version to version, feel free to define QT_BUILD_INTERNAL.
+*/
+#if defined(QT_BUILD_INTERNAL) && defined(QT_BUILDING_QT) && defined(QT_SHARED)
+#    define Q_AUTOTEST_EXPORT Q_DECL_EXPORT
+#elif defined(QT_BUILD_INTERNAL) && defined(QT_SHARED)
+#    define Q_AUTOTEST_EXPORT Q_DECL_IMPORT
+#else
+#    define Q_AUTOTEST_EXPORT
+#endif
+
 #define Q_INIT_RESOURCE_EXTERN(name) \
     extern int QT_MANGLE_NAMESPACE(qInitResources_ ## name) ();
 
@@ -225,7 +333,42 @@ typedef quint64 qulonglong;
     do { extern int QT_MANGLE_NAMESPACE(qCleanupResources_ ## name) ();    \
         QT_MANGLE_NAMESPACE(qCleanupResources_ ## name) (); } while (0)
 
+/*
+ * If we're compiling C++ code:
+ *  - and this is a non-namespace build, declare qVersion as extern "C"
+ *  - and this is a namespace build, declare it as a regular function
+ *    (we're already inside QT_BEGIN_NAMESPACE / QT_END_NAMESPACE)
+ * If we're compiling C code, simply declare the function. If Qt was compiled
+ * in a namespace, qVersion isn't callable anyway.
+ */
+#if !defined(QT_NAMESPACE) && defined(__cplusplus) && !defined(Q_QDOC)
+extern "C"
+#endif
+Q_CORE_EXPORT const char *qVersion() Q_DECL_NOTHROW;
+
 #if defined(__cplusplus)
+
+#ifndef Q_CONSTRUCTOR_FUNCTION
+# define Q_CONSTRUCTOR_FUNCTION0(AFUNC) \
+    namespace { \
+    static const struct AFUNC ## _ctor_class_ { \
+        inline AFUNC ## _ctor_class_() { AFUNC(); } \
+    } AFUNC ## _ctor_instance_; \
+    }
+
+# define Q_CONSTRUCTOR_FUNCTION(AFUNC) Q_CONSTRUCTOR_FUNCTION0(AFUNC)
+#endif
+
+#ifndef Q_DESTRUCTOR_FUNCTION
+# define Q_DESTRUCTOR_FUNCTION0(AFUNC) \
+    namespace { \
+    static const struct AFUNC ## _dtor_class_ { \
+        inline AFUNC ## _dtor_class_() { } \
+        inline ~ AFUNC ## _dtor_class_() { AFUNC(); } \
+    } AFUNC ## _dtor_instance_; \
+    }
+# define Q_DESTRUCTOR_FUNCTION(AFUNC) Q_DESTRUCTOR_FUNCTION0(AFUNC)
+#endif
 
 namespace QtPrivate {
     template <class T>
@@ -294,17 +437,6 @@ typedef QIntegerForSizeof<void*>::Signed qptrdiff;
 typedef qptrdiff qintptr;
 
 /*
-   Useful type definitions for Qt
-*/
-
-QT_BEGIN_INCLUDE_NAMESPACE
-typedef unsigned char uchar;
-typedef unsigned short ushort;
-typedef unsigned int uint;
-typedef unsigned long ulong;
-QT_END_INCLUDE_NAMESPACE
-
-/*
    Constant bool values
 */
 
@@ -313,49 +445,6 @@ QT_END_INCLUDE_NAMESPACE
 #   define TRUE true
 #   define FALSE false
 #  endif
-#endif
-
-#if defined(QT_NO_DEPRECATED)
-#  undef QT_DEPRECATED
-#  undef QT_DEPRECATED_VARIABLE
-#  undef QT_DEPRECATED_CONSTRUCTOR
-#elif defined(QT_DEPRECATED_WARNINGS)
-#  undef QT_DEPRECATED
-#  define QT_DEPRECATED Q_DECL_DEPRECATED
-#  undef QT_DEPRECATED_VARIABLE
-#  define QT_DEPRECATED_VARIABLE Q_DECL_VARIABLE_DEPRECATED
-#  undef QT_DEPRECATED_CONSTRUCTOR
-#  define QT_DEPRECATED_CONSTRUCTOR explicit Q_DECL_CONSTRUCTOR_DEPRECATED
-#else
-#  undef QT_DEPRECATED
-#  define QT_DEPRECATED
-#  undef QT_DEPRECATED_VARIABLE
-#  define QT_DEPRECATED_VARIABLE
-#  undef QT_DEPRECATED_CONSTRUCTOR
-#  define QT_DEPRECATED_CONSTRUCTOR
-#endif
-
-#ifndef QT_DISABLE_DEPRECATED_BEFORE
-// ### Qt5: remember to change that to 5 when we reach feature freeze
-#define QT_DISABLE_DEPRECATED_BEFORE QT_VERSION_CHECK(4, 9, 0)
-#endif
-
-/*
-    QT_DEPRECATED_SINCE(major, minor) evaluates as true if the Qt version is greater than
-    the deprecation point specified.
-
-    Use it to specify from which version of Qt a function or class has been deprecated
-
-    Example:
-        #if QT_DEPRECATED_SINCE(5,1)
-            QT_DEPRECATED void deprecatedFunction(); //function deprecated since Qt 5.1
-        #endif
-
-*/
-#ifdef QT_DEPRECATED
-#define QT_DEPRECATED_SINCE(major, minor) (QT_VERSION_CHECK(major, minor, 0) > QT_DISABLE_DEPRECATED_BEFORE)
-#else
-#define QT_DEPRECATED_SINCE(major, minor) 0
 #endif
 
 /* moc compats (signals/slots) */
@@ -397,15 +486,6 @@ QT_END_INCLUDE_NAMESPACE
 
 typedef int QNoImplicitBoolCast;
 
-// This logic must match the one in qmetatype.h
-#if defined(QT_COORD_TYPE)
-typedef QT_COORD_TYPE qreal;
-#elif defined(QT_NO_FPU) || defined(Q_PROCESSOR_ARM) || defined(Q_OS_WINCE)
-typedef float qreal;
-#else
-typedef double qreal;
-#endif
-
 /*
    Utility macros and inline functions
 */
@@ -414,9 +494,9 @@ template <typename T>
 Q_DECL_CONSTEXPR inline T qAbs(const T &t) { return t >= 0 ? t : -t; }
 
 Q_DECL_CONSTEXPR inline int qRound(double d)
-{ return d >= 0.0 ? int(d + 0.5) : int(d - int(d-1) + 0.5) + int(d-1); }
+{ return d >= 0.0 ? int(d + 0.5) : int(d - double(int(d-1)) + 0.5) + int(d-1); }
 Q_DECL_CONSTEXPR inline int qRound(float d)
-{ return d >= 0.0f ? int(d + 0.5f) : int(d - int(d-1) + 0.5f) + int(d-1); }
+{ return d >= 0.0f ? int(d + 0.5f) : int(d - float(int(d-1)) + 0.5f) + int(d-1); }
 #ifdef Q_QDOC
 /*
     Just for documentation generation
@@ -456,75 +536,6 @@ class QDataStream;
 #  define QT_NO_SYSTEMSEMAPHORE  // not needed at all in a flat address space
 #endif
 
-# include <QtCore/qfeatures.h>
-
-#define QT_SUPPORTS(FEATURE) (!defined(QT_NO_##FEATURE))
-
-/*
-   The Qt modules' export macros.
-   The options are:
-    - defined(QT_STATIC): Qt was built or is being built in static mode
-    - defined(QT_SHARED): Qt was built or is being built in shared/dynamic mode
-   If neither was defined, then QT_SHARED is implied. If Qt was compiled in static
-   mode, QT_STATIC is defined in qconfig.h. In shared mode, QT_STATIC is implied
-   for the bootstrapped tools.
-*/
-
-#ifdef QT_BOOTSTRAPPED
-#  ifdef QT_SHARED
-#    error "QT_SHARED and QT_BOOTSTRAPPED together don't make sense. Please fix the build"
-#  elif !defined(QT_STATIC)
-#    define QT_STATIC
-#  endif
-#endif
-
-#if defined(QT_SHARED) || !defined(QT_STATIC)
-#  ifdef QT_STATIC
-#    error "Both QT_SHARED and QT_STATIC defined, please make up your mind"
-#  endif
-#  ifndef QT_SHARED
-#    define QT_SHARED
-#  endif
-#  if defined(QT_BUILD_CORE_LIB)
-#    define Q_CORE_EXPORT Q_DECL_EXPORT
-#  else
-#    define Q_CORE_EXPORT Q_DECL_IMPORT
-#  endif
-#  if defined(QT_BUILD_GUI_LIB)
-#    define Q_GUI_EXPORT Q_DECL_EXPORT
-#  else
-#    define Q_GUI_EXPORT Q_DECL_IMPORT
-#  endif
-#  if defined(QT_BUILD_WIDGETS_LIB)
-#    define Q_WIDGETS_EXPORT Q_DECL_EXPORT
-#  else
-#    define Q_WIDGETS_EXPORT Q_DECL_IMPORT
-#  endif
-#  if defined(QT_BUILD_NETWORK_LIB)
-#    define Q_NETWORK_EXPORT Q_DECL_EXPORT
-#  else
-#    define Q_NETWORK_EXPORT Q_DECL_IMPORT
-#  endif
-#else
-#  define Q_CORE_EXPORT
-#  define Q_GUI_EXPORT
-#  define Q_WIDGETS_EXPORT
-#  define Q_NETWORK_EXPORT
-#endif
-
-/*
-   No, this is not an evil backdoor. QT_BUILD_INTERNAL just exports more symbols
-   for Qt's internal unit tests. If you want slower loading times and more
-   symbols that can vanish from version to version, feel free to define QT_BUILD_INTERNAL.
-*/
-#if defined(QT_BUILD_INTERNAL) && defined(QT_BUILDING_QT) && defined(QT_SHARED)
-#    define Q_AUTOTEST_EXPORT Q_DECL_EXPORT
-#elif defined(QT_BUILD_INTERNAL) && defined(QT_SHARED)
-#    define Q_AUTOTEST_EXPORT Q_DECL_IMPORT
-#else
-#    define Q_AUTOTEST_EXPORT
-#endif
-
 inline void qt_noop(void) {}
 
 /* These wrap try/catch so we can switch off exceptions later.
@@ -560,8 +571,7 @@ Q_NORETURN Q_CORE_EXPORT void qTerminate() Q_DECL_NOTHROW;
 #  endif
 #endif
 
-Q_CORE_EXPORT const char *qVersion();
-Q_CORE_EXPORT bool qSharedBuild();
+Q_CORE_EXPORT bool qSharedBuild() Q_DECL_NOTHROW;
 
 #ifndef Q_OUTOFLINE_TEMPLATE
 #  define Q_OUTOFLINE_TEMPLATE
@@ -813,7 +823,7 @@ Q_DECL_CONSTEXPR static inline bool qFuzzyIsNull(float f)
 /*
    This function tests a double for a null value. It doesn't
    check whether the actual value is 0 or close to 0, but whether
-   it is binary 0.
+   it is binary 0, disregarding sign.
 */
 static inline bool qIsNull(double d)
 {
@@ -823,13 +833,13 @@ static inline bool qIsNull(double d)
     };
     U val;
     val.d = d;
-    return val.u == quint64(0);
+    return (val.u & Q_UINT64_C(0x7fffffffffffffff)) == 0;
 }
 
 /*
    This function tests a float for a null value. It doesn't
    check whether the actual value is 0 or close to 0, but whether
-   it is binary 0.
+   it is binary 0, disregarding sign.
 */
 static inline bool qIsNull(float f)
 {
@@ -839,7 +849,7 @@ static inline bool qIsNull(float f)
     };
     U val;
     val.f = f;
-    return val.u == 0u;
+    return (val.u & 0x7fffffff) == 0;
 }
 
 /*
@@ -1074,10 +1084,6 @@ Q_CORE_EXPORT int qrand();
 // shared fonts and QSystemSemaphore + QSharedMemory are not available
 #  define QT_NO_SYSTEMSEMAPHORE
 #  define QT_NO_SHAREDMEMORY
-#endif
-
-#if defined (__ELF__)
-#  define Q_OF_ELF
 #endif
 
 #if !defined(QT_BOOTSTRAPPED) && defined(QT_REDUCE_RELOCATIONS) && defined(__ELF__) && !defined(__PIC__) && !defined(__PIE__)

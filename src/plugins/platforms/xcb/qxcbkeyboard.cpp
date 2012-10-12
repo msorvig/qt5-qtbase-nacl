@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,6 +42,7 @@
 #include "qxcbkeyboard.h"
 #include "qxcbwindow.h"
 #include "qxcbscreen.h"
+#include "qxlibconvenience.h"
 #include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
 #include <qpa/qwindowsysteminterface.h>
@@ -1107,7 +1108,7 @@ void QXcbKeyboard::handleKeyEvent(QWindow *window, QEvent::Type type, xcb_keycod
 
     if (!filtered)
         QWindowSystemInterface::handleExtendedKeyEvent(window, time, type, qtcode, modifiers,
-                                                       code, 0, state, string.left(count), isAutoRepeat);
+                                                       code, sym, state, string.left(count), isAutoRepeat);
 
     if (isAutoRepeat && type == QEvent::KeyRelease) {
         // since we removed it from the event queue using checkEvent we need to send the key press here
@@ -1128,50 +1129,19 @@ void QXcbKeyboard::handleKeyEvent(QWindow *window, QEvent::Type type, xcb_keycod
         }
         if (!filtered)
             QWindowSystemInterface::handleExtendedKeyEvent(window, time, QEvent::KeyPress, qtcode, modifiers,
-                                                           code, 0, state, string.left(count), isAutoRepeat);
+                                                           code, sym, state, string.left(count), isAutoRepeat);
     }
 }
-
-#ifdef XCB_USE_XLIB
-extern "C" {
-    int XLookupString(void *event, char *buf, int count, void *keysym, void *comp);
-}
-typedef struct { // must match XKeyEvent in Xlib.h
-    int type;
-    unsigned long serial;
-    int send_event;
-    void *display;
-    unsigned long window;
-    unsigned long root;
-    unsigned long subwindow;
-    unsigned long time;
-    int x, y;
-    int x_root, y_root;
-    unsigned int state;
-    unsigned int keycode;
-    int same_screen;
-} FakeXKeyEvent;
-#endif
 
 xcb_keysym_t QXcbKeyboard::lookupString(QWindow *window, uint state, xcb_keycode_t code,
                                         QEvent::Type type, QByteArray *chars)
 {
 #ifdef XCB_USE_XLIB
-
-    xcb_keysym_t sym = XCB_NO_SYMBOL;
-    chars->resize(512);
-    FakeXKeyEvent event;
-    memset(&event, 0, sizeof(event));
-    event.type = (type == QEvent::KeyRelease ? 3 : 2);
-    event.display = connection()->xlib_display();
-    event.window = static_cast<QXcbWindow *>(window->handle())->xcb_window();
-    event.root = connection()->screens().at(0)->root();
-    event.state = state;
-    event.keycode = code;
-    int count = XLookupString(&event, chars->data(), chars->size(), &sym, 0);
-    chars->resize(count);
-    return sym;
-
+    xcb_window_t xWindow = static_cast<QXcbWindow *>(window->handle())->xcb_window();
+    xcb_window_t root = connection()->screens().at(0)->root();
+    void *xDisplay = connection()->xlib_display();
+    int xType = (type == QEvent::KeyRelease ? 3 : 2);
+    return q_XLookupString(xDisplay, xWindow, root, state, code, xType, chars);
 #else
 
     // No XLookupString available. The following is really incomplete...

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -83,6 +83,7 @@ static const char matchMaskAttributeC[] = "mask";
 
 /*!
     \class QMimeTypeParser
+    \inmodule QtCore
     \internal
     \brief The QMimeTypeParser class parses MIME types, and builds a MIME database hierarchy by adding to QMimeDatabasePrivate.
 
@@ -94,6 +95,7 @@ static const char matchMaskAttributeC[] = "mask";
 
 /*!
     \class QMimeTypeParserBase
+    \inmodule QtCore
     \internal
     \brief The QMimeTypeParserBase class parses for a sequence of <mime-type> in a generic way.
 
@@ -172,6 +174,7 @@ static bool parseNumber(const QString &n, int *target, QString *errorMessage)
 // Evaluate a magic match rule like
 //  <match value="must be converted with BinHex" type="string" offset="11"/>
 //  <match value="0x9501" type="big16" offset="0:64"/>
+#ifndef QT_NO_XMLSTREAMREADER
 static bool createMagicMatchRule(const QXmlStreamAttributes &atts,
                                  QString *errorMessage, QMimeMagicRule *&rule)
 {
@@ -200,9 +203,15 @@ static bool createMagicMatchRule(const QXmlStreamAttributes &atts,
 
     return true;
 }
+#endif
 
 bool QMimeTypeParserBase::parse(QIODevice *dev, const QString &fileName, QString *errorMessage)
 {
+#ifdef QT_NO_XMLSTREAMREADER
+    if (errorMessage)
+        *errorMessage = QString::fromLatin1("QXmlStreamReader is not available, cannot parse.");
+    return false;
+#else
     QMimeTypePrivate data;
     int priority = 50;
     QStack<QMimeMagicRule *> currentRules; // stack for the nesting of rules
@@ -336,6 +345,7 @@ bool QMimeTypeParserBase::parse(QIODevice *dev, const QString &fileName, QString
     }
 
     return true;
+#endif //QT_NO_XMLSTREAMREADER
 }
 
 QT_END_NAMESPACE

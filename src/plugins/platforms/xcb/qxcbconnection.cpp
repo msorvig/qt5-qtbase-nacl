@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -50,6 +50,7 @@
 #include "qxcbdrag.h"
 #include "qxcbwmsupport.h"
 #include "qxcbnativeinterface.h"
+#include "qxcbintegration.h"
 
 #include <QtAlgorithms>
 #include <QSocketNotifier>
@@ -60,7 +61,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <xcb/xfixes.h>
-#include <xcb/randr.h>
 
 #ifdef XCB_USE_XLIB
 #include <X11/Xlib.h>
@@ -100,6 +100,152 @@ static int nullErrorHandler(Display *, XErrorEvent *)
     return 0;
 }
 #endif
+
+QXcbScreen* QXcbConnection::findOrCreateScreen(QList<QXcbScreen *>& newScreens,
+    int screenNumber, xcb_screen_t* xcbScreen, xcb_randr_get_output_info_reply_t *output)
+{
+    QString name;
+    if (output)
+        name = QString::fromUtf8((const char*)xcb_randr_get_output_info_name(output),
+                xcb_randr_get_output_info_name_length(output));
+    else {
+        QByteArray displayName = m_displayName;
+        int dotPos = displayName.lastIndexOf('.');
+        if (dotPos != -1)
+            displayName.truncate(dotPos);
+        name = displayName + QLatin1Char('.') + QString::number(screenNumber);
+    }
+    foreach (QXcbScreen* scr, m_screens)
+        if (scr->name() == name && scr->root() == xcbScreen->root)
+            return scr;
+    QXcbScreen *ret = new QXcbScreen(this, xcbScreen, output, name, screenNumber);
+    newScreens << ret;
+    return ret;
+}
+
+/*!
+    \brief Synchronizes the screen list, adds new screens, removes deleted ones
+*/
+void QXcbConnection::updateScreens()
+{
+    xcb_screen_iterator_t it = xcb_setup_roots_iterator(m_setup);
+    int screenNumber = 0;       // index of this QScreen in QGuiApplication::screens()
+    int xcbScreenNumber = 0;    // screen number in the xcb sense
+    QSet<QXcbScreen *> activeScreens;
+    QList<QXcbScreen *> newScreens;
+    QXcbScreen* primaryScreen = NULL;
+    while (it.rem) {
+        // Each "screen" in xcb terminology is a virtual desktop,
+        // potentially a collection of separate juxtaposed monitors.
+        // But we want a separate QScreen for each output (e.g. DVI-I-1, VGA-1, etc.)
+        // which will become virtual siblings.
+        xcb_screen_t *xcbScreen = it.data;
+        QList<QPlatformScreen *> siblings;
+        int outputCount = 0;
+        if (has_randr_extension) {
+            xcb_generic_error_t *error = NULL;
+            xcb_randr_get_output_primary_cookie_t primaryCookie =
+                xcb_randr_get_output_primary(xcb_connection(), xcbScreen->root);
+            xcb_randr_get_screen_resources_current_cookie_t resourcesCookie =
+                xcb_randr_get_screen_resources_current(xcb_connection(), xcbScreen->root);
+            xcb_randr_get_output_primary_reply_t *primary =
+                    xcb_randr_get_output_primary_reply(xcb_connection(), primaryCookie, &error);
+            if (!primary || error) {
+                qWarning("QXcbConnection: Failed to get the primary output of the screen");
+                free(error);
+            } else {
+                xcb_randr_get_screen_resources_current_reply_t *resources =
+                        xcb_randr_get_screen_resources_current_reply(xcb_connection(), resourcesCookie, &error);
+                if (!resources || error) {
+                    qWarning("QXcbConnection: Failed to get the screen resources");
+                    free(error);
+                } else {
+                    xcb_timestamp_t timestamp = resources->config_timestamp;
+                    outputCount = xcb_randr_get_screen_resources_current_outputs_length(resources);
+                    xcb_randr_output_t *outputs = xcb_randr_get_screen_resources_current_outputs(resources);
+
+                    for (int i = 0; i < outputCount; i++) {
+                        xcb_randr_get_output_info_reply_t *output =
+                                xcb_randr_get_output_info_reply(xcb_connection(),
+                                    xcb_randr_get_output_info_unchecked(xcb_connection(), outputs[i], timestamp), NULL);
+                        if (output == NULL)
+                            continue;
+
+#ifdef Q_XCB_DEBUG
+                        QString outputName = QString::fromUtf8((const char*)xcb_randr_get_output_info_name(output),
+                                                               xcb_randr_get_output_info_name_length(output));
+#endif
+
+                        if (output->crtc == XCB_NONE) {
+#ifdef Q_XCB_DEBUG
+                            qDebug("Screen output %s is not connected", qPrintable(outputName));
+#endif
+                            continue;
+                        }
+
+                        QXcbScreen *screen = findOrCreateScreen(newScreens, xcbScreenNumber, xcbScreen, output);
+                        siblings << screen;
+                        activeScreens << screen;
+                        ++screenNumber;
+                        if (!primaryScreen && primary) {
+                            if (primary->output == XCB_NONE || outputs[i] == primary->output) {
+                                primaryScreen = screen;
+                                siblings.prepend(siblings.takeLast());
+#ifdef Q_XCB_DEBUG
+                                qDebug("Primary output is %d: %s", primary->output, qPrintable(outputName));
+#endif
+                            }
+                        }
+                        free(output);
+                    }
+                }
+                free(resources);
+            }
+            free(primary);
+        }
+        // If there's no randr extension, or there was some error above, or the screen
+        // doesn't have outputs for some other reason (e.g. on VNC or ssh -X), just assume there is one screen.
+        if (outputCount == 0) {
+#ifdef Q_XCB_DEBUG
+                qDebug("Found a screen with zero outputs");
+#endif
+            QXcbScreen *screen = findOrCreateScreen(newScreens, xcbScreenNumber, xcbScreen);
+            siblings << screen;
+            activeScreens << screen;
+            if (!primaryScreen)
+                primaryScreen = screen;
+            ++screenNumber;
+        }
+        foreach (QPlatformScreen* s, siblings)
+            ((QXcbScreen*)s)->setVirtualSiblings(siblings);
+        xcb_screen_next(&it);
+        ++xcbScreenNumber;
+    } // for each xcb screen
+
+    // Now activeScreens is the complete set of screens which are active at this time.
+    // Delete any existing screens which are not in activeScreens
+    for (int i = m_screens.count() - 1; i >= 0; --i) {
+        if (!activeScreens.contains(m_screens[i])) {
+            ((QXcbIntegration*)QGuiApplicationPrivate::platformIntegration())->removeDefaultOpenGLContextInfo(m_screens[i]);
+            delete m_screens[i];
+            m_screens.removeAt(i);
+        }
+    }
+
+    // Add any new screens, and make sure the primary screen comes first
+    // since it is used by QGuiApplication::primaryScreen()
+    foreach (QXcbScreen* screen, newScreens) {
+        if (screen == primaryScreen)
+            m_screens.prepend(screen);
+        else
+            m_screens.append(screen);
+    }
+
+    // Now that they are in the right order, emit the added signals for new screens only
+    foreach (QXcbScreen* screen, m_screens)
+        if (newScreens.contains(screen))
+            ((QXcbIntegration*)QGuiApplicationPrivate::platformIntegration())->screenAdded(screen);
+}
 
 QXcbConnection::QXcbConnection(QXcbNativeInterface *nativeInterface, const char *displayName)
     : m_connection(0)
@@ -165,22 +311,8 @@ QXcbConnection::QXcbConnection(QXcbNativeInterface *nativeInterface, const char 
 
     m_time = XCB_CURRENT_TIME;
 
-    xcb_screen_iterator_t it = xcb_setup_roots_iterator(m_setup);
-
     initializeXRandr();
-
-    int screenNumber = 0;
-    while (it.rem) {
-        QXcbScreen *screen = new QXcbScreen(this, it.data, screenNumber);
-        // make sure the primary screen appears first since it is used by QGuiApplication::primaryScreen()
-        if (m_primaryScreen == screenNumber) {
-            m_screens.prepend(screen);
-        } else {
-            m_screens.append(screen);
-        }
-        ++screenNumber;
-        xcb_screen_next(&it);
-    }
+    updateScreens();
 
     m_connectionEventListener = xcb_generate_id(m_connection);
     xcb_create_window(m_connection, XCB_COPY_FROM_PARENT,
@@ -634,11 +766,12 @@ void QXcbConnection::handleXcbEvent(xcb_generic_event_t *event)
 #endif
             handled = true;
         } else if (has_randr_extension && response_type == xrandr_first_event + XCB_RANDR_SCREEN_CHANGE_NOTIFY) {
+            updateScreens();
             xcb_randr_screen_change_notify_event_t *change_event = (xcb_randr_screen_change_notify_event_t *)event;
             foreach (QXcbScreen *s, m_screens) {
                 if (s->root() == change_event->root ) {
+                    s->handleScreenChange(change_event);
                     s->updateRefreshRate();
-                    break;
                 }
             }
             handled = true;
@@ -1088,8 +1221,10 @@ void QXcbConnection::initializeXFixes()
 {
     xcb_generic_error_t *error = 0;
     const xcb_query_extension_reply_t *reply = xcb_get_extension_data(m_connection, &xcb_xfixes_id);
-    xfixes_first_event = reply->first_event;
+    if (!reply || !reply->present)
+        return;
 
+    xfixes_first_event = reply->first_event;
     xcb_xfixes_query_version_cookie_t xfixes_query_cookie = xcb_xfixes_query_version(m_connection,
                                                                                      XCB_XFIXES_MAJOR_VERSION,
                                                                                      XCB_XFIXES_MINOR_VERSION);
@@ -1106,6 +1241,10 @@ void QXcbConnection::initializeXFixes()
 void QXcbConnection::initializeXRender()
 {
 #ifdef XCB_USE_RENDER
+    const xcb_query_extension_reply_t *reply = xcb_get_extension_data(m_connection, &xcb_render_id);
+    if (!reply || !reply->present)
+        return;
+
     xcb_generic_error_t *error = 0;
     xcb_render_query_version_cookie_t xrender_query_cookie = xcb_render_query_version(m_connection,
                                                                                       XCB_RENDER_MAJOR_VERSION,
@@ -1122,11 +1261,11 @@ void QXcbConnection::initializeXRender()
 
 void QXcbConnection::initializeXRandr()
 {
-    const xcb_query_extension_reply_t *xrandr_reply = xcb_get_extension_data(m_connection, &xcb_randr_id);
-    if (!xrandr_reply || !xrandr_reply->present)
+    const xcb_query_extension_reply_t *reply = xcb_get_extension_data(m_connection, &xcb_randr_id);
+    if (!reply || !reply->present)
         return;
 
-    xrandr_first_event = xrandr_reply->first_event;
+    xrandr_first_event = reply->first_event;
 
     xcb_generic_error_t *error = 0;
     xcb_randr_query_version_cookie_t xrandr_query_cookie = xcb_randr_query_version(m_connection,

@@ -7,10 +7,14 @@ QMAKESPEC = @QMAKESPEC@
 LFLAGS = @QMAKE_LFLAGS@
 
 QMKSRC = $(SOURCE_PATH)/qmake
+QMKLIBSRC = $(QMKSRC)/library
+QMKGENSRC = $(QMKSRC)/generators
 
 #qmake code
-OBJS=project.o property.o main.o makefile.o unixmake2.o unixmake.o  \
-     mingw_make.o option.o winmakefile.o projectgenerator.o \
+OBJS=project.o option.o property.o main.o ioutils.o proitems.o \
+     qmakeglobals.o qmakeparser.o qmakeevaluator.o qmakebuiltins.o \
+     makefile.o unixmake2.o unixmake.o  \
+     mingw_make.o winmakefile.o projectgenerator.o \
      meta.o makefiledeps.o metamakefile.o xmloutput.o pbuilder_pbx.o \
      msvc_vcproj.o msvc_vcxproj.o msvc_nmake.o msvc_objectmodel.o msbuild_objectmodel.o \
      gbuild.o cesdkhandler.o
@@ -31,12 +35,20 @@ QOBJS=qtextcodec.o qutfcodec.o qstring.o qstringbuilder.o qtextstream.o qiodevic
 
 
 #all sources, used for the depend target
-DEPEND_SRC=project.cpp property.cpp meta.cpp main.cpp generators/makefile.cpp generators/unix/unixmake2.cpp \
-	   generators/unix/unixmake.cpp generators/win32/winmakefile.cpp generators/projectgenerator.cpp \
-	   generators/mac/pbuilder_pbx.cpp generators/mac/xmloutput.cpp generators/metamakefile.cpp \
-	   generators/makefiledeps.cpp option.cpp generators/win32/mingw_make.cpp generators/makefile.cpp \
-	   generators/win32/msvc_vcproj.cpp generators/win32/msvc_vcxproj.cpp generators/win32/msvc_objectmodel.cpp generators/win32/msbuild_objectmodel.cpp generators/win32/msbuild_objectmodel.cpp generators/win32/msvc_nmake.cpp \
-	   generators/integrity/gbuild.cpp generators/win32/cesdkhandler.cpp \
+DEPEND_SRC = \
+	   $(QMKSRC)/main.cpp $(QMKSRC)/project.cpp $(QMKSRC)/option.cpp $(QMKSRC)/property.cpp \
+	   $(QMKSRC)/meta.cpp \
+	   $(QMKLIBSRC)/ioutils.cpp $(QMKLIBSRC)/proitems.cpp $(QMKLIBSRC)/qmakeglobals.cpp \
+	   $(QMKLIBSRC)/qmakeparser.cpp $(QMKLIBSRC)/qmakeevaluator.cpp $(QMKLIBSRC)/qmakebuiltins.cpp \
+	   $(QMKGENSRC)/makefiledeps.cpp $(QMKGENSRC)/metamakefile.cpp \
+	   $(QMKGENSRC)/projectgenerator.cpp $(QMKGENSRC)/makefile.cpp \
+	   $(QMKGENSRC)/unix/unixmake.cpp $(QMKGENSRC)/unix/unixmake2.cpp \
+	   $(QMKGENSRC)/mac/pbuilder_pbx.cpp $(QMKGENSRC)/integrity/gbuild.cpp \
+	   $(QMKGENSRC)/win32/winmakefile.cpp \
+	   $(QMKGENSRC)/win32/mingw_make.cpp $(QMKGENSRC)/win32/msvc_nmake.cpp \
+	   $(QMKGENSRC)/win32/cesdkhandler.cpp $(QMKGENSRC)/mac/xmloutput.cpp  \
+	   $(QMKGENSRC)/win32/msvc_vcproj.cpp $(QMKGENSRC)/win32/msvc_vcxproj.cpp \
+	   $(QMKGENSRC)/win32/msvc_objectmodel.cpp $(QMKGENSRC)/win32/msbuild_objectmodel.cpp \
 	   $(SOURCE_PATH)/src/corelib/codecs/qtextcodec.cpp $(SOURCE_PATH)/src/corelib/codecs/qutfcodec.cpp \
 	   $(SOURCE_PATH)/src/corelib/tools/qstring.cpp $(SOURCE_PATH)/src/corelib/io/qfile.cpp \
 	   $(SOURCE_PATH)/src/corelib/io/qfiledevice.cpp \
@@ -74,16 +86,17 @@ DEPEND_SRC=project.cpp property.cpp meta.cpp main.cpp generators/makefile.cpp ge
 	   $(SOURCE_PATH)/src/corelib/global/qlogging.cpp \
 	   $(QTSRCS)
 
-CPPFLAGS = -g -I$(QMKSRC) -I$(QMKSRC)/generators -I$(QMKSRC)/generators/unix -I$(QMKSRC)/generators/win32 \
-           -I$(QMKSRC)/generators/mac -I$(QMKSRC)/generators/integrity \
+CPPFLAGS = -g $(OPENSOURCE_CXXFLAGS) \
+	   -I$(QMKSRC) -I$(QMKLIBSRC) -I$(QMKSRC)/generators -I$(QMKSRC)/generators/unix -I$(QMKSRC)/generators/win32 \
+	   -I$(QMKSRC)/generators/mac -I$(QMKSRC)/generators/integrity \
 	   -I$(BUILD_PATH)/include -I$(BUILD_PATH)/include/QtCore \
 	   -I$(BUILD_PATH)/include/QtCore/$(QT_VERSION) -I$(BUILD_PATH)/include/QtCore/$(QT_VERSION)/QtCore \
-	   -I$(BUILD_PATH)/src/corelib/global \
+	   -I$(BUILD_PATH)/src/corelib/global -DHAVE_QCONFIG_CPP \
+	   -I$(QMAKESPEC) \
 	   -I$(SOURCE_PATH)/tools/shared \
-	   -DQT_BUILD_QMAKE -DQT_BOOTSTRAPPED \
-	   -DQT_NO_TEXTCODEC -DQT_NO_UNICODETABLES -DQT_NO_COMPONENT \
-	   -DQT_NO_COMPRESS -I$(QMAKESPEC) -DHAVE_QCONFIG_CPP -DQT_NO_THREAD -DQT_NO_QOBJECT \
-           -DQT_NO_GEOM_VARIANT -DQT_NO_DEPRECATED $(OPENSOURCE_CXXFLAGS)
+	   -DQT_BUILD_QMAKE -DQT_BOOTSTRAPPED -DPROEVALUATOR_FULL -DPROEVALUATOR_DEBUG \
+	   -DQT_NO_TEXTCODEC -DQT_NO_UNICODETABLES -DQT_NO_COMPONENT -DQT_NO_COMPRESS \
+	   -DQT_NO_THREAD -DQT_NO_QOBJECT -DQT_NO_GEOM_VARIANT -DQT_NO_DATASTREAM
 
 CXXFLAGS = @QMAKE_CXXFLAGS@ $(CPPFLAGS)
 
@@ -103,19 +116,37 @@ depend:
 	makedepend -D__MAKEDEPEND__ $(CPPFLAGS) $(DEPEND_SRC)
 
 
-project.o: $(QMKSRC)/project.cpp $(QMKSRC)/project.h $(QMKSRC)/option.h
+ioutils.o: $(QMKLIBSRC)/ioutils.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
-property.o: $(QMKSRC)/property.cpp $(QMKSRC)/project.h $(QMKSRC)/option.h
+proitems.o: $(QMKLIBSRC)/proitems.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
-meta.o: $(QMKSRC)/meta.cpp $(QMKSRC)/project.h $(QMKSRC)/option.h
+qmakeglobals.o: $(QMKLIBSRC)/qmakeglobals.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
-main.o: $(QMKSRC)/main.cpp $(QMKSRC)/project.h
+qmakeparser.o: $(QMKLIBSRC)/qmakeparser.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
-option.o: $(QMKSRC)/option.cpp $(QMKSRC)/option.h
+qmakeevaluator.o: $(QMKLIBSRC)/qmakeevaluator.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+qmakebuiltins.o: $(QMKLIBSRC)/qmakebuiltins.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+project.o: $(QMKSRC)/project.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+property.o: $(QMKSRC)/property.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+meta.o: $(QMKSRC)/meta.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+main.o: $(QMKSRC)/main.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+option.o: $(QMKSRC)/option.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
 metamakefile.o: $(QMKSRC)/generators/metamakefile.cpp

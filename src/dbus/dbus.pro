@@ -12,7 +12,7 @@ MODULE_CONFIG = dbusadaptors dbusinterfaces
 
 DEFINES += DBUS_API_SUBJECT_TO_CHANGE
 QMAKE_CXXFLAGS += $$QT_CFLAGS_DBUS
-contains(QT_CONFIG, dbus-linked) { 
+contains(QT_CONFIG, dbus-linked) {
     LIBS_PRIVATE += $$QT_LIBS_DBUS
     DEFINES += QT_LINKED_LIBDBUS
 }
@@ -26,10 +26,10 @@ win32 {
     CONFIG(debug, debug|release):LIBS_PRIVATE += -ldbus-1d
     else:LIBS_PRIVATE += -ldbus-1
 }
-load(qt_module)
 
 QMAKE_DOCS = $$PWD/doc/qtdbus.qdocconf
-QMAKE_DOCS_INDEX = ../../doc
+
+load(qt_module)
 
 PUB_HEADERS = qdbusargument.h \
     qdbusconnectioninterface.h \
@@ -52,6 +52,7 @@ PUB_HEADERS = qdbusargument.h \
     qdbusunixfiledescriptor.h
 HEADERS += $$PUB_HEADERS \
     qdbusconnection_p.h \
+    qdbusconnectionmanager_p.h \
     qdbusmessage_p.h \
     qdbusinterface_p.h \
     qdbusxmlparser_p.h \

@@ -3,10 +3,7 @@ TEMPLATE = app
 CONFIG += qt warn_on console
 isEmpty(QMAKE_INFO_PLIST): CONFIG -= app_bundle
 
-build_all:!build_pass {
-    CONFIG -= build_all
-    CONFIG += release
-}
+!build_pass:contains(QT_CONFIG, build_all): CONFIG += release
 
 target.path = $$[QT_INSTALL_BINS]
 INSTALLS += target
@@ -35,12 +32,12 @@ INSTALLS += target
     isEmpty(MODULE_QMAKE_OUTDIR): MODULE_QMAKE_OUTDIR = $$MODULE_BASE_OUTDIR
 
     load(resolve_target)
+    cmd = $$shell_path($$QMAKE_RESOLVED_TARGET)
+    qtAddTargetEnv(cmd)
 
     TOOL_PRI = $$MODULE_QMAKE_OUTDIR/mkspecs/modules/qt_$${MODULE}.pri
 
-    TOOL_PRI_CONT = \
-        "QT_TOOL.$${MODULE}.binary = $$QMAKE_RESOLVED_TARGET" \
-        "QT_TOOL.$${MODULE}.depends =$$join(MODULE_DEPENDS, " ", " ")"
+    TOOL_PRI_CONT = "QT_TOOL.$${MODULE}.command = $$val_escape(cmd)"
     write_file($$TOOL_PRI, TOOL_PRI_CONT)|error("Aborting.")
 
     # Then, inject the new tool into the current cache state
@@ -50,7 +47,6 @@ INSTALLS += target
         unset(added)
     }
     include($$TOOL_PRI)
-    for(var, $$list(binary depends)): \
-        cache(QT_TOOL.$${MODULE}.$$var, transient)
+    cache(QT_TOOL.$${MODULE}.command, transient)
 
 }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -224,6 +224,18 @@ class QVariantIsNull
     public:
         static const bool Value = (sizeof(test<T>(0)) == sizeof(Yes));
     };
+#elif defined(Q_CC_MSVC) && _MSC_VER >= 1400 // MSVC 2005, 2008 version: no decltype, but 'sealed' classes (>=2010 has decltype)
+    template<typename T>
+    class HasIsNullMethod {
+        struct Yes { char unused[1]; };
+        struct No { char unused[2]; };
+        Q_STATIC_ASSERT(sizeof(Yes) != sizeof(No));
+
+        template<class C> static Yes test(char (*)[(&C::isNull == 0) + 1]);
+        template<class C> static No test(...);
+    public:
+        static const bool Value = (sizeof(test<T>(0)) == sizeof(Yes));
+    };
 #else // C++98 version (doesn't work for final classes)
     template<typename T, bool IsClass = QTypeInfo<T>::isComplex>
     class HasIsNullMethod
@@ -259,11 +271,11 @@ class QVariantIsNull
     Q_STATIC_ASSERT(!HasIsNullMethod<SelfTest2>::Value);
     struct SelfTest3 : public SelfTest1 {};
     Q_STATIC_ASSERT(HasIsNullMethod<SelfTest3>::Value);
-    struct SelfTestFinal1 Q_DECL_FINAL_CLASS { bool isNull() const; };
+    struct SelfTestFinal1 Q_DECL_FINAL { bool isNull() const; };
     Q_STATIC_ASSERT(HasIsNullMethod<SelfTestFinal1>::Value);
-    struct SelfTestFinal2 Q_DECL_FINAL_CLASS {};
+    struct SelfTestFinal2 Q_DECL_FINAL {};
     Q_STATIC_ASSERT(!HasIsNullMethod<SelfTestFinal2>::Value);
-    struct SelfTestFinal3 Q_DECL_FINAL_CLASS : public SelfTest1 {};
+    struct SelfTestFinal3 Q_DECL_FINAL : public SelfTest1 {};
     Q_STATIC_ASSERT(HasIsNullMethod<SelfTestFinal3>::Value);
 
     template<typename T, bool HasIsNull = HasIsNullMethod<T>::Value>

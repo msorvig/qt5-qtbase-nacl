@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,6 +48,7 @@
 #include <QtCore/QLibraryInfo>
 #include <QtCore/QDir>
 #include <QtCore/QUuid>
+#include <QtCore/QtEndian>
 
 #undef QT_NO_FREETYPE
 #include <QtGui/private/qfontengine_ft_p.h>
@@ -134,6 +135,37 @@ static int requiredUnicodeBits[QFontDatabase::WritingSystemsCount][2] = {
         // Nko,
     { 14, 127 },
 };
+
+typedef struct {
+    quint16 majorVersion;
+    quint16 minorVersion;
+    quint16 numTables;
+    quint16 searchRange;
+    quint16 entrySelector;
+    quint16 rangeShift;
+} OFFSET_TABLE;
+
+typedef struct {
+    quint32 tag;
+    quint32 checkSum;
+    quint32 offset;
+    quint32 length;
+} TABLE_DIRECTORY;
+
+typedef struct {
+    quint16 fontSelector;
+    quint16 nrCount;
+    quint16 storageOffset;
+} NAME_TABLE_HEADER;
+
+typedef struct {
+    quint16 platformID;
+    quint16 encodingID;
+    quint16 languageID;
+    quint16 nameID;
+    quint16 stringLength;
+    quint16 stringOffset;
+} NAME_RECORD;
 
 QSupportedWritingSystems QBasicFontDatabase::determineWritingSystemsFromTrueTypeBits(quint32 unicodeRange[4], quint32 codePageRange[2])
 {
@@ -432,6 +464,94 @@ QStringList QBasicFontDatabase::addTTFile(const QByteArray &fontData, const QByt
         ++index;
     } while (index < numFaces);
     return families;
+}
+
+QString QBasicFontDatabase::fontNameFromTTFile(const QString &filename)
+{
+    QFile f(filename);
+    QString retVal;
+    qint64 bytesRead;
+    qint64 bytesToRead;
+
+    if (f.open(QIODevice::ReadOnly)) {
+        OFFSET_TABLE ttOffsetTable;
+        bytesToRead = sizeof(OFFSET_TABLE);
+        bytesRead = f.read((char*)&ttOffsetTable, bytesToRead);
+        if (bytesToRead != bytesRead)
+            return retVal;
+        ttOffsetTable.numTables = qFromBigEndian(ttOffsetTable.numTables);
+        ttOffsetTable.majorVersion = qFromBigEndian(ttOffsetTable.majorVersion);
+        ttOffsetTable.minorVersion = qFromBigEndian(ttOffsetTable.minorVersion);
+
+        if (ttOffsetTable.majorVersion != 1 || ttOffsetTable.minorVersion != 0)
+            return retVal;
+
+        TABLE_DIRECTORY tblDir;
+        bool found = false;
+
+        for (int i = 0; i < ttOffsetTable.numTables; i++) {
+            bytesToRead = sizeof(TABLE_DIRECTORY);
+            bytesRead = f.read((char*)&tblDir, bytesToRead);
+            if (bytesToRead != bytesRead)
+                return retVal;
+            if (qFromBigEndian(tblDir.tag) == MAKE_TAG('n', 'a', 'm', 'e')) {
+                found = true;
+                tblDir.length = qFromBigEndian(tblDir.length);
+                tblDir.offset = qFromBigEndian(tblDir.offset);
+                break;
+            }
+        }
+
+        if (found) {
+            f.seek(tblDir.offset);
+            NAME_TABLE_HEADER ttNTHeader;
+            bytesToRead = sizeof(NAME_TABLE_HEADER);
+            bytesRead = f.read((char*)&ttNTHeader, bytesToRead);
+            if (bytesToRead != bytesRead)
+                return retVal;
+            ttNTHeader.nrCount = qFromBigEndian(ttNTHeader.nrCount);
+            ttNTHeader.storageOffset = qFromBigEndian(ttNTHeader.storageOffset);
+            NAME_RECORD ttRecord;
+            found = false;
+
+            for (int i = 0; i < ttNTHeader.nrCount; i++) {
+                bytesToRead = sizeof(NAME_RECORD);
+                bytesRead = f.read((char*)&ttRecord, bytesToRead);
+                if (bytesToRead != bytesRead)
+                    return retVal;
+                ttRecord.nameID = qFromBigEndian(ttRecord.nameID);
+                if (ttRecord.nameID == 1) {
+                    ttRecord.stringLength = qFromBigEndian(ttRecord.stringLength);
+                    ttRecord.stringOffset = qFromBigEndian(ttRecord.stringOffset);
+                    int nPos = f.pos();
+                    f.seek(tblDir.offset + ttRecord.stringOffset + ttNTHeader.storageOffset);
+
+                    QByteArray nameByteArray = f.read(ttRecord.stringLength);
+                    if (!nameByteArray.isEmpty()) {
+                        if (ttRecord.encodingID == 256 || ttRecord.encodingID == 768) {
+                            //This is UTF-16 in big endian
+                            int stringLength = ttRecord.stringLength / 2;
+                            retVal.resize(stringLength);
+                            QChar *data = retVal.data();
+                            const ushort *srcData = (const ushort *)nameByteArray.data();
+                            for (int i = 0; i < stringLength; ++i)
+                                data[i] = qFromBigEndian(srcData[i]);
+                            return retVal;
+                        } else if (ttRecord.encodingID == 0) {
+                            //This is Latin1
+                            retVal = QString::fromLatin1(nameByteArray);
+                        } else {
+                            qWarning("Could not retrieve Font name from file: %s", qPrintable(QDir::toNativeSeparators(filename)));
+                        }
+                        break;
+                    }
+                    f.seek(nPos);
+                }
+            }
+        }
+        f.close();
+    }
+    return retVal;
 }
 
 QT_END_NAMESPACE

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -166,6 +166,9 @@ static inline bool winClearTypeFontsEnabled()
     return result == FE_FONTSMOOTHINGCLEARTYPE;
 }
 
+/*!
+    \internal
+ */
 bool QRasterPaintEngine::clearTypeFontsEnabled()
 {
     static const bool result = winClearTypeFontsEnabled();
@@ -1369,6 +1372,13 @@ void QRasterPaintEngine::clip(const QRegion &region, Qt::ClipOperation op)
 }
 
 /*!
+ \fn const QClipData *QRasterPaintEngine::clipData() const
+
+ \internal
+*/
+
+
+/*!
     \internal
 */
 void QRasterPaintEngine::fillPath(const QPainterPath &path, QSpanData *fillData)
@@ -1922,11 +1932,8 @@ void QRasterPaintEngine::drawPolygon(const QPointF *points, int pointCount, Poly
     if (mode != PolylineMode) {
         // Do the fill...
         ensureBrush();
-        if (s->brushData.blend) {
-            d->outlineMapper->setCoordinateRounding(s->penData.blend && s->flags.fast_pen && s->lastPen.brush().isOpaque());
+        if (s->brushData.blend)
             fillPolygon(points, pointCount, mode);
-            d->outlineMapper->setCoordinateRounding(false);
-        }
     }
 
     // Do the outline...
@@ -1972,7 +1979,6 @@ void QRasterPaintEngine::drawPolygon(const QPoint *points, int pointCount, Polyg
         if (s->brushData.blend) {
             // Compose polygon fill..,
             ensureOutlineMapper();
-            d->outlineMapper->setCoordinateRounding(s->penData.blend != 0);
             d->outlineMapper->beginOutline(mode == WindingMode ? Qt::WindingFill : Qt::OddEvenFill);
             d->outlineMapper->moveTo(*points);
             const QPoint *p = points;
@@ -1986,7 +1992,6 @@ void QRasterPaintEngine::drawPolygon(const QPoint *points, int pointCount, Polyg
             ProcessSpans brushBlend = d->getBrushFunc(d->outlineMapper->controlPointRect,
                                                       &s->brushData);
             d->rasterize(d->outlineMapper->outline(), brushBlend, &s->brushData, d->rasterBuffer.data());
-            d->outlineMapper->setCoordinateRounding(false);
         }
     }
 
@@ -2737,6 +2742,9 @@ void QRasterPaintEngine::alphaPenBlt(const void* src, int bpl, int depth, int rx
         blend(current, spans, &s->penData);
 }
 
+/*!
+    \internal
+*/
 bool QRasterPaintEngine::drawCachedGlyphs(int numGlyphs, const glyph_t *glyphs,
                                           const QFixedPoint *positions, QFontEngine *fontEngine)
 {
@@ -3222,9 +3230,6 @@ void QRasterPaintEngine::drawEllipse(const QRectF &rect)
     QPaintEngineEx::drawEllipse(rect);
 }
 
-/*!
-    \internal
-*/
 
 #ifdef Q_OS_WIN
 /*!
@@ -3253,12 +3258,18 @@ void QRasterPaintEngine::releaseDC(HDC) const
 
 #endif
 
+/*!
+    \internal
+*/
 bool QRasterPaintEngine::supportsTransformations(QFontEngine *fontEngine) const
 {
     const QTransform &m = state()->matrix;
     return supportsTransformations(fontEngine, m);
 }
 
+/*!
+    \internal
+*/
 bool QRasterPaintEngine::supportsTransformations(QFontEngine *fontEngine, const QTransform &m) const
 {
     if (m.type() >= QTransform::TxProject)
@@ -4714,20 +4725,9 @@ static void drawEllipse_midpoint_i(const QRect &rect, const QRect &clip,
 /*!
     \fn void QRasterPaintEngine::drawPoints(const QPoint *points, int pointCount)
     \overload
-
-    Draws the first \a pointCount points in the buffer \a points
-
-    The default implementation converts the first \a pointCount QPoints in \a points
-    to QPointFs and calls the floating point version of drawPoints.
+    \reimp
 */
 
-/*!
-    \fn void QRasterPaintEngine::drawEllipse(const QRect &rect)
-    \overload
-
-    Reimplement this function to draw the largest ellipse that can be
-    contained within rectangle \a rect.
-*/
 
 #ifdef QT_DEBUG_DRAW
 void dumpClip(int width, int height, const QClipData *clip)

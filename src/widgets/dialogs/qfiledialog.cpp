@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -171,7 +171,7 @@ Q_WIDGETS_EXPORT _qt_filedialog_save_filename_hook qt_filedialog_save_filename_h
   The \l{dialogs/standarddialogs}{Standard Dialogs} example shows
   how to use QFileDialog as well as other built-in Qt dialogs.
 
-  \sa QDir, QFileInfo, QFile, QPrintDialog, QColorDialog, QFontDialog, {Standard Dialogs Example},
+  \sa QDir, QFileInfo, QFile, QColorDialog, QFontDialog, {Standard Dialogs Example},
       {Application Example}
 */
 
@@ -1410,7 +1410,7 @@ int QFileDialogPrivate::maxNameLength(const QString &path)
 #elif defined(Q_OS_WIN)
     DWORD maxLength;
     const QString drive = path.left(3);
-    if (::GetVolumeInformation(reinterpret_cast<const wchar_t *>(drive.utf16()), NULL, 0, NULL, &maxLength, NULL, NULL, 0) == FALSE)
+    if (::GetVolumeInformation(reinterpret_cast<const wchar_t *>(drive.utf16()), NULL, 0, NULL, &maxLength, NULL, NULL, 0) == false)
         return -1;
     return maxLength;
 #else
@@ -2708,10 +2708,11 @@ void QFileDialogPrivate::_q_showContextMenu(const QPoint &position)
     QMenu menu(view);
     if (index.isValid()) {
         // file context menu
+        const bool ro = model && model->isReadOnly();
         QFile::Permissions p(index.parent().data(QFileSystemModel::FilePermissions).toInt());
-        renameAction->setEnabled(p & QFile::WriteUser);
+        renameAction->setEnabled(!ro && p & QFile::WriteUser);
         menu.addAction(renameAction);
-        deleteAction->setEnabled(p & QFile::WriteUser);
+        deleteAction->setEnabled(!ro && p & QFile::WriteUser);
         menu.addAction(deleteAction);
         menu.addSeparator();
     }
@@ -2771,13 +2772,13 @@ void QFileDialogPrivate::_q_deleteCurrent()
     QFile::Permissions p(index.parent().data(QFileSystemModel::FilePermissions).toInt());
 #ifndef QT_NO_MESSAGEBOX
     Q_Q(QFileDialog);
-    if (!(p & QFile::WriteUser) && (QMessageBox::warning(q_func(), q_func()->windowTitle(),
+    if (!(p & QFile::WriteUser) && (QMessageBox::warning(q_func(), QFileDialog::tr("Delete"),
                                 QFileDialog::tr("'%1' is write protected.\nDo you want to delete it anyway?")
                                 .arg(fileName),
                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::No))
         return;
-    else if (QMessageBox::warning(q_func(), q_func()->windowTitle(),
-                                  QFileDialog::tr("Are sure you want to delete '%1'?")
+    else if (QMessageBox::warning(q_func(), QFileDialog::tr("Delete"),
+                                  QFileDialog::tr("Are you sure you want to delete '%1'?")
                                   .arg(fileName),
                                   QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::No)
         return;
@@ -3056,7 +3057,7 @@ void QFileDialogPrivate::_q_selectionChanged()
             allFiles.replace(i, QString(QLatin1Char('"') + allFiles.at(i) + QLatin1Char('"')));
     }
 
-    QString finalFiles = allFiles.join(QLatin1String(" "));
+    QString finalFiles = allFiles.join(QLatin1Char(' '));
     if (!finalFiles.isEmpty() && !lineEdit()->hasFocus() && lineEdit()->isVisible())
         lineEdit()->setText(finalFiles);
     else

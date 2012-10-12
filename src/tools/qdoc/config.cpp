@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -43,11 +43,11 @@
   config.cpp
 */
 
-#include <QDir>
-#include <QVariant>
-#include <QFile>
-#include <QTemporaryFile>
-#include <QTextStream>
+#include <qdir.h>
+#include <qvariant.h>
+#include <qfile.h>
+#include <qtemporaryfile.h>
+#include <qtextstream.h>
 #include <qdebug.h>
 #include "config.h"
 #include <stdlib.h>
@@ -229,7 +229,7 @@ void Config::unload(const QString& fileName)
  */
 void Config::setStringList(const QString& var, const QStringList& values)
 {
-    stringValueMap[var] = values.join(QLatin1String(" "));
+    stringValueMap[var] = values.join(QLatin1Char(' '));
     stringListValueMap[var] = values;
 }
 
@@ -325,6 +325,32 @@ QStringList Config::getStringList(const QString& var) const
     if (!locMap[var].isEmpty())
         (Location&) lastLoc = locMap[var];
     return stringListValueMap[var];
+}
+
+
+/*!
+   \brief Returns the a path list where all paths are canonicalized, then
+          made relative to the config file.
+   \param var The variable containing the list of paths.
+   \see   Location::canonicalRelativePath()
+ */
+QStringList Config::getCanonicalRelativePathList(const QString& var) const
+{
+    if (!locMap[var].isEmpty())
+        (Location&) lastLoc = locMap[var];
+    QStringList t;
+    QMap<QString,QStringList>::const_iterator it = stringListValueMap.constFind(var);
+    if (it != stringListValueMap.constEnd()) {
+        const QStringList& sl = it.value();
+        if (!sl.isEmpty()) {
+            t.reserve(sl.size());
+            for (int i=0; i<sl.size(); ++i) {
+                const QString &canonicalized = location().canonicalRelativePath(sl[i]);
+                t.append(canonicalized);
+            }
+        }
+    }
+    return t;
 }
 
 /*!
@@ -465,29 +491,43 @@ QStringList Config::getAllFiles(const QString &filesVar,
                                 const QSet<QString> &excludedFiles)
 {
     QStringList result = getStringList(filesVar);
-    QStringList dirs = getStringList(dirsVar);
+    QStringList dirs = getCanonicalRelativePathList(dirsVar);
 
     QString nameFilter = getString(filesVar + dot + QLatin1String(CONFIG_FILEEXTENSIONS));
 
     QStringList::ConstIterator d = dirs.constBegin();
     while (d != dirs.constEnd()) {
-        result += getFilesHere(*d, nameFilter, excludedDirs, excludedFiles);
+        result += getFilesHere(*d, nameFilter, location(), excludedDirs, excludedFiles);
         ++d;
     }
     return result;
 }
 
-QStringList Config::getExampleQdocFiles()
+QStringList Config::getExampleQdocFiles(const QSet<QString> &excludedDirs,
+                                        const QSet<QString> &excludedFiles)
 {
     QStringList result;
-    QSet<QString> excludedDirs;
-    QSet<QString> excludedFiles;
-    QStringList dirs = getStringList("exampledirs");
+    QStringList dirs = getCanonicalRelativePathList("exampledirs");
     QString nameFilter = " *.qdoc";
 
     QStringList::ConstIterator d = dirs.constBegin();
     while (d != dirs.constEnd()) {
-        result += getFilesHere(*d, nameFilter, excludedDirs, excludedFiles);
+        result += getFilesHere(*d, nameFilter, location(), excludedDirs, excludedFiles);
+        ++d;
+    }
+    return result;
+}
+
+QStringList Config::getExampleImageFiles(const QSet<QString> &excludedDirs,
+                                         const QSet<QString> &excludedFiles)
+{
+    QStringList result;
+    QStringList dirs = getCanonicalRelativePathList("exampledirs");
+    QString nameFilter = getString(CONFIG_EXAMPLES + dot + QLatin1String(CONFIG_IMAGEEXTENSIONS));
+
+    QStringList::ConstIterator d = dirs.constBegin();
+    while (d != dirs.constEnd()) {
+        result += getFilesHere(*d, nameFilter, location(), excludedDirs, excludedFiles);
         ++d;
     }
     return result;
@@ -948,10 +988,12 @@ void Config::load(Location location, const QString& fileName)
 
 QStringList Config::getFilesHere(const QString& uncleanDir,
                                  const QString& nameFilter,
+                                 const Location &location,
                                  const QSet<QString> &excludedDirs,
                                  const QSet<QString> &excludedFiles)
 {
-    QString dir = QDir::cleanPath(uncleanDir);
+    //
+    QString dir = location.isEmpty() ? QDir::cleanPath(uncleanDir) : location.canonicalRelativePath(uncleanDir);
     QStringList result;
     if (excludedDirs.contains(dir))
         return result;
@@ -981,7 +1023,7 @@ QStringList Config::getFilesHere(const QString& uncleanDir,
     fileNames = dirInfo.entryList();
     fn = fileNames.constBegin();
     while (fn != fileNames.constEnd()) {
-        result += getFilesHere(dirInfo.filePath(*fn), nameFilter, excludedDirs, excludedFiles);
+        result += getFilesHere(dirInfo.filePath(*fn), nameFilter, location, excludedDirs, excludedFiles);
         ++fn;
     }
     return result;

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1663,7 +1663,7 @@ bool QAbstractItemView::viewportEvent(QEvent *event)
     case QEvent::WhatsThis: {
         QHelpEvent *he = static_cast<QHelpEvent*>(event);
         const QModelIndex index = indexAt(he->pos());
-        QStyleOptionViewItemV4 option = d->viewOptionsV4();
+        QStyleOptionViewItem option = d->viewOptions();
         option.rect = visualRect(index);
         option.state |= (index == currentIndex() ? QStyle::State_HasFocus : QStyle::State_None);
 
@@ -1863,7 +1863,7 @@ void QAbstractItemView::mouseReleaseEvent(QMouseEvent *event)
             emit clicked(index);
         if (edited)
             return;
-        QStyleOptionViewItemV4 option = d->viewOptionsV4();
+        QStyleOptionViewItem option = d->viewOptions();
         if (d->pressedAlreadySelected)
             option.state |= QStyle::State_Selected;
         if (style()->styleHint(QStyle::SH_ItemView_ActivateItemOnSingleClick, &option, this))
@@ -2654,7 +2654,7 @@ void QAbstractItemView::updateEditorGeometries()
     Q_D(QAbstractItemView);
     if(d->editorIndexHash.isEmpty())
         return;
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
     QEditorIndexHash::iterator it = d->editorIndexHash.begin();
     QWidgetList editorsToRelease;
     QWidgetList editorsToHide;
@@ -2997,7 +2997,7 @@ QSize QAbstractItemView::sizeHintForIndex(const QModelIndex &index) const
     Q_D(const QAbstractItemView);
     if (!d->isIndexValid(index) || !d->itemDelegate)
         return QSize();
-    return d->delegateForIndex(index)->sizeHint(d->viewOptionsV4(), index);
+    return d->delegateForIndex(index)->sizeHint(d->viewOptions(), index);
 }
 
 /*!
@@ -3025,7 +3025,7 @@ int QAbstractItemView::sizeHintForRow(int row) const
 
     ensurePolished();
 
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
     int height = 0;
     int colCount = d->model->columnCount(d->root);
     QModelIndex index;
@@ -3056,7 +3056,7 @@ int QAbstractItemView::sizeHintForColumn(int column) const
 
     ensurePolished();
 
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
     int width = 0;
     int rows = d->model->rowCount(d->root);
     QModelIndex index;
@@ -3079,7 +3079,7 @@ int QAbstractItemView::sizeHintForColumn(int column) const
 void QAbstractItemView::openPersistentEditor(const QModelIndex &index)
 {
     Q_D(QAbstractItemView);
-    QStyleOptionViewItemV4 options = d->viewOptionsV4();
+    QStyleOptionViewItem options = d->viewOptions();
     options.rect = visualRect(index);
     options.state |= (index == currentIndex() ? QStyle::State_HasFocus : QStyle::State_None);
 
@@ -3218,13 +3218,16 @@ void QAbstractItemView::update(const QModelIndex &index)
 }
 
 /*!
-    This slot is called when items are changed in the model. The
-    changed items are those from \a topLeft to \a bottomRight
-    inclusive. If just one item is changed \a topLeft == \a
-    bottomRight.
+    This slot is called when items with the given \a roles are changed in the
+    model. The changed items are those from \a topLeft to \a bottomRight
+    inclusive. If just one item is changed \a topLeft == \a bottomRight.
+
+    The \a roles which have been changed can either be an empty container (meaning everything
+    has changed), or a non-empty container with the subset of roles which have changed.
 */
-void QAbstractItemView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &)
+void QAbstractItemView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
+    Q_UNUSED(roles);
     // Single item changed
     Q_D(QAbstractItemView);
     if (topLeft == bottomRight && topLeft.isValid()) {
@@ -3614,13 +3617,13 @@ void QAbstractItemView::startDrag(Qt::DropActions supportedActions)
 QStyleOptionViewItem QAbstractItemView::viewOptions() const
 {
     Q_D(const QAbstractItemView);
-    return d->viewOptionsV4();
+    return d->viewOptions();
 }
 
-QStyleOptionViewItemV4 QAbstractItemViewPrivate::viewOptionsV4() const
+QStyleOptionViewItem QAbstractItemViewPrivate::viewOptions() const
 {
     Q_Q(const QAbstractItemView);
-    QStyleOptionViewItemV4 option;
+    QStyleOptionViewItem option;
     option.init(q);
     option.state &= ~QStyle::State_MouseOver;
     option.font = q->font();
@@ -3646,7 +3649,7 @@ QStyleOptionViewItemV4 QAbstractItemViewPrivate::viewOptionsV4() const
     option.rect = QRect();
     option.showDecorationSelected = q->style()->styleHint(QStyle::SH_ItemView_ShowDecorationSelected, 0, q);
     if (wrapItemText)
-        option.features = QStyleOptionViewItemV2::WrapText;
+        option.features = QStyleOptionViewItem::WrapText;
     option.locale = q->locale();
     option.locale.setNumberOptions(QLocale::OmitGroupSeparator);
     option.widget = q;
@@ -4115,8 +4118,12 @@ void QAbstractItemViewPrivate::updateEditorData(const QModelIndex &tl, const QMo
     // we are counting on having relatively few editors
     const bool checkIndexes = tl.isValid() && br.isValid();
     const QModelIndex parent = tl.parent();
-    QIndexEditorHash::const_iterator it = indexEditorHash.constBegin();
-    for (; it != indexEditorHash.constEnd(); ++it) {
+    // QTBUG-25370: We need to copy the indexEditorHash, because while we're
+    // iterating over it, we are calling methods which can allow user code to
+    // call a method on *this which can modify the member indexEditorHash.
+    const QIndexEditorHash indexEditorHashCopy = indexEditorHash;
+    QIndexEditorHash::const_iterator it = indexEditorHashCopy.constBegin();
+    for (; it != indexEditorHashCopy.constEnd(); ++it) {
         QWidget *editor = it.value().widget.data();
         const QModelIndex index = it.key();
         if (it.value().isStatic || !editor || !index.isValid() ||
@@ -4240,7 +4247,7 @@ bool QAbstractItemViewPrivate::sendDelegateEvent(const QModelIndex &index, QEven
 {
     Q_Q(const QAbstractItemView);
     QModelIndex buddy = model->buddy(index);
-    QStyleOptionViewItemV4 options = viewOptionsV4();
+    QStyleOptionViewItem options = viewOptions();
     options.rect = q->visualRect(buddy);
     options.state |= (buddy == q->currentIndex() ? QStyle::State_HasFocus : QStyle::State_None);
     QAbstractItemDelegate *delegate = delegateForIndex(index);
@@ -4252,7 +4259,7 @@ bool QAbstractItemViewPrivate::openEditor(const QModelIndex &index, QEvent *even
     Q_Q(QAbstractItemView);
 
     QModelIndex buddy = model->buddy(index);
-    QStyleOptionViewItemV4 options = viewOptionsV4();
+    QStyleOptionViewItem options = viewOptions();
     options.rect = q->visualRect(buddy);
     options.state |= (buddy == q->currentIndex() ? QStyle::State_HasFocus : QStyle::State_None);
 
@@ -4304,7 +4311,7 @@ QPixmap QAbstractItemViewPrivate::renderToPixmap(const QModelIndexList &indexes,
     QPixmap pixmap(r->size());
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
-    QStyleOptionViewItemV4 option = viewOptionsV4();
+    QStyleOptionViewItem option = viewOptions();
     option.state |= QStyle::State_Selected;
     for (int j = 0; j < paintPairs.count(); ++j) {
         option.rect = paintPairs.at(j).first.translated(-r->topLeft());

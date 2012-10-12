@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -207,6 +207,7 @@ QDateTime &QFileInfoPrivate::getFileTime(QAbstractFileEngine::FileTime request) 
 
 /*!
     \class QFileInfo
+    \inmodule QtCore
     \reentrant
     \brief The QFileInfo class provides system-independent file information.
 
@@ -699,7 +700,7 @@ QString QFileInfo::filePath() const
     Note that, if this QFileInfo object is given a path ending in a
     slash, the name of the file is considered empty.
 
-    \sa isRelative(), filePath(), baseName(), extension()
+    \sa isRelative(), filePath(), baseName(), suffix()
 */
 QString QFileInfo::fileName() const
 {
@@ -719,7 +720,7 @@ QString QFileInfo::fileName() const
     Example:
     \snippet code/src_corelib_io_qfileinfo.cpp 4
 
-    \sa isBundle(), filePath(), baseName(), extension()
+    \sa isBundle(), filePath(), baseName(), suffix()
 */
 QString QFileInfo::bundleName() const
 {
@@ -1258,7 +1259,8 @@ QDateTime QFileInfo::created() const
         return QDateTime();
     if (d->fileEngine == 0) {
         if (!d->cache_enabled || !d->metaData.hasFlags(QFileSystemMetaData::CreationTime))
-            QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::CreationTime);
+            if (!QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::CreationTime))
+                return QDateTime();
         return d->metaData.creationTime();
     }
     return d->getFileTime(QAbstractFileEngine::CreationTime);
@@ -1276,7 +1278,8 @@ QDateTime QFileInfo::lastModified() const
         return QDateTime();
     if (d->fileEngine == 0) {
         if (!d->cache_enabled || !d->metaData.hasFlags(QFileSystemMetaData::ModificationTime))
-            QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::ModificationTime);
+            if (!QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::ModificationTime))
+                return QDateTime();
         return d->metaData.modificationTime();
     }
     return d->getFileTime(QAbstractFileEngine::ModificationTime);
@@ -1297,13 +1300,15 @@ QDateTime QFileInfo::lastRead() const
         return QDateTime();
     if (d->fileEngine == 0) {
         if (!d->cache_enabled || !d->metaData.hasFlags(QFileSystemMetaData::AccessTime))
-            QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::AccessTime);
+            if (!QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::AccessTime))
+                return QDateTime();
         return d->metaData.accessTime();
     }
     return d->getFileTime(QAbstractFileEngine::AccessTime);
 }
 
-/*! \internal
+/*!
+    \internal
 */
 QFileInfoPrivate* QFileInfo::d_func()
 {

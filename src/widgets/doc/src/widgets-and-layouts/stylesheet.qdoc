@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -32,7 +32,7 @@
 
     \ingroup frameworks-technologies
     \ingroup qt-basic-concepts
-	\ingroup qt-gui-concepts
+    \ingroup qt-gui-concepts
 
     \previouspage {Styles and Style Aware Widgets}{Styles}
     \contentspage Widgets and Layouts
@@ -95,7 +95,7 @@
     consideration. Unlike palette fiddling, style sheets offer
     guarantees: If you set the background color of a QPushButton to be
     red, you can be assured that the button will have a red background
-    in all styles, on all platforms. In addition, \l{Qt Designer}
+    in all styles, on all platforms. In addition, Qt Designer
     provides style sheet integration, making it easy to view the effects
     of a style sheet in different \l{QStyle}{widget styles}.
 
@@ -548,20 +548,20 @@
     \nextpage Customizing Qt Widgets Using Style Sheets
     \title Qt Designer Integration
 
-    \l{Qt Designer}{Qt Designer} is an excellent tool
+    Qt Designer{Qt Designer} is an excellent tool
     to preview style sheets. You can right-click on any widget in Designer
     and select \uicontrol{Change styleSheet...} to set the style sheet.
 
     \image designer-stylesheet-options.png
 
-    In Qt 4.2 and later, \l{Qt Designer}{Qt Designer} also includes a
+    In Qt 4.2 and later, Qt Designer also includes a
     style sheet syntax highlighter and validator. The validator indicates
     if the syntax is valid or invalid, at the bottom left of the \uicontrol{Edit
     Style Sheet} dialog.
 
     \image designer-validator-highlighter.png
 
-    When you click \uicontrol{OK} or \uicontrol{Apply}, \QD will automatically display
+    When you click \uicontrol{OK} or \uicontrol{Apply}, Qt Designer will automatically display
     the widget with its new stylesheet.
 
     \image designer-stylesheet-usage.png

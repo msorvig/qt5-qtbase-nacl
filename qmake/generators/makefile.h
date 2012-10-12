@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -83,7 +83,6 @@ class MakefileGenerator : protected QMakeSourceFileInfo
     QHash<QString, bool> init_compiler_already;
     QString chkdir, chkfile, chkglue;
     QString build_args(const QString &outdir=QString());
-    void checkMultipleDefinition(const QString &, const QString &);
 
     //internal caches
     mutable QHash<QString, QMakeLocalFileName> depHeuristicsCache;
@@ -93,11 +92,11 @@ class MakefileGenerator : protected QMakeSourceFileInfo
 protected:
     enum TARG_MODE { TARG_UNIX_MODE, TARG_MACX_MODE, TARG_WIN_MODE } target_mode;
 
-    QStringList createObjectList(const QStringList &sources);
+    ProStringList createObjectList(const ProStringList &sources);
 
     //makefile style generator functions
-    void writeObj(QTextStream &, const QString &src);
-    void writeInstalls(QTextStream &t, const QString &installs, bool noBuild=false);
+    void writeObj(QTextStream &, const char *src);
+    void writeInstalls(QTextStream &t, bool noBuild=false);
     void writeHeader(QTextStream &t);
     void writeSubDirs(QTextStream &t);
     void writeMakeQmake(QTextStream &t, bool noDummyQmakeAll = false);
@@ -119,7 +118,7 @@ protected:
         QString name;
         QString in_directory, out_directory;
         QString profile, target, makefile;
-        QStringList depends;
+        ProStringList depends;
     };
     enum SubTargetFlags {
         SubTargetInstalls=0x01,
@@ -138,7 +137,7 @@ protected:
     void writeSubTargets(QTextStream &t, QList<SubTarget*> subtargets, int flags);
 
     //extra compiler interface
-    bool verifyExtraCompiler(const QString &c, const QString &f);
+    bool verifyExtraCompiler(const ProString &c, const QString &f);
     virtual QString replaceExtraCompilerVariables(const QString &, const QStringList &, const QStringList &);
     inline QString replaceExtraCompilerVariables(const QString &val, const QString &in, const QString &out)
     { return replaceExtraCompilerVariables(val, QStringList(in), QStringList(out)); }
@@ -151,11 +150,16 @@ protected:
 
     //escape
     virtual QString unescapeFilePath(const QString &path) const;
+    ProString unescapeFilePath(const ProString &path) const;
     virtual QStringList unescapeFilePaths(const QStringList &path) const;
+    ProStringList unescapeFilePaths(const ProStringList &path) const;
     virtual QString escapeFilePath(const QString &path) const { return path; }
-    virtual QString escapeDependencyPath(const QString &path) const { return escapeFilePath(path); }
+    ProString escapeFilePath(const ProString &path) const;
     QStringList escapeFilePaths(const QStringList &paths) const;
+    ProStringList escapeFilePaths(const ProStringList &paths) const;
+    virtual QString escapeDependencyPath(const QString &path) const { return escapeFilePath(path); }
     QStringList escapeDependencyPaths(const QStringList &paths) const;
+    ProStringList escapeDependencyPaths(const ProStringList &paths) const;
 
     //initialization
     void verifyCompilers();
@@ -180,7 +184,7 @@ protected:
         VPATH_RemoveMissingFiles = 0x02,
         VPATH_NoFixify           = 0x04
     };
-    QStringList findFilesInVPATH(QStringList l, uchar flags, const QString &var="");
+    ProStringList findFilesInVPATH(ProStringList l, uchar flags, const QString &var="");
 
     inline int findExecutable(const QStringList &cmdline)
     { int ret; canExecute(cmdline, &ret); return ret; }
@@ -194,13 +198,13 @@ protected:
     QString specdir();
 
     //subclasses can use these to query information about how the generator was "run"
-    QString buildArgs(const QString &outdir=QString());
+    QString buildArgs();
     QString fixifySpecdir(const QString &spec, const QString &outdir);
 
     virtual QStringList &findDependencies(const QString &file);
     virtual bool doDepends() const { return Option::mkfile::do_deps; }
 
-    void filterIncludedFiles(const QString &);
+    void filterIncludedFiles(const char *);
     virtual void processSources() {
         filterIncludedFiles("SOURCES");
         filterIncludedFiles("GENERATED_SOURCES");
@@ -220,13 +224,16 @@ protected:
     virtual bool findLibraries();
 
     //for retrieving values and lists of values
-    virtual QString var(const QString &var);
-    QString varGlue(const QString &var, const QString &before, const QString &glue, const QString &after);
-    QString fileVarGlue(const QString &var, const QString &before, const QString &glue, const QString &after);
-    QString varList(const QString &var);
+    virtual QString var(const ProKey &var);
+    QString varGlue(const ProKey &var, const QString &before, const QString &glue, const QString &after);
+    QString fileVarGlue(const ProKey &var, const QString &before, const QString &glue, const QString &after);
+    QString varList(const ProKey &var);
+    QString val(const ProStringList &varList);
     QString val(const QStringList &varList);
     QString valGlue(const QStringList &varList, const QString &before, const QString &glue, const QString &after);
+    QString valGlue(const ProStringList &varList, const QString &before, const QString &glue, const QString &after);
     QString valList(const QStringList &varList);
+    QString valList(const ProStringList &varList);
 
     QString filePrefixRoot(const QString &, const QString &);
 

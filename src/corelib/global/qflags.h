@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,6 +44,7 @@
 
 #include <QtCore/qglobal.h>
 #include <QtCore/qtypeinfo.h>
+#include <QtCore/qtypetraits.h>
 
 QT_BEGIN_HEADER
 
@@ -77,12 +78,23 @@ Q_DECL_CONSTEXPR inline QIncompatibleFlag::QIncompatibleFlag(int ai) : i(ai) {}
 template<typename Enum>
 class QFlags
 {
-    typedef void **Zero;
-    int i;
+    Q_STATIC_ASSERT_X((sizeof(Enum) <= sizeof(int)),
+                      "QFlags uses an int as storage, so an enum with underlying "
+                      "long long would overflow. Qt 5.1 will have support for 64bit enums.");
+    struct Private;
+    typedef int (Private::*Zero);
 public:
+#ifndef qdoc
+    typedef typename QtPrivate::if_<
+            QtPrivate::is_unsigned<Enum>::value,
+            unsigned int,
+            signed int
+        >::type Int;
+#endif
     typedef Enum enum_type;
     // compiler-generated copy/move ctor/assignment operators are fine!
 #ifdef qdoc
+    typedef int Int; // the real typedef above is too complex for qdoc
     inline QFlags(const QFlags &other);
     inline QFlags &operator=(const QFlags &other);
 #endif
@@ -97,7 +109,7 @@ public:
     inline QFlags &operator^=(QFlags f) { i ^= f.i; return *this; }
     inline QFlags &operator^=(Enum f) { i ^= f; return *this; }
 
-    Q_DECL_CONSTEXPR  inline operator int() const { return i; }
+    Q_DECL_CONSTEXPR  inline operator Int() const { return i; }
 
     Q_DECL_CONSTEXPR inline QFlags operator|(QFlags f) const { return QFlags(Enum(i | f.i)); }
     Q_DECL_CONSTEXPR inline QFlags operator|(Enum f) const { return QFlags(Enum(i | f)); }
@@ -110,7 +122,9 @@ public:
 
     Q_DECL_CONSTEXPR inline bool operator!() const { return !i; }
 
-    Q_DECL_CONSTEXPR inline bool testFlag(Enum f) const { return (i & f) == f && (f != 0 || i == int(f) ); }
+    Q_DECL_CONSTEXPR inline bool testFlag(Enum f) const { return (i & f) == f && (f != 0 || i == Int(f) ); }
+private:
+    Int i;
 };
 
 #define Q_DECLARE_FLAGS(Flags, Enum)\

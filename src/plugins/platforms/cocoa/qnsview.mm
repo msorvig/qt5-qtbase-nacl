@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -143,8 +143,10 @@ static QTouchDevice *touchDevice = 0;
     m_platformWindow->QPlatformWindow::setGeometry(geo);
 
     // Send a geometry change event to Qt, if it's ready to handle events
-    if (!m_platformWindow->m_inConstructor)
-        QWindowSystemInterface::handleSynchronousGeometryChange(m_window, geo);
+    if (!m_platformWindow->m_inConstructor) {
+        QWindowSystemInterface::handleGeometryChange(m_window, geo);
+        QWindowSystemInterface::flushWindowSystemEvents();
+    }
 }
 
 - (void)windowNotification : (NSNotification *) windowNotification
@@ -192,12 +194,20 @@ static QTouchDevice *touchDevice = 0;
 {
     CGImageRelease(m_cgImage);
 
+    int width = image->width();
+    int height = image->height();
+
+    if (width <= 0 || height <= 0) {
+        qWarning() << Q_FUNC_INFO <<
+            "setting invalid size" << width << "x" << height << "for qnsview image";
+        m_cgImage = 0;
+        return;
+    }
+
     const uchar *imageData = image->bits();
     int bitDepth = image->depth();
     int colorBufferSize = 8;
     int bytesPrLine = image->bytesPerLine();
-    int width = image->width();
-    int height = image->height();
 
     CGColorSpaceRef cgColourSpaceRef = CGColorSpaceCreateDeviceRGB();
 
@@ -307,7 +317,8 @@ static QTouchDevice *touchDevice = 0;
     QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
     nativeDrag->setLastMouseEvent(theEvent, self);
 
-    QWindowSystemInterface::handleMouseEvent(m_window, timestamp, qtWindowPoint, qtScreenPoint, m_buttons);
+    Qt::KeyboardModifiers keyboardModifiers = [self convertKeyModifiers:[theEvent modifierFlags]];
+    QWindowSystemInterface::handleMouseEvent(m_window, timestamp, qtWindowPoint, qtScreenPoint, m_buttons, keyboardModifiers);
 }
 
 - (void)handleFrameStrutMouseEvent:(NSEvent *)theEvent
@@ -335,7 +346,7 @@ static QTouchDevice *touchDevice = 0;
     int windowHeight = [window frame].size.height;
     NSPoint windowPoint = [theEvent locationInWindow];
     NSPoint nsViewPoint = [self convertPoint: windowPoint fromView: nil];
-    QPoint qtWindowPoint = QPoint(windowPoint.x, windowHeight - windowPoint.y);
+    QPoint qtWindowPoint = QPoint(nsViewPoint.x, windowHeight - nsViewPoint.y);
     NSPoint screenPoint = [window convertBaseToScreen : windowPoint];
     QPoint qtScreenPoint = QPoint(screenPoint.x, qt_mac_flipYCoordinate(screenPoint.y));
 
@@ -346,7 +357,8 @@ static QTouchDevice *touchDevice = 0;
 - (void)mouseDown:(NSEvent *)theEvent
 {
     if (m_platformWindow->m_activePopupWindow) {
-        QWindowSystemInterface::handleSynchronousCloseEvent(m_platformWindow->m_activePopupWindow);
+        QWindowSystemInterface::handleCloseEvent(m_platformWindow->m_activePopupWindow);
+        QWindowSystemInterface::flushWindowSystemEvents();
         m_platformWindow->m_activePopupWindow = 0;
     }
     if ([self hasMarkedText]) {
@@ -682,7 +694,7 @@ static QTouchDevice *touchDevice = 0;
             text = QCFString::toQString([nsevent characters]);
 
         if (m_composingText.isEmpty())
-            m_sendKeyEvent = !QWindowSystemInterface::tryHandleSynchronousShortcutEvent(m_window, timestamp, keyCode, modifiers, text);
+            m_sendKeyEvent = !QWindowSystemInterface::tryHandleShortcutEvent(m_window, timestamp, keyCode, modifiers, text);
 
         QObject *fo = QGuiApplication::focusObject();
         if (m_sendKeyEvent && fo) {
@@ -1047,12 +1059,19 @@ static QTouchDevice *touchDevice = 0;
     NSPoint windowPoint = [self convertPoint: [sender draggingLocation] fromView: nil];
     QPoint qt_windowPoint(windowPoint.x, windowPoint.y);
     Qt::DropActions qtAllowed = qt_mac_mapNSDragOperations([sender draggingSourceOperationMask]);
-    QCocoaDropData mimeData([sender draggingPasteboard]);
 
     // update these so selecting move/copy/link works
     QGuiApplicationPrivate::modifier_buttons = [self convertKeyModifiers: [[NSApp currentEvent] modifierFlags]];
 
-    QPlatformDragQtResponse response = QWindowSystemInterface::handleDrag(m_window, &mimeData, qt_windowPoint, qtAllowed);
+    QPlatformDragQtResponse response(false, Qt::IgnoreAction, QRect());
+    if ([sender draggingSource] != nil) {
+        QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
+        response = QWindowSystemInterface::handleDrag(m_window, nativeDrag->platformDropData(), qt_windowPoint, qtAllowed);
+    } else {
+        QCocoaDropData mimeData([sender draggingPasteboard]);
+        response = QWindowSystemInterface::handleDrag(m_window, &mimeData, qt_windowPoint, qtAllowed);
+    }
+
     return qt_mac_mapDropAction(response.acceptedAction());
 }
 
@@ -1071,14 +1090,21 @@ static QTouchDevice *touchDevice = 0;
     NSPoint windowPoint = [self convertPoint: [sender draggingLocation] fromView: nil];
     QPoint qt_windowPoint(windowPoint.x, windowPoint.y);
     Qt::DropActions qtAllowed = qt_mac_mapNSDragOperations([sender draggingSourceOperationMask]);
-    QCocoaDropData mimeData([sender draggingPasteboard]);
 
-    QPlatformDropQtResponse response = QWindowSystemInterface::handleDrop(m_window, &mimeData, qt_windowPoint, qtAllowed);
+    QPlatformDropQtResponse response(false, Qt::IgnoreAction);
+    if ([sender draggingSource] != nil) {
+        QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
+        response = QWindowSystemInterface::handleDrop(m_window, nativeDrag->platformDropData(), qt_windowPoint, qtAllowed);
+    } else {
+        QCocoaDropData mimeData([sender draggingPasteboard]);
+        response = QWindowSystemInterface::handleDrop(m_window, &mimeData, qt_windowPoint, qtAllowed);
+    }
     return response.isAccepted();
 }
 
 - (void)draggedImage:(NSImage*) img endedAt:(NSPoint) point operation:(NSDragOperation) operation
 {
+    Q_UNUSED(img);
     QCocoaDrag* nativeDrag = static_cast<QCocoaDrag *>(QGuiApplicationPrivate::platformIntegration()->drag());
     nativeDrag->setAcceptedAction(qt_mac_mapNSDragOperation(operation));
 
@@ -1087,7 +1113,7 @@ static QTouchDevice *touchDevice = 0;
     m_buttons &= QFlag(~int(Qt::LeftButton));
 
     NSPoint windowPoint = [self convertPoint: point fromView: nil];
-    QPoint qtWindowPoint(point.x, point.y);
+    QPoint qtWindowPoint(windowPoint.x, windowPoint.y);
 
     NSWindow *window = [self window];
     NSPoint screenPoint = [window convertBaseToScreen :point];

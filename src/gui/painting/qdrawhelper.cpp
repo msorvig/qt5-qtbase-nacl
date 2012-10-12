@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -250,6 +250,117 @@ static const uint *QT_FASTCALL convertFromARGB32PM(uint *buffer, const uint *src
     return buffer;
 }
 
+template <QPixelLayout::BPP bpp> static
+uint QT_FASTCALL fetchPixel(const uchar *src, int index);
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP1LSB>(const uchar *src, int index)
+{
+    return (src[index >> 3] >> (index & 7)) & 1;
+}
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP1MSB>(const uchar *src, int index)
+{
+    return (src[index >> 3] >> (~index & 7)) & 1;
+}
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP8>(const uchar *src, int index)
+{
+    return src[index];
+}
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP16>(const uchar *src, int index)
+{
+    return reinterpret_cast<const quint16 *>(src)[index];
+}
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP24>(const uchar *src, int index)
+{
+    return reinterpret_cast<const quint24 *>(src)[index];
+}
+
+template <>
+inline uint QT_FASTCALL fetchPixel<QPixelLayout::BPP32>(const uchar *src, int index)
+{
+    return reinterpret_cast<const uint *>(src)[index];
+}
+
+template <QPixelLayout::BPP bpp>
+inline const uint *QT_FASTCALL fetchPixels(uint *buffer, const uchar *src, int index, int count)
+{
+    for (int i = 0; i < count; ++i)
+        buffer[i] = fetchPixel<bpp>(src, index + i);
+    return buffer;
+}
+
+template <>
+inline const uint *QT_FASTCALL fetchPixels<QPixelLayout::BPP32>(uint *, const uchar *src, int index, int)
+{
+    return reinterpret_cast<const uint *>(src) + index;
+}
+
+template <QPixelLayout::BPP width> static
+void QT_FASTCALL storePixel(uchar *dest, int index, uint pixel);
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP1LSB>(uchar *dest, int index, uint pixel)
+{
+    if (pixel)
+        dest[index >> 3] |= 1 << (index & 7);
+    else
+        dest[index >> 3] &= ~(1 << (index & 7));
+}
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP1MSB>(uchar *dest, int index, uint pixel)
+{
+    if (pixel)
+        dest[index >> 3] |= 1 << (~index & 7);
+    else
+        dest[index >> 3] &= ~(1 << (~index & 7));
+}
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP8>(uchar *dest, int index, uint pixel)
+{
+    dest[index] = uchar(pixel);
+}
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP16>(uchar *dest, int index, uint pixel)
+{
+    reinterpret_cast<quint16 *>(dest)[index] = quint16(pixel);
+}
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP24>(uchar *dest, int index, uint pixel)
+{
+    reinterpret_cast<quint24 *>(dest)[index] = quint24(pixel);
+}
+
+template <>
+inline void QT_FASTCALL storePixel<QPixelLayout::BPP32>(uchar *dest, int index, uint pixel)
+{
+    reinterpret_cast<uint *>(dest)[index] = pixel;
+}
+
+template <QPixelLayout::BPP width>
+inline void QT_FASTCALL storePixels(uchar *dest, const uint *src, int index, int count)
+{
+    for (int i = 0; i < count; ++i)
+        storePixel<width>(dest, index + i, src[i]);
+}
+
+template <>
+inline void QT_FASTCALL storePixels<QPixelLayout::BPP32>(uchar *dest, const uint *src, int index, int count)
+{
+    memcpy(reinterpret_cast<uint *>(dest) + index, src, count * sizeof(uint));
+}
+
 // Note:
 // convertToArgb32() assumes that no color channel is less than 4 bits.
 // convertFromArgb32() assumes that no color channel is more than 8 bits.
@@ -268,7 +379,7 @@ QPixelLayout qPixelLayouts[QImage::NImageFormats] = {
     { 6, 12, 6,  6, 6,  0, 6, 18,  true, QPixelLayout::BPP24, convertToARGB32PM, convertFromARGB32PM }, // Format_ARGB6666_Premultiplied
     { 5, 10, 5,  5, 5,  0, 0,  0, false, QPixelLayout::BPP16, convertToRGB32, convertFromARGB32PM }, // Format_RGB555
     { 5, 18, 5, 13, 5,  8, 8,  0,  true, QPixelLayout::BPP24, convertToARGB32PM, convertFromARGB32PM }, // Format_ARGB8555_Premultiplied
-    { 8,  0, 8,  8, 8, 16, 0,  0, false, QPixelLayout::BPP24, convertToRGB32, convertFromARGB32PM }, // Format_RGB888
+    { 8, 16, 8,  8, 8,  0, 0,  0, false, QPixelLayout::BPP24, convertToRGB32, convertFromARGB32PM }, // Format_RGB888
     { 4,  8, 4,  4, 4,  0, 0,  0, false, QPixelLayout::BPP16, convertToRGB32, convertFromARGB32PM }, // Format_RGB444
     { 4,  8, 4,  4, 4,  0, 4, 12,  true, QPixelLayout::BPP16, convertToARGB32PM, convertFromARGB32PM } // Format_ARGB4444_Premultiplied
 };
@@ -3542,6 +3653,107 @@ void QT_FASTCALL rasterop_SourceAndNotDestination(uint *Q_DECL_RESTRICT dest,
     }
 }
 
+void QT_FASTCALL rasterop_NotSourceOrDestination(uint *Q_DECL_RESTRICT dest,
+                                                 const uint *Q_DECL_RESTRICT src,
+                                                 int length,
+                                                 uint const_alpha)
+{
+    Q_UNUSED(const_alpha);
+    while (length--) {
+        *dest = (~(*src) | *dest) | 0xff000000;
+        ++dest; ++src;
+    }
+}
+
+void QT_FASTCALL rasterop_solid_NotSourceOrDestination(uint *Q_DECL_RESTRICT dest,
+                                                       int length,
+                                                       uint color,
+                                                       uint const_alpha)
+{
+    Q_UNUSED(const_alpha);
+    color = ~color | 0xff000000;
+    while (length--)
+        *dest++ |= color;
+}
+
+void QT_FASTCALL rasterop_SourceOrNotDestination(uint *Q_DECL_RESTRICT dest,
+                                                 const uint *Q_DECL_RESTRICT src,
+                                                 int length,
+                                                 uint const_alpha)
+{
+    Q_UNUSED(const_alpha);
+    while (length--) {
+        *dest = (*src | ~(*dest)) | 0xff000000;
+        ++dest; ++src;
+    }
+}
+
+void QT_FASTCALL rasterop_solid_SourceOrNotDestination(uint *Q_DECL_RESTRICT dest,
+                                                       int length,
+                                                       uint color,
+                                                       uint const_alpha)
+{
+    Q_UNUSED(const_alpha);
+    while (length--) {
+        *dest = (color | ~(*dest)) | 0xff000000;
+        ++dest;
+    }
+}
+
+void QT_FASTCALL rasterop_ClearDestination(uint *Q_DECL_RESTRICT dest,
+                                           const uint *Q_DECL_RESTRICT src,
+                                           int length,
+                                           uint const_alpha)
+{
+    Q_UNUSED(src);
+    comp_func_solid_SourceOver (dest, length, 0xff000000, const_alpha);
+}
+
+void QT_FASTCALL rasterop_solid_ClearDestination(uint *Q_DECL_RESTRICT dest,
+                                                 int length,
+                                                 uint color,
+                                                 uint const_alpha)
+{
+    Q_UNUSED(color);
+    comp_func_solid_SourceOver (dest, length, 0xff000000, const_alpha);
+}
+
+void QT_FASTCALL rasterop_SetDestination(uint *Q_DECL_RESTRICT dest,
+                                         const uint *Q_DECL_RESTRICT src,
+                                         int length,
+                                         uint const_alpha)
+{
+    Q_UNUSED(src);
+    comp_func_solid_SourceOver (dest, length, 0xffffffff, const_alpha);
+}
+
+void QT_FASTCALL rasterop_solid_SetDestination(uint *Q_DECL_RESTRICT dest,
+                                               int length,
+                                               uint color,
+                                               uint const_alpha)
+{
+    Q_UNUSED(color);
+    comp_func_solid_SourceOver (dest, length, 0xffffffff, const_alpha);
+}
+
+void QT_FASTCALL rasterop_NotDestination(uint *Q_DECL_RESTRICT dest,
+                                         const uint *Q_DECL_RESTRICT src,
+                                         int length,
+                                         uint const_alpha)
+{
+    Q_UNUSED(src);
+    rasterop_solid_SourceXorDestination (dest, length, 0x00ffffff, const_alpha);
+}
+
+void QT_FASTCALL rasterop_solid_NotDestination(uint *Q_DECL_RESTRICT dest,
+                                               int length,
+                                               uint color,
+                                               uint const_alpha)
+{
+    Q_UNUSED(color);
+    rasterop_solid_SourceXorDestination (dest, length, 0x00ffffff, const_alpha);
+}
+
 static CompositionFunctionSolid functionForModeSolid_C[] = {
         comp_func_solid_SourceOver,
         comp_func_solid_DestinationOver,
@@ -3575,7 +3787,13 @@ static CompositionFunctionSolid functionForModeSolid_C[] = {
         rasterop_solid_NotSourceXorDestination,
         rasterop_solid_NotSource,
         rasterop_solid_NotSourceAndDestination,
-        rasterop_solid_SourceAndNotDestination
+        rasterop_solid_SourceAndNotDestination,
+        rasterop_solid_SourceAndNotDestination,
+        rasterop_solid_NotSourceOrDestination,
+        rasterop_solid_SourceOrNotDestination,
+        rasterop_solid_ClearDestination,
+        rasterop_solid_SetDestination,
+        rasterop_solid_NotDestination
 };
 
 static const CompositionFunctionSolid *functionForModeSolid = functionForModeSolid_C;
@@ -3613,7 +3831,13 @@ static CompositionFunction functionForMode_C[] = {
         rasterop_NotSourceXorDestination,
         rasterop_NotSource,
         rasterop_NotSourceAndDestination,
-        rasterop_SourceAndNotDestination
+        rasterop_SourceAndNotDestination,
+        rasterop_SourceAndNotDestination,
+        rasterop_NotSourceOrDestination,
+        rasterop_SourceOrNotDestination,
+        rasterop_ClearDestination,
+        rasterop_SetDestination,
+        rasterop_NotDestination
 };
 
 static const CompositionFunction *functionForMode = functionForMode_C;

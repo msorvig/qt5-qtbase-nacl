@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -106,13 +106,11 @@
 #    define Q_CC_INTEL
 #  endif
 
-#  if defined(Q_CC_MSVC) && _MSC_VER >= 1400
-#    define Q_COMPILER_VARIADIC_MACROS
-#  endif
-
 /* only defined for MSVC since that's the only compiler that actually optimizes for this */
 /* might get overridden further down when Q_COMPILER_NOEXCEPT is detected */
-#  define Q_DECL_NOTHROW  throw()
+#  ifdef __cplusplus
+#    define Q_DECL_NOTHROW  throw()
+#  endif
 
 #elif defined(__BORLANDC__) || defined(__TURBOC__)
 #  define Q_CC_BOR
@@ -487,6 +485,12 @@
 #      define Q_COMPILER_UNICODE_STRINGS
 #      define Q_COMPILER_VARIADIC_TEMPLATES
 #    endif
+#    if __INTEL_COMPILER >= 1300
+//       constexpr support is only partial
+//#      define Q_COMPILER_CONSTEXPR
+#      define Q_COMPILER_INITIALIZER_LISTS
+#      define Q_COMPILER_NOEXCEPT
+#    endif
 #  endif
 #endif
 
@@ -628,12 +632,14 @@
 #    if (__GNUC__ * 100 + __GNUC_MINOR__) >= 406
        /* C++11 features supported in GCC 4.6: */
 #      define Q_COMPILER_CONSTEXPR
-#      define Q_COMPILER_NOEXCEPT
 #      define Q_COMPILER_NULLPTR
 #      define Q_COMPILER_UNRESTRICTED_UNIONS
 #      define Q_COMPILER_RANGE_FOR
 #    endif
 #    if (__GNUC__ * 100 + __GNUC_MINOR__) >= 407
+       /* GCC 4.6.x has problems dealing with noexcept expressions,
+        * so turn the feature on for 4.7 and above, only */
+#      define Q_COMPILER_NOEXCEPT
        /* C++11 features supported in GCC 4.7: */
 #      define Q_COMPILER_NONSTATIC_MEMBER_INIT
 #      define Q_COMPILER_DELEGATING_CONSTRUCTORS
@@ -644,7 +650,22 @@
 #  endif
 #endif
 
-#if defined(Q_CC_MSVC) && _MSC_VER >= 1600 && !defined(Q_CC_INTEL)
+#if defined(Q_CC_MSVC) && !defined(Q_CC_INTEL)
+#    if _MSC_VER >= 1400
+       /* C++11 features supported in VC8 = VC2005: */
+#      define Q_COMPILER_VARIADIC_MACROS
+       /* 2005 supports the override and final contextual keywords, in
+        the same positions as the C++11 variants, but 'final' is
+        called 'sealed' instead:
+        http://msdn.microsoft.com/en-us/library/0w2w91tf%28v=vs.80%29.aspx
+        So don't define Q_COMPILER_EXPLICIT_OVERRIDES (since it's not
+        the same as the C++11 version), but define the Q_DECL_* flags
+        accordingly: */
+#      define Q_DECL_OVERRIDE override
+#      define Q_DECL_FINAL sealed
+#    endif
+#    if _MSC_VER >= 1600
+       /* C++11 features supported in VC10 = VC2010: */
 #      define Q_COMPILER_AUTO_TYPE
 #      define Q_COMPILER_LAMBDA
 #      define Q_COMPILER_DECLTYPE
@@ -652,7 +673,17 @@
 #      define Q_COMPILER_STATIC_ASSERT
 //  MSVC has std::initilizer_list, but does not support the braces initialization
 //#      define Q_COMPILER_INITIALIZER_LISTS
-#endif
+#    endif
+#    if _MSC_VER >= 1700
+       /* C++11 features supported in VC11 = VC2012: */
+#       undef Q_DECL_OVERRIDE               /* undo 2005/2098 settings... */
+#       undef Q_DECL_FINAL                  /* undo 2005/2008 settings... */
+#      define Q_COMPILER_EXPLICIT_OVERRIDES /* ...and use std C++11 now   */
+#      define Q_COMPILER_RANGE_FOR
+#      define Q_COMPILER_CLASS_ENUM
+#      define Q_COMPILER_ATOMICS
+#    endif /* VC 11 */
+#endif /* Q_CC_MSVC */
 
 #ifdef __cplusplus
 # if defined(Q_OS_BLACKBERRY) || defined(Q_OS_QNX)
@@ -703,15 +734,13 @@
 #ifdef Q_COMPILER_EXPLICIT_OVERRIDES
 # define Q_DECL_OVERRIDE override
 # define Q_DECL_FINAL final
-# ifdef  Q_COMPILER_DECLTYPE // required for class-level final to compile in qvariant_p.h
-#  define Q_DECL_FINAL_CLASS final
-# else
-#  define Q_DECL_FINAL_CLASS
-# endif
 #else
-# define Q_DECL_OVERRIDE
-# define Q_DECL_FINAL
-# define Q_DECL_FINAL_CLASS
+# ifndef Q_DECL_OVERRIDE
+#  define Q_DECL_OVERRIDE
+# endif
+# ifndef Q_DECL_FINAL
+#  define Q_DECL_FINAL
+# endif
 #endif
 
 #ifdef Q_COMPILER_NOEXCEPT

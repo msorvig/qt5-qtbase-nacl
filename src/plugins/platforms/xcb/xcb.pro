@@ -20,7 +20,8 @@ SOURCES = \
         main.cpp \
         qxcbnativeinterface.cpp \
         qxcbcursor.cpp \
-        qxcbimage.cpp
+        qxcbimage.cpp \
+        qxlibconvenience.cpp
 
 HEADERS = \
         qxcbclipboard.h \
@@ -36,7 +37,8 @@ HEADERS = \
         qxcbwmsupport.h \
         qxcbnativeinterface.h \
         qxcbcursor.h \
-        qxcbimage.h
+        qxcbimage.h \
+        qxlibconvenience.h
 
 contains(QT_CONFIG, xcb-poll-for-queued-event) {
     DEFINES += XCB_POLL_FOR_QUEUED_EVENT
@@ -47,7 +49,7 @@ contains(QT_CONFIG, xcb-xlib) {
     DEFINES += XCB_USE_XLIB
     LIBS += -lX11 -lX11-xcb
 
-    linux-g++-maemo {
+    *-maemo* {
         contains(QT_CONFIG, xinput2) {
             # XInput2 support for Harmattan.
             DEFINES += XCB_USE_XINPUT2_MAEMO

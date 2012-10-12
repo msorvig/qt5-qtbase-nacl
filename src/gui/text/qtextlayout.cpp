@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -683,7 +683,7 @@ void QTextLayout::clearLayout()
 */
 int QTextLayout::nextCursorPosition(int oldPos, CursorMode mode) const
 {
-    const HB_CharAttributes *attributes = d->attributes();
+    const QCharAttributes *attributes = d->attributes();
     int len = d->block.isValid() ? d->block.length() - 1
                                  : d->layoutData->string.length();
     Q_ASSERT(len <= d->layoutData->string.length());
@@ -692,7 +692,7 @@ int QTextLayout::nextCursorPosition(int oldPos, CursorMode mode) const
 
     if (mode == SkipCharacters) {
         oldPos++;
-        while (oldPos < len && !attributes[oldPos].charStop)
+        while (oldPos < len && !attributes[oldPos].graphemeBoundary)
             oldPos++;
     } else {
         if (oldPos < len && d->atWordSeparator(oldPos)) {
@@ -719,13 +719,13 @@ int QTextLayout::nextCursorPosition(int oldPos, CursorMode mode) const
 */
 int QTextLayout::previousCursorPosition(int oldPos, CursorMode mode) const
 {
-    const HB_CharAttributes *attributes = d->attributes();
+    const QCharAttributes *attributes = d->attributes();
     if (!attributes || oldPos <= 0 || oldPos > d->layoutData->string.length())
         return oldPos;
 
     if (mode == SkipCharacters) {
         oldPos--;
-        while (oldPos && !attributes[oldPos].charStop)
+        while (oldPos && !attributes[oldPos].graphemeBoundary)
             oldPos--;
     } else {
         while (oldPos && d->atSpace(oldPos-1))
@@ -781,7 +781,7 @@ int QTextLayout::leftCursorPosition(int oldPos) const
 
     A grapheme cluster is a sequence of two or more Unicode characters
     that form one indivisible entity on the screen. For example the
-    latin character `\Auml' can be represented in Unicode by two
+    latin character `\unicode{0xC4}' can be represented in Unicode by two
     characters, `A' (0x41), and the combining diaresis (0x308). A text
     cursor can only validly be positioned before or after these two
     characters, never between them since that wouldn't make sense. In
@@ -789,10 +789,10 @@ int QTextLayout::leftCursorPosition(int oldPos) const
 */
 bool QTextLayout::isValidCursorPosition(int pos) const
 {
-    const HB_CharAttributes *attributes = d->attributes();
+    const QCharAttributes *attributes = d->attributes();
     if (!attributes || pos < 0 || pos > (int)d->layoutData->string.length())
         return false;
-    return attributes[pos].charStop;
+    return attributes[pos].graphemeBoundary;
 }
 
 /*!
@@ -1009,8 +1009,12 @@ static inline QRectF clipIfValid(const QRectF &rect, const QRectF &clip)
 
 
 /*!
-    Returns the glyph indexes and positions for all glyphs in this QTextLayout. This is an
-    expensive function, and should not be called in a time sensitive context.
+    Returns the glyph indexes and positions for all glyphs corresponding to the \a length characters
+    starting at the position \a from in this QTextLayout. This is an expensive function, and should
+    not be called in a time sensitive context.
+
+    If \a from is less than zero, then the glyph run will begin at the first character in the
+    layout. If \a length is less than zero, it will span the entire string from the start position.
 
     \since 4.8
 
@@ -1766,7 +1770,7 @@ void QTextLine::layout_helper(int maxGlyphs)
 
     Qt::Alignment alignment = eng->option.alignment();
 
-    const HB_CharAttributes *attributes = eng->attributes();
+    const QCharAttributes *attributes = eng->attributes();
     if (!attributes)
         return;
     lbh.currentPosition = line.from;
@@ -1871,17 +1875,18 @@ void QTextLine::layout_helper(int maxGlyphs)
 
                 if (lbh.currentPosition >= eng->layoutData->string.length()
                     || attributes[lbh.currentPosition].whiteSpace
-                    || attributes[lbh.currentPosition].lineBreakType != HB_NoBreak) {
+                    || attributes[lbh.currentPosition].lineBreak) {
                     sb_or_ws = true;
                     break;
-                } else if (breakany && attributes[lbh.currentPosition].charStop) {
+                } else if (breakany && attributes[lbh.currentPosition].graphemeBoundary) {
                     break;
                 }
             } while (lbh.currentPosition < end);
             lbh.minw = qMax(lbh.tmpData.textWidth, lbh.minw);
 
             if (lbh.currentPosition > 0 && lbh.currentPosition < end
-                && attributes[lbh.currentPosition].lineBreakType == HB_SoftHyphen) {
+                && attributes[lbh.currentPosition].lineBreak
+                && eng->layoutData->string.at(lbh.currentPosition - 1).unicode() == QChar::SoftHyphen) {
                 // if we are splitting up a word because of
                 // a soft hyphen then we ...
                 //
@@ -2601,12 +2606,12 @@ qreal QTextLine::cursorToX(int *cursorPos, Edge edge) const
     int lineEnd = line.from + line.length + line.trailingSpaces;
     int pos = *cursorPos;
     int itm;
-    const HB_CharAttributes *attributes = eng->attributes();
+    const QCharAttributes *attributes = eng->attributes();
     if (!attributes) {
         *cursorPos = 0;
         return x.toReal();
     }
-    while (pos < lineEnd && !attributes[pos].charStop)
+    while (pos < lineEnd && !attributes[pos].graphemeBoundary)
         pos++;
     if (pos == lineEnd) {
         // end of line ensure we have the last item on the line

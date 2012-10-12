@@ -1,53 +1,55 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-#include <QHash>
-#include <QMap>
+#include <qcryptographichash.h>
+#include <qdebug.h>
+#include <qhash.h>
+#include <qmap.h>
 
 #include "atom.h"
 #include "helpprojectwriter.h"
 #include "htmlgenerator.h"
 #include "config.h"
 #include "node.h"
-#include "tree.h"
+#include "qdocdatabase.h"
 #include <qdebug.h>
 
 QT_BEGIN_NAMESPACE
@@ -57,6 +59,13 @@ HelpProjectWriter::HelpProjectWriter(const Config &config,
                                      Generator* g)
     : gen_(g)
 {
+    /*
+      Get the pointer to the singleton for the qdoc database and
+      store it locally. This replaces all the local accesses to
+      the node tree, which are now private.
+     */
+    qdb_ = QDocDatabase::qdocDB();
+
     // The output directory should already have been checked by the calling
     // generator.
     outputDir = config.getOutputDir();
@@ -115,7 +124,7 @@ void HelpProjectWriter::readSelectors(SubProject &subproject, const QStringList 
     QHash<QString, Node::Type> typeHash;
     typeHash["namespace"] = Node::Namespace;
     typeHash["class"] = Node::Class;
-    typeHash["fake"] = Node::Fake;
+    typeHash["fake"] = Node::Document;
     typeHash["enum"] = Node::Enum;
     typeHash["typedef"] = Node::Typedef;
     typeHash["function"] = Node::Function;
@@ -200,8 +209,8 @@ QStringList HelpProjectWriter::keywordDetails(const Node *node) const
         // "id"
         details << node->parent()->name()+"::"+node->name();
     }
-    else if (node->type() == Node::Fake) {
-        const FakeNode *fake = static_cast<const FakeNode *>(node);
+    else if (node->type() == Node::Document) {
+        const DocNode *fake = static_cast<const DocNode *>(node);
         if (fake->subType() == Node::QmlClass) {
             details << (QmlClassNode::qmlOnly ? fake->name() : fake->fullTitle());
             details << "QML." + fake->name();
@@ -237,8 +246,8 @@ bool HelpProjectWriter::generateSection(HelpProject &project,
         return false;
 
     QString objName;
-    if (node->type() == Node::Fake) {
-        const FakeNode *fake = static_cast<const FakeNode *>(node);
+    if (node->type() == Node::Document) {
+        const DocNode *fake = static_cast<const DocNode *>(node);
         objName = fake->fullTitle();
     }
     else
@@ -255,15 +264,15 @@ bool HelpProjectWriter::generateSection(HelpProject &project,
         }
         else if (subproject.selectors.contains(node->type())) {
             // Accept only the node types in the selectors hash.
-            if (node->type() != Node::Fake)
+            if (node->type() != Node::Document)
                 project.subprojects[name].nodes[objName] = node;
             else {
                 // Accept only fake nodes with subtypes contained in the selector's
                 // mask.
-                const FakeNode *fakeNode = static_cast<const FakeNode *>(node);
-                if (subproject.selectors[node->type()].contains(fakeNode->subType()) &&
-                        fakeNode->subType() != Node::ExternalPage &&
-                        !fakeNode->fullTitle().isEmpty()) {
+                const DocNode *docNode = static_cast<const DocNode *>(node);
+                if (subproject.selectors[node->type()].contains(docNode->subType()) &&
+                        docNode->subType() != Node::ExternalPage &&
+                        !docNode->fullTitle().isEmpty()) {
 
                     project.subprojects[name].nodes[objName] = node;
                 }
@@ -360,16 +369,16 @@ bool HelpProjectWriter::generateSection(HelpProject &project,
     }
         break;
 
-        // Fake nodes (such as manual pages) contain subtypes, titles and other
+        // Document nodes (such as manual pages) contain subtypes, titles and other
         // attributes.
-    case Node::Fake: {
-        const FakeNode *fakeNode = static_cast<const FakeNode*>(node);
-        if (fakeNode->subType() != Node::ExternalPage &&
-                !fakeNode->fullTitle().isEmpty()) {
+    case Node::Document: {
+        const DocNode *docNode = static_cast<const DocNode*>(node);
+        if (docNode->subType() != Node::ExternalPage &&
+                !docNode->fullTitle().isEmpty()) {
 
-            if (fakeNode->subType() != Node::File) {
-                if (fakeNode->doc().hasKeywords()) {
-                    foreach (const Atom *keyword, fakeNode->doc().keywords()) {
+            if (docNode->subType() != Node::File) {
+                if (docNode->doc().hasKeywords()) {
+                    foreach (const Atom *keyword, docNode->doc().keywords()) {
                         if (!keyword->string().isEmpty()) {
                             QStringList details;
                             details << keyword->string()
@@ -378,7 +387,7 @@ bool HelpProjectWriter::generateSection(HelpProject &project,
                                        QLatin1Char('#') + Doc::canonicalTitle(keyword->string());
                             project.keywords.append(details);
                         } else
-                            fakeNode->doc().location().warning(
+                            docNode->doc().location().warning(
                                         tr("Bad keyword in %1").arg(gen_->fullDocumentLocation(node,true))
                                         );
                     }
@@ -422,7 +431,7 @@ void HelpProjectWriter::generateSections(HelpProject &project,
         foreach (const Node *node, inner->childNodes()) {
             if (node->access() == Node::Private)
                 continue;
-            if (node->type() == Node::Fake) {
+            if (node->type() == Node::Document) {
                 /*
                   Don't visit QML property group nodes,
                   but visit their children, which are all
@@ -437,7 +446,7 @@ void HelpProjectWriter::generateSections(HelpProject &project,
                     }
                 }
                 else
-                    childMap[static_cast<const FakeNode *>(node)->fullTitle()] = node;
+                    childMap[static_cast<const DocNode *>(node)->fullTitle()] = node;
             }
             else {
                 if (node->type() == Node::Function) {
@@ -454,11 +463,23 @@ void HelpProjectWriter::generateSections(HelpProject &project,
     }
 }
 
-void HelpProjectWriter::generate(const Tree *t)
+void HelpProjectWriter::generate()
 {
-    this->tree = t;
     for (int i = 0; i < projects.size(); ++i)
         generateProject(projects[i]);
+}
+
+void HelpProjectWriter::writeHashFile(QFile &file)
+{
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(&file);
+
+    QFile hashFile(file.fileName() + ".sha1");
+    if (!hashFile.open(QFile::WriteOnly | QFile::Text))
+        return;
+
+    hashFile.write(hash.result().toHex());
+    hashFile.close();
 }
 
 void HelpProjectWriter::writeNode(HelpProject &project, QXmlStreamWriter &writer,
@@ -514,22 +535,22 @@ void HelpProjectWriter::writeNode(HelpProject &project, QXmlStreamWriter &writer
         writer.writeEndElement(); // section
         break;
 
-    case Node::Fake: {
-        // Fake nodes (such as manual pages) contain subtypes, titles and other
+    case Node::Document: {
+        // Document nodes (such as manual pages) contain subtypes, titles and other
         // attributes.
-        const FakeNode *fakeNode = static_cast<const FakeNode*>(node);
+        const DocNode *docNode = static_cast<const DocNode*>(node);
 
         writer.writeStartElement("section");
         writer.writeAttribute("ref", href);
-        if (fakeNode->subType() == Node::QmlClass)
-            writer.writeAttribute("title", tr("%1 Type Reference").arg(fakeNode->fullTitle()));
+        if (docNode->subType() == Node::QmlClass)
+            writer.writeAttribute("title", tr("%1 Type Reference").arg(docNode->fullTitle()));
         else
-            writer.writeAttribute("title", fakeNode->fullTitle());
+            writer.writeAttribute("title", docNode->fullTitle());
 
-        if ((fakeNode->subType() == Node::HeaderFile) || (fakeNode->subType() == Node::QmlClass)) {
+        if ((docNode->subType() == Node::HeaderFile) || (docNode->subType() == Node::QmlClass)) {
             // Write subsections for all members, obsolete members and Qt 3
             // members.
-            if (!project.memberStatus[node].isEmpty() || (fakeNode->subType() == Node::QmlClass)) {
+            if (!project.memberStatus[node].isEmpty() || (docNode->subType() == Node::QmlClass)) {
                 QString membersPath = href.left(href.size()-5) + "-members.html";
                 writer.writeStartElement("section");
                 writer.writeAttribute("ref", membersPath);
@@ -567,9 +588,9 @@ void HelpProjectWriter::generateProject(HelpProject &project)
 {
     const Node *rootNode;
     if (!project.indexRoot.isEmpty())
-        rootNode = tree->findFakeNodeByTitle(project.indexRoot);
+        rootNode = qdb_->findDocNodeByTitle(project.indexRoot);
     else
-        rootNode = tree->root();
+        rootNode = qdb_->treeRoot();
 
     if (!rootNode)
         return;
@@ -610,9 +631,9 @@ void HelpProjectWriter::generateProject(HelpProject &project)
 
     writer.writeStartElement("toc");
     writer.writeStartElement("section");
-    const Node* node = tree->findFakeNodeByTitle(project.indexTitle);
+    const Node* node = qdb_->findDocNodeByTitle(project.indexTitle);
     if (node == 0)
-        node = tree->findNode(QStringList("index.html"));
+        node = qdb_->findNode(QStringList("index.html"));
     QString indexPath;
     if (node)
         indexPath = gen_->fullDocumentLocation(node,true);
@@ -629,7 +650,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
 
         if (subproject.type == QLatin1String("manual")) {
 
-            const FakeNode *indexPage = tree->findFakeNodeByTitle(subproject.indexTitle);
+            const DocNode *indexPage = qdb_->findDocNodeByTitle(subproject.indexTitle);
             if (indexPage) {
                 Text indexBody = indexPage->doc().body();
                 const Atom *atom = indexBody.firstAtom();
@@ -656,7 +677,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
                             if (sectionStack.top() > 0)
                                 writer.writeEndElement(); // section
 
-                            const FakeNode *page = tree->findFakeNodeByTitle(atom->string());
+                            const DocNode *page = qdb_->findDocNodeByTitle(atom->string());
                             writer.writeStartElement("section");
                             QString indexPath = gen_->fullDocumentLocation(page,true);
                             writer.writeAttribute("ref", indexPath);
@@ -683,7 +704,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
 
             if (!name.isEmpty()) {
                 writer.writeStartElement("section");
-                QString indexPath = gen_->fullDocumentLocation(tree->findFakeNodeByTitle(subproject.indexTitle),true);
+                QString indexPath = gen_->fullDocumentLocation(qdb_->findDocNodeByTitle(subproject.indexTitle),true);
                 writer.writeAttribute("ref", indexPath);
                 writer.writeAttribute("title", subproject.title);
                 project.files.insert(indexPath);
@@ -703,7 +724,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
                     if (!nextTitle.isEmpty() &&
                             node->links().value(Node::ContentsLink).first.isEmpty()) {
 
-                        FakeNode *nextPage = const_cast<FakeNode *>(tree->findFakeNodeByTitle(nextTitle));
+                        DocNode *nextPage = const_cast<DocNode *>(qdb_->findDocNodeByTitle(nextTitle));
 
                         // Write the contents node.
                         writeNode(project, writer, node);
@@ -713,7 +734,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
                             nextTitle = nextPage->links().value(Node::NextLink).first;
                             if (nextTitle.isEmpty() || visited.contains(nextTitle))
                                 break;
-                            nextPage = const_cast<FakeNode *>(tree->findFakeNodeByTitle(nextTitle));
+                            nextPage = const_cast<DocNode *>(qdb_->findDocNodeByTitle(nextTitle));
                             visited.insert(nextTitle);
                         }
                         break;
@@ -751,6 +772,7 @@ void HelpProjectWriter::generateProject(HelpProject &project)
     writer.writeEndElement(); // filterSection
     writer.writeEndElement(); // QtHelpProject
     writer.writeEndDocument();
+    writeHashFile(file);
     file.close();
 }
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -529,7 +529,7 @@ void QWidget::setAutoFillBackground(bool enabled)
     is known as a composite widget. These can be created by constructing a
     widget with the required visual properties - a QFrame, for example - and
     adding child widgets to it, usually managed by a layout. The above diagram
-    shows such a composite widget that was created using \l{Qt Designer}.
+    shows such a composite widget that was created using Qt Designer.
 
     Composite widgets can also be created by subclassing a standard widget,
     such as QWidget or QFrame, and adding the necessary layout and child
@@ -2472,8 +2472,10 @@ void QWidgetPrivate::setStyle_helper(QStyle *newStyle, bool propagate, bool
     }
 
     if (propagate) {
-        for (int i = 0; i < children.size(); ++i) {
-            QWidget *c = qobject_cast<QWidget*>(children.at(i));
+        // We copy the list because the order may be modified
+        const QObjectList childrenList = children;
+        for (int i = 0; i < childrenList.size(); ++i) {
+            QWidget *c = qobject_cast<QWidget*>(childrenList.at(i));
             if (c)
                 c->d_func()->inheritStyle();
         }
@@ -4737,7 +4739,7 @@ static void sendResizeEvents(QWidget *target)
     \since 5.0
 
     Renders the widget into a pixmap restricted by the
-    given \a rectangle. If the \a widget has any children, then
+    given \a rectangle. If the widget has any children, then
     they are also painted in the appropriate positions.
 
     If a rectangle with an invalid size is specified  (the default),
@@ -4755,6 +4757,7 @@ QPixmap QWidget::grab(const QRect &rectangle)
 
     const QWidget::RenderFlags renderFlags = QWidget::DrawWindowBackground | QWidget::DrawChildren | QWidget::IgnoreMask;
 
+    const bool oldDirtyOpaqueChildren =  d->dirtyOpaqueChildren;
     QRect r(rectangle);
     if (r.width() < 0 || r.height() < 0) {
         // For grabbing widgets that haven't been shown yet,
@@ -4770,6 +4773,8 @@ QPixmap QWidget::grab(const QRect &rectangle)
     if (!d->isOpaque)
         res.fill(Qt::transparent);
     render(&res, QPoint(), QRegion(r), renderFlags);
+
+    d->dirtyOpaqueChildren = oldDirtyOpaqueChildren;
     return res;
 }
 
@@ -5525,17 +5530,15 @@ QString qt_setWindowTitle_helperHelper(const QString &title, const QWidget *widg
         return cap;
 
     QLatin1String placeHolder("[*]");
-    int placeHolderLength = 3; // QLatin1String doesn't have length()
-
     int index = cap.indexOf(placeHolder);
 
     // here the magic begins
     while (index != -1) {
-        index += placeHolderLength;
+        index += placeHolder.size();
         int count = 1;
         while (cap.indexOf(placeHolder, index) == index) {
             ++count;
-            index += placeHolderLength;
+            index += placeHolder.size();
         }
 
         if (count%2) { // odd number of [*] -> replace last one
@@ -5722,7 +5725,7 @@ void QWidget::setWindowFilePath(const QString &filePath)
 void QWidgetPrivate::setWindowFilePath_helper(const QString &filePath)
 {
     if (extra->topextra && extra->topextra->caption.isEmpty()) {
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
         setWindowTitle_helper(QFileInfo(filePath).fileName());
 #else
         Q_Q(QWidget);
@@ -5730,7 +5733,7 @@ void QWidgetPrivate::setWindowFilePath_helper(const QString &filePath)
         setWindowTitle_helper(q->windowTitle());
 #endif
     }
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     setWindowFilePath_sys(filePath);
 #endif
 }
@@ -5990,8 +5993,10 @@ void QWidget::setFocus(Qt::FocusReason reason)
         f->d_func()->updateFocusChild();
     }
 
-    if (QTLWExtra *extra = f->window()->d_func()->maybeTopData())
-        emit extra->window->focusObjectChanged(f);
+    if (QTLWExtra *extra = f->window()->d_func()->maybeTopData()) {
+        if (extra->window)
+            emit extra->window->focusObjectChanged(f);
+    }
 }
 
 // updates focus_child on parent widgets to point into this widget
@@ -8139,26 +8144,27 @@ bool QWidget::event(QEvent *event)
     case QEvent::UpdateLater:
         update(static_cast<QUpdateLaterEvent*>(event)->region());
         break;
+    case QEvent::StyleAnimationUpdate:
+        update();
+        break;
 
     case QEvent::WindowBlocked:
     case QEvent::WindowUnblocked:
-        {
-            QList<QObject*> childList = d->children;
-            for (int i = 0; i < childList.size(); ++i) {
-                QObject *o = childList.at(i);
-                if (o && o != QApplication::activeModalWidget()) {
-                    if (qobject_cast<QWidget *>(o) && static_cast<QWidget *>(o)->isWindow()) {
-                        // do not forward the event to child windows,
-                        // QApplication does this for us
-                        continue;
-                    }
-                    QApplication::sendEvent(o, event);
+        if (!d->children.isEmpty()) {
+            QWidget *modalWidget = QApplication::activeModalWidget();
+            for (int i = 0; i < d->children.size(); ++i) {
+                QObject *o = d->children.at(i);
+                if (o && o != modalWidget && o->isWidgetType()) {
+                    QWidget *w  = static_cast<QWidget *>(o);
+                    // do not forward the event to child windows; QApplication does this for us
+                    if (!w->isWindow())
+                        QApplication::sendEvent(w, event);
                 }
             }
+        }
 #if defined(Q_WS_WIN)
             setDisabledStyle(this, (event->type() == QEvent::WindowBlocked));
 #endif
-        }
         break;
 #ifndef QT_NO_TOOLTIP
     case QEvent::ToolTip:
@@ -9096,7 +9102,7 @@ QLayout *QWidget::layout() const
 
     Example:
 
-    \snippet uitools/textfinder/textfinder.cpp 3b
+    \snippet layouts/layouts.cpp 24
 
     An alternative to calling this function is to pass this widget to
     the layout's constructor.
@@ -10989,14 +10995,6 @@ QGraphicsProxyWidget *QWidget::graphicsProxyWidget() const
 }
 #endif
 
-
-/*!
-    \typedef QWidgetList
-    \relates QWidget
-
-    Synonym for QList<QWidget *>.
-*/
-
 #ifndef QT_NO_GESTURES
 /*!
     Subscribes the widget to a given \a gesture with specific \a flags.
@@ -11026,13 +11024,6 @@ void QWidget::ungrabGesture(Qt::GestureType gesture)
     }
 }
 #endif // QT_NO_GESTURES
-
-/*!
-    \typedef WId
-    \relates QWidget
-
-    Platform dependent window identifier.
-*/
 
 /*!
     \fn void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
@@ -11217,7 +11208,12 @@ void QWidget::ungrabGesture(Qt::GestureType gesture)
     \a m is the metric to get.
 */
 
-void QWidget::init(QPainter *painter) const
+/*!
+    Initializes the \a painter pen, background and font to the same as
+    the given widget's. This function is called automatically when the
+    painter is opened on a QWidget.
+*/
+void QWidget::initPainter(QPainter *painter) const
 {
     const QPalette &pal = palette();
     painter->d_func()->state->pen = QPen(pal.brush(foregroundRole()), 0);
@@ -11357,14 +11353,6 @@ void QWidget::clearMask()
 {
     setMask(QRegion());
 }
-
-/*! \fn Qt::HANDLE QWidget::x11PictureHandle() const
-    Returns the X11 Picture handle of the widget for XRender
-    support. Use of this function is not portable. This function will
-    return 0 if XRender support is not compiled into Qt, if the
-    XRender extension is not supported on the X11 display, or if the
-    handle could not be created.
-*/
 
 #ifdef Q_WS_MAC
 void QWidgetPrivate::syncUnifiedMode() {

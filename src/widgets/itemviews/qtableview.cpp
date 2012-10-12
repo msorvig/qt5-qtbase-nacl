@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -797,7 +797,7 @@ QRect QTableViewPrivate::visualSpanRect(const QSpanCollection::Span &span) const
   \a drawn is a QBitArray of visualRowCountxvisualCoulumnCount which say if particular cell has been drawn
 */
 void QTableViewPrivate::drawAndClipSpans(const QRegion &area, QPainter *painter,
-                                         const QStyleOptionViewItemV4 &option, QBitArray *drawn,
+                                         const QStyleOptionViewItem &option, QBitArray *drawn,
                                          int firstVisualRow, int lastVisualRow, int firstVisualColumn, int lastVisualColumn)
 {
     bool alternateBase = false;
@@ -828,13 +828,13 @@ void QTableViewPrivate::drawAndClipSpans(const QRegion &area, QPainter *painter,
         rect.translate(scrollDelayOffset);
         if (!area.intersects(rect))
             continue;
-        QStyleOptionViewItemV4 opt = option;
+        QStyleOptionViewItem opt = option;
         opt.rect = rect;
         alternateBase = alternatingColors && (span->top() & 1);
         if (alternateBase)
-            opt.features |= QStyleOptionViewItemV2::Alternate;
+            opt.features |= QStyleOptionViewItem::Alternate;
         else
-            opt.features &= ~QStyleOptionViewItemV2::Alternate;
+            opt.features &= ~QStyleOptionViewItem::Alternate;
         drawCell(painter, opt, index);
         region -= rect;
         for (int r = span->top(); r <= span->bottom(); ++r) {
@@ -898,10 +898,10 @@ void QTableViewPrivate::_q_updateSpanRemovedColumns(const QModelIndex &parent, i
   \internal
   Draws a table cell.
 */
-void QTableViewPrivate::drawCell(QPainter *painter, const QStyleOptionViewItemV4 &option, const QModelIndex &index)
+void QTableViewPrivate::drawCell(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index)
 {
     Q_Q(QTableView);
-    QStyleOptionViewItemV4 opt = option;
+    QStyleOptionViewItem opt = option;
 
     if (selectionModel && selectionModel->isSelected(index))
         opt.state |= QStyle::State_Selected;
@@ -1307,7 +1307,7 @@ void QTableView::paintEvent(QPaintEvent *event)
 {
     Q_D(QTableView);
     // setup temp variables for the painting
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
     const QPoint offset = d->scrollDelayOffset;
     const bool showGrid = d->showGrid;
     const int gridSize = showGrid ? 1 : 0;
@@ -1423,9 +1423,9 @@ void QTableView::paintEvent(QPaintEvent *event)
                     option.rect = QRect(colp + (showGrid && rightToLeft ? 1 : 0), rowY, colw, rowh);
                     if (alternate) {
                         if (alternateBase)
-                            option.features |= QStyleOptionViewItemV2::Alternate;
+                            option.features |= QStyleOptionViewItem::Alternate;
                         else
-                            option.features &= ~QStyleOptionViewItemV2::Alternate;
+                            option.features &= ~QStyleOptionViewItem::Alternate;
                     }
                     d->drawCell(&painter, option, index);
                 }
@@ -2177,7 +2177,7 @@ int QTableView::sizeHintForRow(int row) const
     if (right == -1) // the table don't have enough columns to fill the viewport
         right = d->model->columnCount(d->root) - 1;
 
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
 
     int hint = 0;
     QModelIndex index;
@@ -2236,7 +2236,7 @@ int QTableView::sizeHintForColumn(int column) const
     if (!isVisible() || bottom == -1) // the table don't have enough rows to fill the viewport
         bottom = d->model->rowCount(d->root) - 1;
 
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
 
     int hint = 0;
     QModelIndex index;

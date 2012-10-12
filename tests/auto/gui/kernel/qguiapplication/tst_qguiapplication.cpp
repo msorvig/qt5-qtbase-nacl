@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,6 +44,7 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QWindow>
 #include <qpa/qwindowsysteminterface.h>
+#include <qgenericplugin.h>
 
 #include <QDebug>
 
@@ -61,6 +62,7 @@ private slots:
     void keyboardModifiers();
     void modalWindow();
     void quitOnLastWindowClosed();
+    void genericPluginsAndWindowSystemEvents();
 };
 
 void tst_QGuiApplication::displayName()
@@ -276,11 +278,11 @@ void tst_QGuiApplication::keyboardModifiers()
     QCOMPARE(QGuiApplication::keyboardModifiers(), Qt::ControlModifier);
 
     // shortcut events
-    QWindowSystemInterface::tryHandleSynchronousShortcutEvent(window, Qt::Key_5, Qt::MetaModifier);
+    QWindowSystemInterface::tryHandleShortcutEvent(window, Qt::Key_5, Qt::MetaModifier);
     QCOMPARE(QGuiApplication::keyboardModifiers(), Qt::MetaModifier);
-    QWindowSystemInterface::tryHandleSynchronousShortcutEvent(window, Qt::Key_Period, Qt::NoModifier);
+    QWindowSystemInterface::tryHandleShortcutEvent(window, Qt::Key_Period, Qt::NoModifier);
     QCOMPARE(QGuiApplication::keyboardModifiers(), Qt::NoModifier);
-    QWindowSystemInterface::tryHandleSynchronousShortcutEvent(window, Qt::Key_0, Qt::ControlModifier);
+    QWindowSystemInterface::tryHandleShortcutEvent(window, Qt::Key_0, Qt::ControlModifier);
     QCOMPARE(QGuiApplication::keyboardModifiers(), Qt::ControlModifier);
 
     // key events
@@ -568,6 +570,74 @@ void tst_QGuiApplication::quitOnLastWindowClosed()
     }
 }
 
+static Qt::ScreenOrientation testOrientationToSend = Qt::PrimaryOrientation;
+
+class TestPlugin : public QObject
+{
+    Q_OBJECT
+public:
+    TestPlugin()
+    {
+        QScreen* screen = QGuiApplication::primaryScreen();
+        // Make sure the orientation we want to send doesn't get filtered out.
+        screen->setOrientationUpdateMask(screen->orientationUpdateMask() | testOrientationToSend);
+        QWindowSystemInterface::handleScreenOrientationChange(screen, testOrientationToSend);
+    }
+};
+
+class TestPluginFactory : public QGenericPlugin
+{
+    Q_OBJECT
+    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QGenericPluginFactoryInterface" FILE "testplugin.json")
+public:
+    QObject* create(const QString &key, const QString &)
+    {
+        if (key == "testplugin")
+            return new TestPlugin;
+        return 0;
+    }
+};
+
+class TestEventReceiver : public QObject
+{
+    Q_OBJECT
+public:
+    int customEvents;
+
+    TestEventReceiver()
+        : customEvents(0)
+    {}
+
+    virtual void customEvent(QEvent *)
+    {
+        customEvents++;
+    }
+};
+
+#include "tst_qguiapplication.moc"
+
+void tst_QGuiApplication::genericPluginsAndWindowSystemEvents()
+{
+    testOrientationToSend = Qt::InvertedLandscapeOrientation;
+
+    TestEventReceiver testReceiver;
+    QCoreApplication::postEvent(&testReceiver, new QEvent(QEvent::User));
+    QCOMPARE(testReceiver.customEvents, 0);
+
+    QStaticPlugin testPluginInfo;
+    testPluginInfo.instance = qt_plugin_instance;
+    testPluginInfo.metaData = qt_plugin_query_metadata;
+    qRegisterStaticPluginFunction(testPluginInfo);
+    int argc = 3;
+    char *argv[] = { const_cast<char*>("tst_qguiapplication"), const_cast<char*>("-plugin"), const_cast<char*>("testplugin") };
+    QGuiApplication app(argc, argv);
+
+    QVERIFY(QGuiApplication::primaryScreen());
+    QVERIFY(QGuiApplication::primaryScreen()->orientation() == testOrientationToSend);
+
+    QCOMPARE(testReceiver.customEvents, 0);
+    QCoreApplication::sendPostedEvents(&testReceiver);
+    QCOMPARE(testReceiver.customEvents, 1);
+}
 
 QTEST_APPLESS_MAIN(tst_QGuiApplication)
-#include "tst_qguiapplication.moc"

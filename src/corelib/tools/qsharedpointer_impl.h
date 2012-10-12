@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -116,7 +116,7 @@ namespace QtSharedPointer {
     template <class T, typename Deleter>
     inline void executeDeleter(T *t, Deleter d)
     { d(t); }
-    template <class T> inline void normalDeleter(T *t) { delete t; }
+    struct NormalDeleter {};
 
     // this uses partial template specialization
     template <class T> struct RemovePointer;
@@ -165,6 +165,33 @@ namespace QtSharedPointer {
     };
     // sizeof(ExternalRefCountData) = 12 (32-bit) / 16 (64-bit)
 
+    template <class T, typename Deleter>
+    struct CustomDeleter
+    {
+        Deleter deleter;
+        T *ptr;
+
+        CustomDeleter(T *p, Deleter d) : deleter(d), ptr(p) {}
+        void execute() { executeDeleter(ptr, deleter); }
+    };
+    // sizeof(CustomDeleter) = sizeof(Deleter) + sizeof(void*) + padding
+    // for Deleter = stateless functor: 8 (32-bit) / 16 (64-bit) due to padding
+    // for Deleter = function pointer:  8 (32-bit) / 16 (64-bit)
+    // for Deleter = PMF: 12 (32-bit) / 24 (64-bit)  (GCC)
+
+    // This specialization of CustomDeleter for a deleter of type NormalDeleter
+    // is an optimization: instead of storing a pointer to a function that does
+    // the deleting, we simply delete the pointer ourselves.
+    template <class T>
+    struct CustomDeleter<T, NormalDeleter>
+    {
+        T *ptr;
+
+        CustomDeleter(T *p, NormalDeleter) : ptr(p) {}
+        void execute() { delete ptr; }
+    };
+    // sizeof(CustomDeleter specialization) = sizeof(void*)
+
     // This class extends ExternalRefCountData and implements
     // the static function that deletes the object. The pointer and the
     // custom deleter are kept in the "extra" member so we can construct
@@ -174,27 +201,15 @@ namespace QtSharedPointer {
     {
         typedef ExternalRefCountWithCustomDeleter Self;
         typedef ExternalRefCountData BaseClass;
-
-        struct CustomDeleter
-        {
-            Deleter deleter;
-            T *ptr;
-
-            inline CustomDeleter(T *p, Deleter d) : deleter(d), ptr(p) {}
-        };
-        CustomDeleter extra;
-        // sizeof(CustomDeleter) = sizeof(Deleter) + sizeof(void*) + padding
-        // for Deleter = stateless functor: 8 (32-bit) / 16 (64-bit) due to padding
-        // for Deleter = function pointer:  8 (32-bit) / 16 (64-bit)
-        // for Deleter = PMF: 12 (32-bit) / 24 (64-bit)  (GCC)
+        CustomDeleter<T, Deleter> extra;
 
         static inline void deleter(ExternalRefCountData *self)
         {
             Self *realself = static_cast<Self *>(self);
-            executeDeleter(realself->extra.ptr, realself->extra.deleter);
+            realself->extra.execute();
 
             // delete the deleter too
-            realself->extra.~CustomDeleter();
+            realself->extra.~CustomDeleter<T, Deleter>();
         }
         static void safetyCheckDeleter(ExternalRefCountData *self)
         {
@@ -207,7 +222,7 @@ namespace QtSharedPointer {
             Self *d = static_cast<Self *>(::operator new(sizeof(Self)));
 
             // initialize the two sub-objects
-            new (&d->extra) CustomDeleter(ptr, userDeleter);
+            new (&d->extra) CustomDeleter<T, Deleter>(ptr, userDeleter);
             new (d) BaseClass(actualDeleter); // can't throw
 
             return d;
@@ -292,7 +307,7 @@ public:
     ~QSharedPointer() { deref(); }
 
     inline explicit QSharedPointer(T *ptr) : value(ptr) // noexcept
-    { internalConstruct(ptr, &QtSharedPointer::normalDeleter<T>); }
+    { internalConstruct(ptr, QtSharedPointer::NormalDeleter()); }
 
     template <typename Deleter>
     inline QSharedPointer(T *ptr, Deleter deleter) : value(ptr) // throws
@@ -387,10 +402,10 @@ public:
 
         // now initialize the data
         new (result.data()) T();
-        result.d->setQObjectShared(result.value, true);
 # ifdef QT_SHAREDPOINTER_TRACK_POINTERS
         internalSafetyCheckAdd(result.d, result.value);
 # endif
+        result.d->setQObjectShared(result.value, true);
         return result;
     }
 
@@ -425,10 +440,10 @@ private:
 # endif
         d = Private::create(ptr, deleter, actualDeleter);
 
-        d->setQObjectShared(ptr, true);
 #ifdef QT_SHAREDPOINTER_TRACK_POINTERS
         internalSafetyCheckAdd(d, ptr);
 #endif
+        d->setQObjectShared(ptr, true);
     }
 
     template <class X>

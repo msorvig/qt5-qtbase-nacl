@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -81,12 +81,20 @@ public:
         }
     }
 
-    void reset() { formatList.clear(); }
+    void reset()
+    {
+        formatList.clear();
+    }
+
+    bool isEmpty() const
+    {
+        return m_clipboard->getSelectionOwner(modeAtom) == XCB_NONE;
+    }
 
 protected:
     QStringList formats_sys() const
     {
-        if (empty())
+        if (isEmpty())
             return QStringList();
 
         if (!formatList.count()) {
@@ -122,7 +130,7 @@ protected:
 
     QVariant retrieveData_sys(const QString &fmt, QVariant::Type requestedType) const
     {
-        if (fmt.isEmpty() || empty())
+        if (fmt.isEmpty() || isEmpty())
             return QByteArray();
 
         (void)formats(); // trigger update of format list
@@ -142,11 +150,6 @@ protected:
         return mimeConvertToFormat(m_clipboard->connection(), fmtatom, m_clipboard->getDataInFormat(modeAtom, fmtatom), fmt, requestedType, encoding);
     }
 private:
-    bool empty() const
-    {
-        return m_clipboard->getSelectionOwner(modeAtom) == XCB_NONE;
-    }
-
 
     xcb_atom_t modeAtom;
     QXcbClipboard *m_clipboard;
@@ -259,9 +262,6 @@ QMimeData * QXcbClipboard::mimeData(QClipboard::Mode mode)
         return 0;
 
     xcb_window_t clipboardOwner = getSelectionOwner(atomForMode(mode));
-    if (clipboardOwner == XCB_NONE)
-        return 0;
-
     if (clipboardOwner == owner()) {
         return m_clientClipboard[mode];
     } else {
@@ -274,7 +274,20 @@ QMimeData * QXcbClipboard::mimeData(QClipboard::Mode mode)
 
 void QXcbClipboard::setMimeData(QMimeData *data, QClipboard::Mode mode)
 {
-    if ((mode > QClipboard::Selection) || (mimeData(mode) == data))
+    if (mode > QClipboard::Selection)
+        return;
+
+    QXcbClipboardMime *xClipboard = 0;
+    // verify if there is data to be cleared on global X Clipboard.
+    if (!data) {
+        xClipboard = qobject_cast<QXcbClipboardMime *>(mimeData(mode));
+        if (xClipboard) {
+            if (xClipboard->isEmpty())
+                return;
+        }
+    }
+
+    if (!xClipboard && (m_clientClipboard[mode] == data))
         return;
 
     xcb_atom_t modeAtom = atomForMode(mode);
@@ -833,13 +846,15 @@ QByteArray QXcbClipboard::getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAto
     return getSelection(modeAtom, fmtAtom, atom(QXcbAtom::_QT_SELECTION));
 }
 
-QByteArray QXcbClipboard::getSelection(xcb_atom_t selection, xcb_atom_t target, xcb_atom_t property)
+QByteArray QXcbClipboard::getSelection(xcb_atom_t selection, xcb_atom_t target, xcb_atom_t property, xcb_timestamp_t time)
 {
     QByteArray buf;
     xcb_window_t win = requestor();
 
+    if (time == 0) time = connection()->time();
+
     xcb_delete_property(xcb_connection(), win, property);
-    xcb_convert_selection(xcb_connection(), win, selection, target, property, connection()->time());
+    xcb_convert_selection(xcb_connection(), win, selection, target, property, time);
 
     connection()->sync();
 

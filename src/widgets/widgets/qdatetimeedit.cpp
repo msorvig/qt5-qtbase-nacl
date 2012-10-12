@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -89,9 +89,11 @@ QT_BEGIN_NAMESPACE
   today's date, and restricted the valid date range to today plus or
   minus 365 days. We've set the order to month, day, year.
 
-  The minimum value for QDateTimeEdit is 14 September 1752,
-  and 2 January 4713BC for QDate. You can change this by calling
-  setMinimumDate(), setMaximumDate(),  setMinimumTime(),
+  The minimum value for QDateTimeEdit is 14 September 1752. You can
+  change this by calling setMinimumDate(), taking into account that
+  the minimum value for QDate is 2 January 4713BC.
+
+  Other useful functions are setMaximumDate(), setMinimumTime()
   and setMaximumTime().
 
   \section1 Using a Pop-up Calendar Widget
@@ -705,9 +707,9 @@ int QDateTimeEdit::sectionCount() const
 
   \brief the current section index of the spinbox
 
-  If the format is 'yyyy/MM/dd', the displayText is '2001/05/21' and
-  the cursorPosition is 5 currentSectionIndex returns 1. If the
-  cursorPosition is 3 currentSectionIndex is 0 etc.
+  If the format is 'yyyy/MM/dd', the displayText is '2001/05/21', and
+  the cursorPosition is 5, currentSectionIndex returns 1. If the
+  cursorPosition is 3, currentSectionIndex is 0, and so on.
 
   \a setCurrentSection()
   \sa currentSection()
@@ -782,9 +784,9 @@ void QDateTimeEdit::setCalendarWidget(QCalendarWidget *calendarWidget)
   \since 4.2
 
   Selects \a section. If \a section doesn't exist in the currently
-  displayed sections this function does nothing. If \a section is
-  NoSection this function will unselect all text in the editor.
-  Otherwise this function will move the cursor and the current section
+  displayed sections, this function does nothing. If \a section is
+  NoSection, this function will unselect all text in the editor.
+  Otherwise, this function will move the cursor and the current section
   to the selected section.
 
   \sa currentSection()
@@ -829,8 +831,7 @@ QString QDateTimeEdit::sectionText(Section section) const
 
   \brief the format used to display the time/date of the date time edit
 
-  This format is the same as the one used described in QDateTime::toString()
-  and QDateTime::fromString()
+  This format is described in QDateTime::toString() and QDateTime::fromString()
 
   Example format strings (assuming that the date is 2nd of July 1969):
 
@@ -908,7 +909,7 @@ void QDateTimeEdit::setDisplayFormat(const QString &format)
 
 /*!
     \property QDateTimeEdit::calendarPopup
-    \brief the current calendar pop-up showing mode.
+    \brief the current calendar pop-up show mode.
     \since 4.2
 
     The calendar pop-up will be shown upon clicking the arrow button.
@@ -1516,11 +1517,10 @@ void QDateTimeEdit::mousePressEvent(QMouseEvent *event)
   \inmodule QtWidgets
 
   Many of the properties and functions provided by QTimeEdit are implemented in
-  QDateTimeEdit. The following properties are most relevant to users of this
-  class:
+  QDateTimeEdit. These are the relevant properties of this class:
 
   \list
-  \li \l{QDateTimeEdit::time}{time} holds the date displayed by the widget.
+  \li \l{QDateTimeEdit::time}{time} holds the time displayed by the widget.
   \li \l{QDateTimeEdit::minimumTime}{minimumTime} defines the minimum (earliest) time
      that can be set by the user.
   \li \l{QDateTimeEdit::maximumTime}{maximumTime} defines the maximum (latest) time
@@ -1563,6 +1563,12 @@ QTimeEdit::QTimeEdit(const QTime &time, QWidget *parent)
 }
 
 /*!
+  \property QTimeEdit::time
+  \internal
+  \sa QDateTimeEdit::time
+*/
+
+/*!
   \fn void QTimeEdit::userTimeChanged(const QTime &time)
 
   This signal only exists to fully implement the time Q_PROPERTY on the class.
@@ -1581,8 +1587,7 @@ QTimeEdit::QTimeEdit(const QTime &time, QWidget *parent)
   \inmodule QtWidgets
 
   Many of the properties and functions provided by QDateEdit are implemented in
-  QDateTimeEdit. The following properties are most relevant to users of this
-  class:
+  QDateTimeEdit. These are the relevant properties of this class:
 
   \list
   \li \l{QDateTimeEdit::date}{date} holds the date displayed by the widget.
@@ -1625,6 +1630,12 @@ QDateEdit::QDateEdit(const QDate &date, QWidget *parent)
     : QDateTimeEdit(date, QVariant::Date, parent)
 {
 }
+
+/*!
+  \property QDateEdit::date
+  \internal
+  \sa QDateTimeEdit::date
+*/
 
 /*!
   \fn void QDateEdit::userDateChanged(const QDate &date)
@@ -2034,7 +2045,7 @@ QDateTime QDateTimeEditPrivate::stepBy(int sectionIndex, int steps, bool test) c
             // doesn't mean that we hit the floor in the other
             if (steps > 0) {
                 setDigit(v, sectionIndex, min);
-                if (!(sn.type & (DaySection|DayOfWeekSection)) && sections & DateSectionMask) {
+                if (!(sn.type & (DaySection|DayOfWeekSectionShort|DayOfWeekSectionLong)) && sections & DateSectionMask) {
                     const int daysInMonth = v.date().daysInMonth();
                     if (v.date().day() < oldDay && v.date().day() < daysInMonth) {
                         const int adds = qMin(oldDay, daysInMonth);
@@ -2049,7 +2060,7 @@ QDateTime QDateTimeEditPrivate::stepBy(int sectionIndex, int steps, bool test) c
                 }
             } else {
                 setDigit(v, sectionIndex, max);
-                if (!(sn.type & (DaySection|DayOfWeekSection)) && sections & DateSectionMask) {
+                if (!(sn.type & (DaySection|DayOfWeekSectionShort|DayOfWeekSectionLong)) && sections & DateSectionMask) {
                     const int daysInMonth = v.date().daysInMonth();
                     if (v.date().day() < oldDay && v.date().day() < daysInMonth) {
                         const int adds = qMin(oldDay, daysInMonth);
@@ -2067,7 +2078,7 @@ QDateTime QDateTimeEditPrivate::stepBy(int sectionIndex, int steps, bool test) c
             setDigit(v, sectionIndex, (steps > 0 ? localmax : localmin));
         }
     }
-    if (!test && oldDay != v.date().day() && !(sn.type & (DaySection|DayOfWeekSection))) {
+    if (!test && oldDay != v.date().day() && !(sn.type & (DaySection|DayOfWeekSectionShort|DayOfWeekSectionLong))) {
         // this should not happen when called from stepEnabled
         cachedDay = qMax<int>(oldDay, cachedDay);
     }
@@ -2235,7 +2246,8 @@ QDateTimeEdit::Section QDateTimeEditPrivate::convertToPublic(QDateTimeParser::Se
     case MSecSection: return QDateTimeEdit::MSecSection;
     case SecondSection: return QDateTimeEdit::SecondSection;
     case MinuteSection: return QDateTimeEdit::MinuteSection;
-    case DayOfWeekSection:
+    case DayOfWeekSectionShort:
+    case DayOfWeekSectionLong:
     case DaySection: return QDateTimeEdit::DaySection;
     case MonthSection: return QDateTimeEdit::MonthSection;
     case YearSection2Digits:
@@ -2262,7 +2274,7 @@ QDateTimeEdit::Sections QDateTimeEditPrivate::convertSections(QDateTimeParser::S
         ret |= QDateTimeEdit::HourSection;
     if (s & QDateTimeParser::AmPmSection)
         ret |= QDateTimeEdit::AmPmSection;
-    if (s & (QDateTimeParser::DaySection|QDateTimeParser::DayOfWeekSection))
+    if (s & (QDateTimeParser::DaySection|QDateTimeParser::DayOfWeekSectionShort|QDateTimeParser::DayOfWeekSectionLong))
         ret |= QDateTimeEdit::DaySection;
     if (s & QDateTimeParser::MonthSection)
         ret |= QDateTimeEdit::MonthSection;

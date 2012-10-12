@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -600,7 +600,7 @@ static void qt_cleanlooks_draw_mdibutton(QPainter *painter, const QStyleOptionTi
     Stellingwerff and Daniel Borgmann.
 
     \sa {Cleanlooks Style Widget Gallery}, QWindowsXPStyle, QMacStyle, QWindowsStyle,
-        QCDEStyle, QMotifStyle, QPlastiqueStyle
+        QPlastiqueStyle
 */
 
 /*!
@@ -1494,6 +1494,10 @@ void QCleanlooksStyle::drawControl(ControlElement element, const QStyleOption *o
 #endif // QT_NO_SIZEGRIP
 #ifndef QT_NO_TOOLBAR
     case CE_ToolBar:
+        // Reserve the beveled appearance only for mainwindow toolbars
+        if (!(widget && qobject_cast<const QMainWindow*> (widget->parentWidget())))
+            break;
+
         painter->save();
         if (const QStyleOptionToolBar *toolbar = qstyleoption_cast<const QStyleOptionToolBar *>(option)) {
             QRect rect = option->rect;
@@ -1599,32 +1603,17 @@ void QCleanlooksStyle::drawControl(ControlElement element, const QStyleOption *o
                 = qstyleoption_cast<const QStyleOptionDockWidgetV2*>(dwOpt);
             bool verticalTitleBar = v2 == 0 ? false : v2->verticalTitleBar;
 
-            QRect rect = dwOpt->rect;
             QRect titleRect = subElementRect(SE_DockWidgetTitleBarText, option, widget);
-            QRect r = rect.adjusted(0, 0, -1, 0);
-            if (verticalTitleBar)
-                r.adjust(0, 0, 0, -1);
-            painter->setPen(option->palette.light().color());
-            painter->drawRect(r.adjusted(1, 1, 1, 1));
-            painter->setPen(shadow);
-            painter->drawRect(r);
-
             if (verticalTitleBar) {
+                QRect rect = dwOpt->rect;
                 QRect r = rect;
                 QSize s = r.size();
                 s.transpose();
                 r.setSize(s);
-
                 titleRect = QRect(r.left() + rect.bottom()
                                     - titleRect.bottom(),
                                 r.top() + titleRect.left() - rect.left(),
                                 titleRect.height(), titleRect.width());
-
-                painter->translate(r.left(), r.top() + r.width());
-                painter->rotate(-90);
-                painter->translate(-r.left(), -r.top());
-
-                rect = r;
             }
 
             if (!dwOpt->title.isEmpty()) {
@@ -3790,12 +3779,6 @@ QSize QCleanlooksStyle::sizeFromContents(ContentsType type, const QStyleOption *
                 newSize -= QSize(0, 2);
             newSize += QSize(0, 1);
         }
-        if (const QPushButton *button = qobject_cast<const QPushButton *>(widget)) {
-            if (qobject_cast<const QDialogButtonBox *>(button->parentWidget())) {
-                if (newSize.height() < 32)
-                    newSize.setHeight(32);
-            }
-        }
         break;
 #ifndef QT_NO_GROUPBOX
     case CT_GroupBox:
@@ -4337,7 +4320,7 @@ int QCleanlooksStyle::styleHint(StyleHint hint, const QStyleOption *option, cons
         ret = Qt::TextSelectableByMouse | Qt::LinksAccessibleByMouse;
         break;
     case SH_DialogButtonBox_ButtonsHaveIcons:
-        ret = true;
+        ret = false;
         break;
     case SH_MessageBox_CenterButtons:
         ret = false;
@@ -4393,13 +4376,12 @@ QRect QCleanlooksStyle::subElementRect(SubElement sr, const QStyleOption *opt, c
 }
 
 /*!
-    \internal
+    \reimp
 */
-QIcon QCleanlooksStyle::standardIconImplementation(StandardPixmap standardIcon,
-                                                  const QStyleOption *option,
-                                                  const QWidget *widget) const
+QIcon QCleanlooksStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption *option,
+                                     const QWidget *widget) const
 {
-    return QWindowsStyle::standardIconImplementation(standardIcon, option, widget);
+    return QWindowsStyle::standardIcon(standardIcon, option, widget);
 }
 
 /*!

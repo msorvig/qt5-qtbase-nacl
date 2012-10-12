@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -80,7 +80,7 @@ QMutex QOpenGLContextPrivate::makeCurrentTrackerMutex;
     \class QOpenGLContext
     \inmodule QtGui
     \since 5.0
-    \brief The QOpenGLContext represents a native OpenGL context, enabling
+    \brief The QOpenGLContext class represents a native OpenGL context, enabling
            OpenGL rendering on a QSurface.
 
     QOpenGLContext represents the OpenGL state of an underlying OpenGL context.
@@ -115,6 +115,9 @@ QMutex QOpenGLContextPrivate::makeCurrentTrackerMutex;
 
     For more information about the OpenGL API, refer to the official
     \l{OpenGL documentation}.
+
+    For an example of how to use QOpenGLContext see the
+    \l{gui/openglwindow}{OpenGL Window} example.
 
     \section1 Thread affinity
 
@@ -210,7 +213,7 @@ QOpenGLContext* QOpenGLContext::currentContext()
 }
 
 /*!
-    Returns true if the two contexts are sharing OpenGL resources.
+    Returns true if the \a first and \a second contexts are sharing OpenGL resources.
 */
 bool QOpenGLContext::areSharing(QOpenGLContext *first, QOpenGLContext *second)
 {
@@ -243,7 +246,7 @@ QPlatformOpenGLContext *QOpenGLContext::shareHandle() const
 }
 
 /*!
-    Creates a new OpenGL context instance.
+    Creates a new OpenGL context instance with parent object \a parent.
 
     Before it can be used you need to set the proper format and call create().
 
@@ -267,8 +270,8 @@ void QOpenGLContext::setFormat(const QSurfaceFormat &format)
 }
 
 /*!
-    Sets the context to share textures, shaders, and other OpenGL resources
-    with. You need to call create() before it takes effect.
+    Makes this context share textures, shaders, and other OpenGL resources
+    with \a shareContext. You need to call create() before it takes effect.
 */
 void QOpenGLContext::setShareContext(QOpenGLContext *shareContext)
 {
@@ -294,10 +297,18 @@ void QOpenGLContext::setScreen(QScreen *screen)
     The current configuration includes the format, the share context, and the
     screen.
 
+    If the OpenGL implementation on your system does not support the requested
+    version of OpenGL context, then QOpenGLContext will try to create the closest
+    matching version. The actual created context properties can be queried
+    using the QSurfaceFormat returned by the format() function. For example, if
+    you request a context that supports OpenGL 4.3 Core profile but the driver
+    and/or hardware only supports version 3.2 Core profile contexts then you will
+    get a 3.2 Core profile context.
+
     Returns true if the native context was successfully created and is ready to
     be used with makeCurrent(), swapBuffers(), etc.
 
-    \sa makeCurrent(), destroy()
+    \sa makeCurrent(), destroy(), format()
 */
 bool QOpenGLContext::create()
 {
@@ -460,7 +471,7 @@ GLuint QOpenGLContext::defaultFramebufferObject() const
 
 /*!
     Makes the context current in the current thread, against the given
-    \a surface.
+    \a surface. Returns true if successful.
 
     If \a surface is 0 this is equivalent to calling doneCurrent().
 
@@ -546,7 +557,7 @@ QSurface *QOpenGLContext::surface() const
 
 
 /*!
-    Swap the back and front buffers of the given surface.
+    Swap the back and front buffers of \a surface.
 
     Call this to finish a frame of OpenGL rendering, and make sure to
     call makeCurrent() again before you begin a new frame.
@@ -587,10 +598,6 @@ void QOpenGLContext::swapBuffers(QSurface *surface)
         qWarning() << "QOpenGLContext::swapBuffers() called with non-current surface";
     else if (!QOpenGLContextPrivate::toggleMakeCurrentTracker(this, false))
         qWarning() << "QOpenGLContext::swapBuffers() called without corresponding makeCurrent()";
-
-#ifndef GL_FRAMEBUFFER_BINDING
-#define GL_FRAMEBUFFER_BINDING 0x8CA6
-#endif
 
     GLint framebufferBinding = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebufferBinding);
@@ -698,7 +705,7 @@ void QOpenGLContext::deleteQGLContext()
 /*!
     \class QOpenGLContextGroup
     \since 5.0
-    \brief The QOpenGLContextGroup represents a group of contexts sharing
+    \brief The QOpenGLContextGroup class represents a group of contexts sharing
     OpenGL resources.
     \inmodule QtGui
 

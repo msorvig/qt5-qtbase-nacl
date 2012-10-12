@@ -1,46 +1,46 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-#include "qprinter_p.h"
 #include "qprinter.h"
+#include "qprinter_p.h"
 
 #ifndef QT_NO_PRINTER
 
@@ -710,31 +710,6 @@ bool QPrinter::isValid() const
     return d->validPrinter;
 }
 
-
-/*!
-  \fn bool QPrinter::outputToFile() const
-
-  Returns true if the output should be written to a file, or false
-  if the output should be sent directly to the printer. The default
-  setting is false.
-
-  \sa setOutputToFile(), setOutputFileName()
-*/
-
-
-/*!
-  \fn void QPrinter::setOutputToFile(bool enable)
-
-  Specifies whether the output should be written to a file or sent
-  directly to the printer.
-
-  Will output to a file if \a enable is true, or will output
-  directly to the printer if \a enable is false.
-
-  \sa outputToFile(), setOutputFileName()
-*/
-
-
 /*!
   \fn QString QPrinter::outputFileName() const
 
@@ -767,7 +742,7 @@ QString QPrinter::outputFileName() const
     Mac OS X can generate PDF's from its print engine, set the output format
     back to NativeFormat.
 
-    \sa outputFileName(), setOutputToFile(), setOutputFormat()
+    \sa outputFileName(), setOutputFormat()
 */
 
 void QPrinter::setOutputFileName(const QString &fileName)
@@ -1568,7 +1543,7 @@ QRect QPrinter::paperRect() const
     page margins for this printer. The unit of the margins are
     specified with the \a unit parameter.
 
-    \sa getPageMargins
+    \sa getPageMargins()
 */
 void QPrinter::setPageMargins(qreal left, qreal top, qreal right, qreal bottom, QPrinter::Unit unit)
 {
@@ -1578,11 +1553,14 @@ void QPrinter::setPageMargins(qreal left, qreal top, qreal right, qreal bottom, 
 }
 
 /*!
-  reimp
+  \reimp
   */
 void QPrinter::setMargins(const Margins &m)
 {
     Q_D(QPrinter);
+
+    // set margins also to super class
+    QPagedPaintDevice::setMargins(m);
 
     const qreal multiplier = 72./25.4;
     QList<QVariant> margins;
@@ -1601,7 +1579,7 @@ void QPrinter::setMargins(const Margins &m)
     right, \a bottom. The unit of the returned margins are specified
     with the \a unit parameter.
 
-    \sa setPageMargins
+    \sa setPageMargins()
 */
 void QPrinter::getPageMargins(qreal *left, qreal *top, qreal *right, qreal *bottom, QPrinter::Unit unit) const
 {
@@ -1739,54 +1717,6 @@ QPrinter::PrinterState QPrinter::printerState() const
     Q_D(const QPrinter);
     return d->printEngine->printerState();
 }
-
-
-/*! \fn void QPrinter::margins(uint *top, uint *left, uint *bottom, uint *right) const
-
-    Sets *\a top, *\a left, *\a bottom, *\a right to be the top,
-    left, bottom, and right margins.
-
-    This function has been superseded by paperRect() and pageRect().
-    Use paperRect().top() - pageRect().top() for the top margin,
-    paperRect().left() - pageRect().left() for the left margin,
-    paperRect().bottom() - pageRect().bottom() for the bottom margin,
-    and papaerRect().right() - pageRect().right() for the right
-    margin.
-
-    \oldcode
-        uint rightMargin;
-        uint bottomMargin;
-        printer->margins(0, 0, &bottomMargin, &rightMargin);
-    \newcode
-        int rightMargin = printer->paperRect().right() - printer->pageRect().right();
-        int bottomMargin = printer->paperRect().bottom() - printer->pageRect().bottom();
-    \endcode
-*/
-
-/*! \fn QSize QPrinter::margins() const
-
-    \overload
-
-    Returns a QSize containing the left margin and the top margin.
-
-    This function has been superseded by paperRect() and pageRect().
-    Use paperRect().left() - pageRect().left() for the left margin,
-    and paperRect().top() - pageRect().top() for the top margin.
-
-    \oldcode
-        QSize margins = printer->margins();
-        int leftMargin = margins.width();
-        int topMargin = margins.height();
-    \newcode
-        int leftMargin = printer->paperRect().left() - printer->pageRect().left();
-        int topMargin = printer->paperRect().top() - printer->pageRect().top();
-    \endcode
-*/
-
-/*! \fn bool QPrinter::aborted()
-
-    Use printerState() == QPrinter::Aborted instead.
-*/
 
 #ifdef Q_OS_WIN
 /*!

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,6 +44,7 @@
 #include "testcompiler.h"
 
 #include <QObject>
+#include <QStandardPaths>
 #include <QDir>
 
 class tst_qmake : public QObject
@@ -76,6 +77,7 @@ private slots:
     void duplicateLibraryEntries();
     void export_across_file_boundaries();
     void include_dir();
+    void include_pwd();
     void install_files();
     void install_depends();
     void quotedfilenames();
@@ -89,6 +91,7 @@ private slots:
 #endif
     void includefunction();
     void substitutes();
+    void project();
 
 private:
     TestCompiler test_compiler;
@@ -107,9 +110,14 @@ tst_qmake::~tst_qmake()
 void tst_qmake::initTestCase()
 {
     QString binpath = QLibraryInfo::location(QLibraryInfo::BinariesPath);
-    QString cmd = QString("%2/qmake \"QT_VERSION=%1\"").arg(QT_VERSION).arg(binpath);
+    QString cmd = QString("%1/qmake").arg(binpath);
 #ifdef Q_CC_MSVC
-    test_compiler.setBaseCommands( "nmake", cmd );
+    const QString jom = QStandardPaths::findExecutable(QLatin1String("jom.exe"));
+    if (jom.isEmpty()) {
+        test_compiler.setBaseCommands( QLatin1String("nmake"), cmd );
+    } else {
+        test_compiler.setBaseCommands( jom, cmd );
+    }
 #elif defined(Q_CC_MINGW)
     test_compiler.setBaseCommands( "mingw32-make", cmd );
 #elif defined(Q_OS_WIN) && defined(Q_CC_GNU)
@@ -319,6 +327,14 @@ void tst_qmake::include_dir()
     QVERIFY( test_compiler.makeDistClean( buildDir ));
 }
 
+void tst_qmake::include_pwd()
+{
+    QString workDir = base_path + "/testdata/include_pwd";
+    QVERIFY( test_compiler.qmake( workDir, "include_pwd" ));
+    QVERIFY( test_compiler.make( workDir ));
+    QVERIFY( test_compiler.makeDistClean( workDir ));
+}
+
 void tst_qmake::install_files()
 {
     QString workDir = base_path + "/testdata/shadow_files";
@@ -474,7 +490,7 @@ void tst_qmake::bundle_spaces()
 void tst_qmake::includefunction()
 {
     QString workDir = base_path + "/testdata/include_function";
-    QString warningMsg("Unable to find file for inclusion");
+    QRegExp warningMsg("Include file .* not found");
     QVERIFY(test_compiler.qmake( workDir, "include_existing_file"));
     QVERIFY(!test_compiler.commandOutput().contains(warningMsg));
 
@@ -514,6 +530,20 @@ void tst_qmake::substitutes()
     QCOMPARE(copySource.readAll(), copyDestination.readAll());
 
     QVERIFY( test_compiler.makeDistClean( buildDir ));
+}
+
+void tst_qmake::project()
+{
+    QString workDir = base_path + "/testdata/project";
+
+    QVERIFY( test_compiler.qmakeProject( workDir, "project" ));
+    QVERIFY( test_compiler.exists( workDir, "project.pro", Plain, "" ));
+    QVERIFY( test_compiler.qmake( workDir, "project" ));
+    QVERIFY( test_compiler.exists( workDir, "Makefile", Plain, "" ));
+    QVERIFY( test_compiler.make( workDir ));
+    QVERIFY( test_compiler.exists( workDir, "project", Exe, "" ));
+    QVERIFY( test_compiler.makeDistClean( workDir ));
+    QVERIFY( test_compiler.removeProject( workDir, "project" ));
 }
 
 QTEST_MAIN(tst_qmake)

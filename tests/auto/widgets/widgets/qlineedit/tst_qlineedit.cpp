@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -51,13 +51,9 @@
 #include <qpa/qplatformtheme.h>
 #include "qstylehints.h"
 #include <private/qguiapplication_p.h>
-
-#ifndef QT_NO_CLIPBOARD
 #include "qclipboard.h"
-#endif
 
 #ifdef Q_OS_MAC
-#include <Carbon/Carbon.h> // For the random function.
 #include <cstdlib> // For the random function.
 #endif
 
@@ -74,6 +70,7 @@
 
 #include "qplatformdefs.h"
 
+#include "../../../shared/platformclipboard.h"
 #include "../../../shared/platforminputcontext.h"
 #include <private/qinputmethod_p.h>
 
@@ -286,6 +283,9 @@ private slots:
 
     void inputMethodQueryImHints_data();
     void inputMethodQueryImHints();
+
+    void undoRedoAndEchoModes_data();
+    void undoRedoAndEchoModes();
 
 protected slots:
     void editingFinished();
@@ -1428,21 +1428,9 @@ void tst_QLineEdit::undo_keypressevents()
 }
 
 #ifndef QT_NO_CLIPBOARD
-static bool nativeClipboardWorking()
-{
-#ifdef Q_OS_MAC
-    PasteboardRef pasteboard;
-    OSStatus status = PasteboardCreate(0, &pasteboard);
-    if (status == noErr)
-        CFRelease(pasteboard);
-    return status == noErr;
-#endif
-    return true;
-}
-
 void tst_QLineEdit::QTBUG5786_undoPaste()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
 	   QSKIP("this machine doesn't support the clipboard");
     QString initial("initial");
     QString string("test");
@@ -2823,16 +2811,9 @@ void tst_QLineEdit::setSelection()
 #ifndef QT_NO_CLIPBOARD
 void tst_QLineEdit::cut()
 {
-#ifdef Q_OS_MAC
-    {
-        PasteboardRef pasteboard;
-        OSStatus status = PasteboardCreate(0, &pasteboard);
-        if (status == noErr)
-            CFRelease(pasteboard);
-        else
-            QSKIP("Autotests run from cron and pasteboard don't get along quite ATM");
-    }
-#endif
+    if (!PlatformClipboard::isAvailable())
+        QSKIP("Autotests run from cron and pasteboard don't get along quite ATM");
+
     // test newlines in cut'n'paste
     testWidget->setText("A\nB\nC\n");
     testWidget->setSelection(0, 6);
@@ -3632,9 +3613,6 @@ void tst_QLineEdit::taskQTBUG_7902_contextMenuCrash()
 
 void tst_QLineEdit::taskQTBUG_7395_readOnlyShortcut()
 {
-#if defined(UBUNTU_ONEIRIC) && defined(__x86_64__)
-    QSKIP("QTBUG-24518 - Unstable test for Ubuntu 11.10");
-#endif
     //ReadOnly QLineEdit should not intercept shortcut.
     QLineEdit le;
     le.setReadOnly(true);
@@ -3645,6 +3623,7 @@ void tst_QLineEdit::taskQTBUG_7395_readOnlyShortcut()
     le.addAction(&action);
 
     le.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&le));
     QApplication::setActiveWindow(&le);
     QVERIFY(QTest::qWaitForWindowActive(&le));
     le.setFocus();
@@ -3952,6 +3931,69 @@ void tst_QLineEdit::inputMethodQueryImHints()
 
     QVariant value = testWidget->inputMethodQuery(Qt::ImHints);
     QCOMPARE(static_cast<Qt::InputMethodHints>(value.toInt()), hints);
+}
+
+void tst_QLineEdit::undoRedoAndEchoModes_data()
+{
+    QTest::addColumn<int>("echoMode");
+    QTest::addColumn<QStringList>("input");
+    QTest::addColumn<QStringList>("expected");
+
+    QStringList input(QList<QString>() << "aaa" << "bbb" << "ccc");
+
+    QTest::newRow("Normal")
+        << (int) QLineEdit::Normal
+        << input
+        << QStringList(QList<QString>() << "aaa" << "ccc" << "");
+
+    QTest::newRow("NoEcho")
+        << (int) QLineEdit::NoEcho
+        << input
+        << QStringList(QList<QString>() << "" << "" << "");
+
+    QTest::newRow("Password")
+        << (int) QLineEdit::Password
+        << input
+        << QStringList(QList<QString>() << "" << "" << "");
+
+    QTest::newRow("PasswordEchoOnEdit")
+        << (int) QLineEdit::PasswordEchoOnEdit
+        << input
+        << QStringList(QList<QString>() << "" << "" << "");
+}
+
+void tst_QLineEdit::undoRedoAndEchoModes()
+{
+    QFETCH(int, echoMode);
+    QFETCH(QStringList, input);
+    QFETCH(QStringList, expected);
+
+    // create some history for the QLineEdit
+    testWidget->clear();
+    testWidget->setEchoMode(QLineEdit::EchoMode(echoMode));
+    testWidget->insert(input.at(0));
+    testWidget->selectAll();
+    testWidget->backspace();
+    testWidget->insert(input.at(1));
+
+    // test undo
+    QVERIFY(testWidget->isUndoAvailable());
+    testWidget->undo();
+    QCOMPARE(testWidget->text(), expected.at(0));
+    testWidget->insert(input.at(2));
+    testWidget->selectAll();
+    testWidget->backspace();
+    QCOMPARE(testWidget->isUndoAvailable(), echoMode == QLineEdit::Normal);
+    testWidget->undo();
+    QCOMPARE(testWidget->text(), expected.at(1));
+
+    // test redo
+    QCOMPARE(testWidget->isRedoAvailable(), echoMode == QLineEdit::Normal);
+    testWidget->redo();
+    QCOMPARE(testWidget->text(), expected.at(2));
+    QVERIFY(!testWidget->isRedoAvailable());
+    testWidget->redo();
+    QCOMPARE(testWidget->text(), expected.at(2));
 }
 
 QTEST_MAIN(tst_QLineEdit)

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtTest module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -411,7 +411,7 @@ QT_BEGIN_NAMESPACE
    absolute paths to the source files are passed to the compiler. Otherwise, the
    absolute path of the source directory cannot be determined.
 
-   \bold {Note:} For tests that use the \l QTEST_APPLESS_MAIN() macro to generate a
+   \b {Note:} For tests that use the \l QTEST_APPLESS_MAIN() macro to generate a
    \c{main()} function, \c{QFINDTESTDATA} will not attempt to find test data
    relative to QCoreApplication::applicationDirPath().  In practice, this means that
    tests using \c{QTEST_APPLESS_MAIN()} will fail to find their test data
@@ -881,18 +881,6 @@ QT_BEGIN_NAMESPACE
     \sa QTest::qWaitForWindowExposed(), QWindow::isActive()
 */
 
-/*! \fn bool QTest::qWaitForWindowShown(QWindow *window, int timeout)
-    \since 5.0
-    \deprecated
-
-    Waits for \a timeout milliseconds or until the \a window is exposed.
-    Returns true if \c window is exposed within \a timeout milliseconds, otherwise returns false.
-
-    This function does the same as qWaitForWindowExposed().
-
-    \sa QTest::qWaitForWindowActive(), QTest::qWaitForWindowExposed()
-*/
-
 /*! \fn bool QTest::qWaitForWindowExposed(QWidget *widget, int timeout)
     \since 5.0
 
@@ -996,7 +984,7 @@ QT_BEGIN_NAMESPACE
     Adds a move event for touchpoint \a touchId at position \a pt to this sequence and returns
     a reference to this QTouchEventSequence.
 
-    The position \a pt is interpreted as relative to \a window. If \a widnow is the null pointer, then
+    The position \a pt is interpreted as relative to \a window. If \a window is the null pointer, then
     \a pt is interpreted as relative to the window provided when instantiating this QTouchEventSequence.
 
     Simulates that the user moved the finger identified by \a touchId.
@@ -1049,10 +1037,10 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    \fn QTouchEventSequence QTest::touchEvent(QWindow *window, QTouchEvent::DeviceType deviceType, bool autoCommit)
+    \fn QTouchEventSequence QTest::touchEvent(QWindow *window, QTouchDevice *device, bool autoCommit = true)
     \since 5.0
 
-    Creates and returns a QTouchEventSequence for the device \a deviceType to
+    Creates and returns a QTouchEventSequence for the \a device to
     simulate events for \a window.
 
     When adding touch events to the sequence, \a window will also be used to translate
@@ -1066,9 +1054,9 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    \fn QTouchEventSequence QTest::touchEvent(QWidget *widget, QTouchEvent::DeviceType deviceType, bool autoCommit)
+    \fn QTouchEventSequence QTest::touchEvent(QWidget *widget, QTouchDevice *device, bool autoCommit = true)
 
-    Creates and returns a QTouchEventSequence for the device \a deviceType to
+    Creates and returns a QTouchEventSequence for the \a device to
     simulate events for \a widget.
 
     When adding touch events to the sequence, \a widget will also be used to translate
@@ -1084,7 +1072,7 @@ QT_BEGIN_NAMESPACE
 static bool installCoverageTool(const char * appname, const char * testname)
 {
 #ifdef __COVERAGESCANNER__
-    if (!qgetenv("QT_TESTCOCOON_ACTIVE").isEmpty())
+    if (!qEnvironmentVariableIsEmpty("QT_TESTCOCOON_ACTIVE"))
         return false;
     // Set environment variable QT_TESTCOCOON_ACTIVE to prevent an eventual subtest from
     // being considered as a stand-alone test regarding the coverage analysis.
@@ -1162,8 +1150,9 @@ static void invokeMethod(QObject *obj, const char *methodName)
 int defaultEventDelay()
 {
     if (eventDelay == -1) {
-        if (!qgetenv("QTEST_EVENT_DELAY").isEmpty())
-            eventDelay = atoi(qgetenv("QTEST_EVENT_DELAY"));
+        const QByteArray env = qgetenv("QTEST_EVENT_DELAY");
+        if (!env.isEmpty())
+            eventDelay = atoi(env.constData());
         else
             eventDelay = 0;
     }
@@ -1173,8 +1162,9 @@ int defaultEventDelay()
 int Q_TESTLIB_EXPORT defaultMouseDelay()
 {
     if (mouseDelay == -1) {
-        if (!qgetenv("QTEST_MOUSEEVENT_DELAY").isEmpty())
-            mouseDelay = atoi(qgetenv("QTEST_MOUSEEVENT_DELAY"));
+        const QByteArray env = qgetenv("QTEST_MOUSEEVENT_DELAY");
+        if (!env.isEmpty())
+            mouseDelay = atoi(env.constData());
         else
             mouseDelay = defaultEventDelay();
     }
@@ -1184,8 +1174,9 @@ int Q_TESTLIB_EXPORT defaultMouseDelay()
 int Q_TESTLIB_EXPORT defaultKeyDelay()
 {
     if (keyDelay == -1) {
-        if (!qgetenv("QTEST_KEYEVENT_DELAY").isEmpty())
-            keyDelay = atoi(qgetenv("QTEST_KEYEVENT_DELAY").constData());
+        const QByteArray env = qgetenv("QTEST_KEYEVENT_DELAY");
+        if (!env.isEmpty())
+            keyDelay = atoi(env.constData());
         else
             keyDelay = defaultEventDelay();
     }
@@ -2094,7 +2085,7 @@ int QTest::qExec(QObject *testObject, int argc, char **argv)
 #endif
 
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINCE)
-# if !defined(Q_CC_MINGW) || (defined(Q_CC_MINGW) && defined(__MINGW64_VERSION_MAJOR))
+# if !defined(Q_CC_MINGW)
     _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
 # endif
     SetErrorMode(SetErrorMode(0) | SEM_NOGPFAULTERRORBOX);
@@ -2123,7 +2114,8 @@ int QTest::qExec(QObject *testObject, int argc, char **argv)
     QTEST_ASSERT(metaObject);
 
     QTestResult::setCurrentTestObject(metaObject->className());
-    QTestResult::setCurrentAppname(argv[0]);
+    if (argc > 0)
+        QTestResult::setCurrentAppname(argv[0]);
 
     qtest_qParseArgs(argc, argv, false);
 
@@ -2553,22 +2545,20 @@ bool QTest::compare_helper(bool success, const char *failureMsg,
     return QTestResult::compare(success, failureMsg, val1, val2, actual, expected, file, line);
 }
 
-/*! \fn bool QTest::qCompare<float>(float const &t1, float const &t2, const char *actual, const char *expected, const char *file, int line)
+/*! \fn bool QTest::qCompare(float const &t1, float const &t2, const char *actual, const char *expected, const char *file, int line)
 \internal
  */
-template <>
-Q_TESTLIB_EXPORT bool QTest::qCompare<float>(float const &t1, float const &t2, const char *actual, const char *expected,
+bool QTest::qCompare(float const &t1, float const &t2, const char *actual, const char *expected,
                     const char *file, int line)
 {
     return compare_helper(qFuzzyCompare(t1, t2), "Compared floats are not the same (fuzzy compare)",
                           toString(t1), toString(t2), actual, expected, file, line);
 }
 
-/*! \fn bool QTest::qCompare<double>(double const &t1, double const &t2, const char *actual, const char *expected, const char *file, int line)
+/*! \fn bool QTest::qCompare(double const &t1, double const &t2, const char *actual, const char *expected, const char *file, int line)
 \internal
  */
-template <>
-Q_TESTLIB_EXPORT bool QTest::qCompare<double>(double const &t1, double const &t2, const char *actual, const char *expected,
+bool QTest::qCompare(double const &t1, double const &t2, const char *actual, const char *expected,
                     const char *file, int line)
 {
     return compare_helper(qFuzzyCompare(t1, t2), "Compared doubles are not the same (fuzzy compare)",

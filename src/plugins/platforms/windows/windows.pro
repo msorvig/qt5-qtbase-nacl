@@ -18,6 +18,7 @@ win32-g++*: LIBS *= -luuid
 # For the dialog helpers:
 !wince*:LIBS *= -lshlwapi -lshell32
 !wince*:LIBS *= -ladvapi32
+wince*:DEFINES *= QT_LIBINFIX=L"\"\\\"$${QT_LIBINFIX}\\\"\""
 
 DEFINES *= QT_NO_CAST_FROM_ASCII
 
@@ -160,6 +161,12 @@ contains(QT_CONFIG, freetype) {
    contains(QT_CONFIG, system-zlib) {
         DEFINES += FT_CONFIG_OPTION_SYSTEM_ZLIB
    }
+} else:contains(QT_CONFIG, system-freetype) {
+    include($$QT_SOURCE_TREE/src/platformsupport/fontdatabases/basic/basic.pri)
+    HEADERS += \
+               qwindowsfontdatabase_ft.h
+    SOURCES += \
+               qwindowsfontdatabase_ft.cpp
 }
 
 OTHER_FILES += windows.json

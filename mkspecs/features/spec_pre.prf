@@ -38,3 +38,6 @@ equals(QMAKE_HOST.os, Windows) {
     QMAKE_EXT_OBJ       = .o
     QMAKE_SH            = sh
 }
+
+CONFIG = qt warn_on release link_prl
+QT = core gui

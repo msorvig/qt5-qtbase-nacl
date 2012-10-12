@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -207,8 +207,8 @@ public:
     void _q_sourceAboutToBeReset();
     void _q_sourceReset();
 
-    void _q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents);
-    void _q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents);
+    void _q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint);
+    void _q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint);
 
     void _q_sourceRowsAboutToBeInserted(const QModelIndex &source_parent,
                                         int start, int end);
@@ -434,7 +434,7 @@ bool QSortFilterProxyModelPrivate::can_create_mapping(const QModelIndex &source_
 void QSortFilterProxyModelPrivate::sort()
 {
     Q_Q(QSortFilterProxyModel);
-    emit q->layoutAboutToBeChanged();
+    emit q->layoutAboutToBeChanged(QList<QPersistentModelIndex>(), QAbstractItemModel::VerticalSortHint);
     QModelIndexPairList source_indexes = store_persistent_indexes();
     IndexMap::const_iterator it = source_index_mapping.constBegin();
     for (; it != source_index_mapping.constEnd(); ++it) {
@@ -444,7 +444,7 @@ void QSortFilterProxyModelPrivate::sort()
         build_source_to_proxy_mapping(m->source_rows, m->proxy_rows);
     }
     update_persistent_indexes(source_indexes);
-    emit q->layoutChanged();
+    emit q->layoutChanged(QList<QPersistentModelIndex>(), QAbstractItemModel::VerticalSortHint);
 }
 
 /*!
@@ -457,9 +457,9 @@ bool QSortFilterProxyModelPrivate::update_source_sort_column()
 {
     Q_Q(QSortFilterProxyModel);
     QModelIndex proxy_index = q->index(0, proxy_sort_column, QModelIndex());
-    int old_source_sort_colum = source_sort_column;
+    int old_source_sort_column = source_sort_column;
     source_sort_column = q->mapToSource(proxy_index).column();
-    return old_source_sort_colum != source_sort_column;
+    return old_source_sort_column != source_sort_column;
 }
 
 
@@ -1052,20 +1052,30 @@ void QSortFilterProxyModelPrivate::filter_changed(const QModelIndex &source_pare
 
     // We need to iterate over a copy of m->mapped_children because otherwise it may be changed by other code, invalidating
     // the iterator it2.
-    // The m->mapped_children vector can be appended to when this function recurses for child indexes.
-    // The handle_filter_changed implementation can cause source_parent.parent() to be called, which will create
-    // a mapping (and do appending) while we are invalidating the filter.
-    QVector<QModelIndex> mappedChildren = m->mapped_children;
-    QVector<QModelIndex>::iterator it2 = mappedChildren.end();
-    while (it2 != mappedChildren.begin()) {
-        --it2;
-        const QModelIndex source_child_index = *it2;
+    // The m->mapped_children vector can be appended to with indexes which are no longer filtered
+    // out (in create_mapping) when this function recurses for child indexes.
+    const QVector<QModelIndex> mappedChildren = m->mapped_children;
+    QVector<int> indexesToRemove;
+    for (int i = 0; i < mappedChildren.size(); ++i) {
+        const QModelIndex source_child_index = mappedChildren.at(i);
         if (rows_removed.contains(source_child_index.row()) || columns_removed.contains(source_child_index.column())) {
-            it2 = mappedChildren.erase(it2);
+            indexesToRemove.push_back(i);
             remove_from_mapping(source_child_index);
         } else {
             filter_changed(source_child_index);
         }
+    }
+    QVector<int>::const_iterator removeIt = indexesToRemove.constEnd();
+    const QVector<int>::const_iterator removeBegin = indexesToRemove.constBegin();
+
+    // We can't just remove these items from mappedChildren while iterating above and then
+    // do something like m->mapped_children = mappedChildren, because mapped_children might
+    // be appended to in create_mapping, and we would lose those new items.
+    // Because they are always appended in create_mapping, we can still remove them by
+    // position here.
+    while (removeIt != removeBegin) {
+        --removeIt;
+        m->mapped_children.remove(*removeIt);
     }
 }
 
@@ -1163,12 +1173,12 @@ void QSortFilterProxyModelPrivate::_q_sourceDataChanged(const QModelIndex &sourc
         remove_source_items(m->proxy_rows, m->source_rows,
                             source_rows_remove, source_parent, Qt::Vertical);
         QSet<int> source_rows_remove_set = qVectorToSet(source_rows_remove);
-        QVector<QModelIndex>::iterator it = m->mapped_children.end();
-        while (it != m->mapped_children.begin()) {
-            --it;
-            const QModelIndex source_child_index = *it;
+        QVector<QModelIndex>::iterator childIt = m->mapped_children.end();
+        while (childIt != m->mapped_children.begin()) {
+            --childIt;
+            const QModelIndex source_child_index = *childIt;
             if (source_rows_remove_set.contains(source_child_index.row())) {
-                it = m->mapped_children.erase(it);
+                childIt = m->mapped_children.erase(childIt);
                 remove_from_mapping(source_child_index);
             }
         }
@@ -1178,7 +1188,7 @@ void QSortFilterProxyModelPrivate::_q_sourceDataChanged(const QModelIndex &sourc
         // Re-sort the rows of this level
         QList<QPersistentModelIndex> parents;
         parents << q->mapFromSource(source_parent);
-        emit q->layoutAboutToBeChanged(parents);
+        emit q->layoutAboutToBeChanged(parents, QAbstractItemModel::VerticalSortHint);
         QModelIndexPairList source_indexes = store_persistent_indexes();
         remove_source_items(m->proxy_rows, m->source_rows, source_rows_resort,
                             source_parent, Qt::Vertical, false);
@@ -1186,7 +1196,7 @@ void QSortFilterProxyModelPrivate::_q_sourceDataChanged(const QModelIndex &sourc
         insert_source_items(m->proxy_rows, m->source_rows, source_rows_resort,
                             source_parent, Qt::Vertical, false);
         update_persistent_indexes(source_indexes);
-        emit q->layoutChanged(parents);
+        emit q->layoutChanged(parents, QAbstractItemModel::VerticalSortHint);
 	// Make sure we also emit dataChanged for the rows
 	source_rows_change += source_rows_resort;
     }
@@ -1226,15 +1236,43 @@ void QSortFilterProxyModelPrivate::_q_sourceDataChanged(const QModelIndex &sourc
 void QSortFilterProxyModelPrivate::_q_sourceHeaderDataChanged(Qt::Orientation orientation,
                                                            int start, int end)
 {
+    Q_ASSERT(start <= end);
+
     Q_Q(QSortFilterProxyModel);
     Mapping *m = create_mapping(QModelIndex()).value();
-    int proxy_start = (orientation == Qt::Vertical
-                       ? m->proxy_rows.at(start)
-                       : m->proxy_columns.at(start));
-    int proxy_end = (orientation == Qt::Vertical
-                     ? m->proxy_rows.at(end)
-                     : m->proxy_columns.at(end));
-    emit q->headerDataChanged(orientation, proxy_start, proxy_end);
+
+    const QVector<int> &source_to_proxy = (orientation == Qt::Vertical) ? m->proxy_rows : m->proxy_columns;
+
+    QVector<int> proxy_positions;
+    proxy_positions.reserve(end - start + 1);
+    {
+        Q_ASSERT(source_to_proxy.size() > end);
+        QVector<int>::const_iterator it = source_to_proxy.constBegin() + start;
+        const QVector<int>::const_iterator endIt = source_to_proxy.constBegin() + end + 1;
+        for ( ; it != endIt; ++it) {
+            if (*it != -1)
+                proxy_positions.push_back(*it);
+        }
+    }
+
+    qSort(proxy_positions);
+
+    int last_index = 0;
+    const int numItems = proxy_positions.size();
+    while (last_index < numItems) {
+        const int proxyStart = proxy_positions.at(last_index);
+        int proxyEnd = proxyStart;
+        ++last_index;
+        for (int i = last_index; i < numItems; ++i) {
+            if (proxy_positions.at(i) == proxyEnd + 1) {
+                ++last_index;
+                ++proxyEnd;
+            } else {
+                break;
+            }
+        }
+        emit q->headerDataChanged(orientation, proxyStart, proxyEnd);
+    }
 }
 
 void QSortFilterProxyModelPrivate::_q_sourceAboutToBeReset()
@@ -1255,7 +1293,7 @@ void QSortFilterProxyModelPrivate::_q_sourceReset()
         sort();
 }
 
-void QSortFilterProxyModelPrivate::_q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents)
+void QSortFilterProxyModelPrivate::_q_sourceLayoutAboutToBeChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint)
 {
     Q_Q(QSortFilterProxyModel);
     saved_persistent_indexes.clear();
@@ -1263,7 +1301,7 @@ void QSortFilterProxyModelPrivate::_q_sourceLayoutAboutToBeChanged(const QList<Q
     QList<QPersistentModelIndex> parents;
     foreach (const QPersistentModelIndex &parent, sourceParents) {
         if (!parent.isValid()) {
-            parents << QModelIndex();
+            parents << QPersistentModelIndex();
             continue;
         }
         const QModelIndex mappedParent = q->mapFromSource(parent);
@@ -1276,14 +1314,14 @@ void QSortFilterProxyModelPrivate::_q_sourceLayoutAboutToBeChanged(const QList<Q
     if (!sourceParents.isEmpty() && parents.isEmpty())
         return;
 
-    emit q->layoutAboutToBeChanged(parents);
+    emit q->layoutAboutToBeChanged(parents, hint);
     if (persistent.indexes.isEmpty())
         return;
 
     saved_persistent_indexes = store_persistent_indexes();
 }
 
-void QSortFilterProxyModelPrivate::_q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents)
+void QSortFilterProxyModelPrivate::_q_sourceLayoutChanged(const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint)
 {
     Q_Q(QSortFilterProxyModel);
 
@@ -1304,7 +1342,7 @@ void QSortFilterProxyModelPrivate::_q_sourceLayoutChanged(const QList<QPersisten
     QList<QPersistentModelIndex> parents;
     foreach (const QPersistentModelIndex &parent, sourceParents) {
         if (!parent.isValid()) {
-            parents << QModelIndex();
+            parents << QPersistentModelIndex();
             continue;
         }
         const QModelIndex mappedParent = q->mapFromSource(parent);
@@ -1315,7 +1353,7 @@ void QSortFilterProxyModelPrivate::_q_sourceLayoutChanged(const QList<QPersisten
     if (!sourceParents.isEmpty() && parents.isEmpty())
         return;
 
-    emit q->layoutChanged(parents);
+    emit q->layoutChanged(parents, hint);
 }
 
 void QSortFilterProxyModelPrivate::_q_sourceRowsAboutToBeInserted(
@@ -1500,11 +1538,11 @@ void QSortFilterProxyModelPrivate::_q_sourceColumnsMoved(
 /*!
     \since 4.1
     \class QSortFilterProxyModel
+    \inmodule QtCore
     \brief The QSortFilterProxyModel class provides support for sorting and
     filtering data passed between another model and a view.
 
     \ingroup model-view
-    \inmodule QtCore
 
     QSortFilterProxyModel can be used for sorting items, filtering out items,
     or both. The model transforms the structure of a source model by mapping
@@ -1730,11 +1768,11 @@ void QSortFilterProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     disconnect(d->model, SIGNAL(columnsMoved(QModelIndex,int,int,QModelIndex,int)),
                this, SLOT(_q_sourceColumnsMoved(QModelIndex,int,int,QModelIndex,int)));
 
-    disconnect(d->model, SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>)),
-               this, SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>)));
+    disconnect(d->model, SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+               this, SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
 
-    disconnect(d->model, SIGNAL(layoutChanged(QList<QPersistentModelIndex>)),
-               this, SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>)));
+    disconnect(d->model, SIGNAL(layoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+               this, SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
 
     disconnect(d->model, SIGNAL(modelAboutToBeReset()), this, SLOT(_q_sourceAboutToBeReset()));
     disconnect(d->model, SIGNAL(modelReset()), this, SLOT(_q_sourceReset()));
@@ -1783,11 +1821,11 @@ void QSortFilterProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     connect(d->model, SIGNAL(columnsMoved(QModelIndex,int,int,QModelIndex,int)),
             this, SLOT(_q_sourceColumnsMoved(QModelIndex,int,int,QModelIndex,int)));
 
-    connect(d->model, SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>)),
-            this, SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>)));
+    connect(d->model, SIGNAL(layoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+            this, SLOT(_q_sourceLayoutAboutToBeChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
 
-    connect(d->model, SIGNAL(layoutChanged(QList<QPersistentModelIndex>)),
-            this, SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>)));
+    connect(d->model, SIGNAL(layoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)),
+            this, SLOT(_q_sourceLayoutChanged(QList<QPersistentModelIndex>,QAbstractItemModel::LayoutChangeHint)));
 
     connect(d->model, SIGNAL(modelAboutToBeReset()), this, SLOT(_q_sourceAboutToBeReset()));
     connect(d->model, SIGNAL(modelReset()), this, SLOT(_q_sourceReset()));

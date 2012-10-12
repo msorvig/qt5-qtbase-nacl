@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -48,7 +48,7 @@ static const short keyword_trans[][128] = {
      546,252,544,547,0,38,239,545,25,26,236,234,30,235,27,237,
      22,22,22,22,22,22,22,22,22,22,34,41,23,39,24,43,
      0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
-     8,21,8,8,8,8,8,8,8,8,8,31,548,32,238,8,
+     8,21,8,8,8,8,8,8,8,8,8,31,549,32,238,8,
      0,1,2,3,4,5,6,7,8,9,8,8,10,11,12,13,
      14,8,15,16,17,18,19,20,8,8,8,36,245,37,248,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -190,7 +190,7 @@ static const short keyword_trans[][128] = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,42,0,0,0,28,0,
-     551,551,551,551,551,551,551,551,551,551,0,0,0,0,0,0,
+     552,552,552,552,552,552,552,552,552,552,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -349,7 +349,7 @@ static const short keyword_trans[][128] = {
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-     0,0,0,0,0,0,0,0,0,0,550,0,0,0,0,549,
+     0,0,0,0,0,0,0,0,0,0,551,0,0,0,0,550,
      0,0,0,0,0,0,0,0,0,0,0,0,0,258,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -1000,7 +1000,8 @@ static const struct
     {QUOTE, 0, 0, 0, NOTOKEN},
     {SINGLEQUOTE, 0, 0, 0, NOTOKEN},
     {WHITESPACE, 0, 0, 0, NOTOKEN},
-    {HASH, 0, 0, 0, HASH},
+    {HASH, 0, 35, 548, HASH},
+    {PP_HASHHASH, 0, 0, 0, NOTOKEN},
     {BACKSLASH, 0, 0, 0, NOTOKEN},
     {CPP_COMMENT, 0, 0, 0, NOTOKEN},
     {C_COMMENT, 0, 0, 0, NOTOKEN},

@@ -1,38 +1,40 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Copyright (C) 2012 Intel Corporation
+** Copyright (C) 2012 Olivier Goffart <ogoffart@woboq.com>
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -55,8 +57,35 @@
 
 QT_BEGIN_NAMESPACE
 
+static inline bool isRecursive(QMutexData *d)
+{
+    register quintptr u = quintptr(d);
+    if (Q_LIKELY(u <= 0x3))
+        return false;
+#ifdef QT_LINUX_FUTEX
+    Q_ASSERT(d->recursive);
+    return true;
+#else
+    return d->recursive;
+#endif
+}
+
+class QRecursiveMutexPrivate : public QMutexData
+{
+public:
+    QRecursiveMutexPrivate()
+        : QMutexData(QMutex::Recursive), owner(0), count(0) {}
+    Qt::HANDLE owner;
+    uint count;
+    QMutex mutex;
+
+    bool lock(int timeout) QT_MUTEX_LOCK_NOEXCEPT;
+    void unlock() Q_DECL_NOTHROW;
+};
+
 /*
     \class QBasicMutex
+    \inmodule QtCore
     \brief QMutex POD
     \internal
 
@@ -67,9 +96,9 @@ QT_BEGIN_NAMESPACE
     - Do not use tryLock with timeout > 0, else you can have a leak (see the ~QMutex destructor)
 */
 
-
 /*!
     \class QMutex
+    \inmodule QtCore
     \brief The QMutex class provides access serialization between threads.
 
     \threadsafe
@@ -151,7 +180,7 @@ QMutex::QMutex(RecursionMode mode)
 QMutex::~QMutex()
 {
     QMutexData *d = d_ptr.load();
-    if (quintptr(d) > 0x3 && d->recursive) {
+    if (isRecursive()) {
         delete static_cast<QRecursiveMutexPrivate *>(d);
     } else if (d) {
 #ifndef QT_LINUX_FUTEX
@@ -177,9 +206,15 @@ QMutex::~QMutex()
 
     \sa unlock()
 */
-void QMutex::lock()
+void QMutex::lock() QT_MUTEX_LOCK_NOEXCEPT
 {
-    QBasicMutex::lock();
+    if (fastTryLock())
+        return;
+    QMutexData *current = d_ptr.loadAcquire();
+    if (QT_PREPEND_NAMESPACE(isRecursive)(current))
+        static_cast<QRecursiveMutexPrivate *>(current)->lock(-1);
+    else
+        lockInternal();
 }
 
 /*! \fn bool QMutex::tryLock(int timeout)
@@ -205,9 +240,15 @@ void QMutex::lock()
 
     \sa lock(), unlock()
 */
-bool QMutex::tryLock(int timeout)
+bool QMutex::tryLock(int timeout) QT_MUTEX_LOCK_NOEXCEPT
 {
-    return QBasicMutex::tryLock(timeout);
+    if (fastTryLock())
+        return true;
+    QMutexData *current = d_ptr.loadAcquire();
+    if (QT_PREPEND_NAMESPACE(isRecursive)(current))
+        return static_cast<QRecursiveMutexPrivate *>(current)->lock(timeout);
+    else
+        return lockInternal(timeout);
 }
 
 /*! \fn void QMutex::unlock()
@@ -217,9 +258,15 @@ bool QMutex::tryLock(int timeout)
 
     \sa lock()
 */
-void QMutex::unlock()
+void QMutex::unlock() Q_DECL_NOTHROW
 {
-    QBasicMutex::unlock();
+    if (fastTryUnlock())
+        return;
+    QMutexData *current = d_ptr.loadAcquire();
+    if (QT_PREPEND_NAMESPACE(isRecursive)(current))
+        static_cast<QRecursiveMutexPrivate *>(current)->unlock();
+    else
+        unlockInternal();
 }
 
 /*!
@@ -229,16 +276,15 @@ void QMutex::unlock()
     Returns true if the mutex is recursive
 
 */
-bool QBasicMutex::isRecursive() {
-    QMutexData *d = d_ptr.load();
-    if (quintptr(d) <= 0x3)
-        return false;
-    return d->recursive;
+bool QBasicMutex::isRecursive()
+{
+    return QT_PREPEND_NAMESPACE(isRecursive)(d_ptr.loadAcquire());
 }
 
 
 /*!
     \class QMutexLocker
+    \inmodule QtCore
     \brief The QMutexLocker class is a convenience class that simplifies
     locking and unlocking mutexes.
 
@@ -326,11 +372,42 @@ bool QBasicMutex::isRecursive() {
 */
 
 #ifndef QT_LINUX_FUTEX //linux implementation is in qmutex_linux.cpp
+
+/*
+  For a rough introduction on how this works, refer to
+  http://woboq.com/blog/internals-of-qmutex-in-qt5.html
+  which explains a slightly simplified version of it.
+  The differences are that here we try to work with timeout (requires the
+  possiblyUnlocked flag) and that we only wake one thread when unlocking
+  (requires maintaining the waiters count)
+  We also support recursive mutexes which always have a valid d_ptr.
+
+  The waiters flag represents the number of threads that are waiting or about
+  to wait on the mutex. There are two tricks to keep in mind:
+  We don't want to increment waiters after we checked no threads are waiting
+  (waiters == 0). That's why we atomically set the BigNumber flag on waiters when
+  we check waiters. Similarily, if waiters is decremented right after we checked,
+  the mutex would be unlocked (d->wakeUp() has (or will) be called), but there is
+  no thread waiting. This is only happening if there was a timeout in tryLock at the
+  same time as the mutex is unlocked. So when there was a timeout, we set the
+  possiblyUnlocked flag.
+*/
+
 /*!
     \internal helper for lock()
  */
-bool QBasicMutex::lockInternal(int timeout)
+void QBasicMutex::lockInternal() QT_MUTEX_LOCK_NOEXCEPT
 {
+    lockInternal(-1);
+}
+
+/*!
+    \internal helper for lock(int)
+ */
+bool QBasicMutex::lockInternal(int timeout) QT_MUTEX_LOCK_NOEXCEPT
+{
+    Q_ASSERT(!isRecursive());
+
     while (!fastTryLock()) {
         QMutexData *copy = d_ptr.loadAcquire();
         if (!copy) // if d is 0, the mutex is unlocked
@@ -339,6 +416,8 @@ bool QBasicMutex::lockInternal(int timeout)
         if (copy == dummyLocked()) {
             if (timeout == 0)
                 return false;
+            // The mutex is locked but does not have a QMutexPrivate yet.
+            // we need to allocate a QMutexPrivate
             QMutexPrivate *newD = QMutexPrivate::allocate();
             if (!d_ptr.testAndSetOrdered(dummyLocked(), newD)) {
                 //Either the mutex is already unlocked, or another thread already set it.
@@ -347,23 +426,31 @@ bool QBasicMutex::lockInternal(int timeout)
             }
             copy = newD;
             //the d->refCount is already 1 the deref will occurs when we unlock
-        } else if (copy->recursive) {
-             return static_cast<QRecursiveMutexPrivate *>(copy)->lock(timeout);
         }
 
         QMutexPrivate *d = static_cast<QMutexPrivate *>(copy);
         if (timeout == 0 && !d->possiblyUnlocked.load())
             return false;
 
+        // At this point we have a pointer to a QMutexPrivate. But the other thread
+        // may unlock the mutex at any moment and release the QMutexPrivate to the pool.
+        // We will try to reference it to avoid unlock to release it to the pool to make
+        // sure it won't be released. But if the refcount is already 0 it has been released.
         if (!d->ref())
             continue; //that QMutexData was already released
 
+        // We now hold a reference to the QMutexPrivate. It won't be released and re-used.
+        // But it is still possible that it was already re-used by another QMutex right before
+        // we did the ref(). So check if we still hold a pointer to the right mutex.
         if (d != d_ptr.loadAcquire()) {
             //Either the mutex is already unlocked, or relocked with another mutex
             d->deref();
             continue;
         }
 
+        // In this part, we will try to increment the waiters count.
+        // We just need to take care of the case in which the old_waiters
+        // is set to the BigNumber magic value set in unlockInternal()
         int old_waiters;
         do {
             old_waiters = d->waiters.load();
@@ -387,7 +474,7 @@ bool QBasicMutex::lockInternal(int timeout)
         } while (!d->waiters.testAndSetRelaxed(old_waiters, old_waiters + 1));
 
         if (d != d_ptr.loadAcquire()) {
-            // Mutex was unlocked.
+            // The mutex was unlocked before we incremented waiters.
             if (old_waiters != QMutexPrivate::BigNumber) {
                 //we did not break the previous loop
                 Q_ASSERT(d->waiters.load() >= 1);
@@ -398,6 +485,7 @@ bool QBasicMutex::lockInternal(int timeout)
         }
 
         if (d->wait(timeout)) {
+            // reset the possiblyUnlocked flag if needed (and deref its corresponding reference)
             if (d->possiblyUnlocked.load() && d->possiblyUnlocked.testAndSetRelaxed(true, false))
                 d->deref();
             d->derefWaiters(1);
@@ -410,8 +498,12 @@ bool QBasicMutex::lockInternal(int timeout)
             d->derefWaiters(1);
             //There may be a race in which the mutex is unlocked right after we timed out,
             // and before we deref the waiters, so maybe the mutex is actually unlocked.
-            if (!d->possiblyUnlocked.testAndSetRelaxed(false, true))
+            // Set the possiblyUnlocked flag to indicate this possibility.
+            if (!d->possiblyUnlocked.testAndSetRelaxed(false, true)) {
+                // We keep a reference when possiblyUnlocked is true.
+                // but if possiblyUnlocked was already true, we don't need to keep the reference.
                 d->deref();
+            }
             return false;
         }
     }
@@ -422,22 +514,24 @@ bool QBasicMutex::lockInternal(int timeout)
 /*!
     \internal
 */
-void QBasicMutex::unlockInternal()
+void QBasicMutex::unlockInternal() Q_DECL_NOTHROW
 {
     QMutexData *copy = d_ptr.loadAcquire();
     Q_ASSERT(copy); //we must be locked
     Q_ASSERT(copy != dummyLocked()); // testAndSetRelease(dummyLocked(), 0) failed
-
-    if (copy->recursive) {
-        static_cast<QRecursiveMutexPrivate *>(copy)->unlock();
-        return;
-    }
+    Q_ASSERT(!isRecursive());
 
     QMutexPrivate *d = reinterpret_cast<QMutexPrivate *>(copy);
 
+    // If no one is waiting for the lock anymore, we shoud reset d to 0x0.
+    // Using fetchAndAdd, we atomically check that waiters was equal to 0, and add a flag
+    // to the waiters variable (BigNumber). That way, we avoid the race in which waiters is
+    // incremented right after we checked, because we won't increment waiters if is
+    // equal to -BigNumber
     if (d->waiters.fetchAndAddRelease(-QMutexPrivate::BigNumber) == 0) {
         //there is no one waiting on this mutex anymore, set the mutex as unlocked (d = 0)
         if (d_ptr.testAndSetRelease(d, 0)) {
+            // reset the possiblyUnlocked flag if needed (and deref its corresponding reference)
             if (d->possiblyUnlocked.load() && d->possiblyUnlocked.testAndSetRelaxed(true, false))
                 d->deref();
         }
@@ -490,7 +584,7 @@ void QMutexPrivate::release()
 }
 
 // atomically subtract "value" to the waiters, and remove the QMutexPrivate::BigNumber flag
-void QMutexPrivate::derefWaiters(int value)
+void QMutexPrivate::derefWaiters(int value) Q_DECL_NOTHROW
 {
     int old_waiters;
     int new_waiters;
@@ -508,7 +602,8 @@ void QMutexPrivate::derefWaiters(int value)
 /*!
    \internal
  */
-bool QRecursiveMutexPrivate::lock(int timeout) {
+inline bool QRecursiveMutexPrivate::lock(int timeout) QT_MUTEX_LOCK_NOEXCEPT
+{
     Qt::HANDLE self = QThread::currentThreadId();
     if (owner == self) {
         ++count;
@@ -517,7 +612,7 @@ bool QRecursiveMutexPrivate::lock(int timeout) {
     }
     bool success = true;
     if (timeout == -1) {
-        mutex.lock();
+        mutex.QBasicMutex::lock();
     } else {
         success = mutex.tryLock(timeout);
     }
@@ -530,17 +625,26 @@ bool QRecursiveMutexPrivate::lock(int timeout) {
 /*!
    \internal
  */
-void QRecursiveMutexPrivate::unlock()
+inline void QRecursiveMutexPrivate::unlock() Q_DECL_NOTHROW
 {
     if (count > 0) {
         count--;
     } else {
         owner = 0;
-        mutex.unlock();
+        mutex.QBasicMutex::unlock();
     }
 }
 
-
 QT_END_NAMESPACE
+
+#ifdef QT_LINUX_FUTEX
+#  include "qmutex_linux.cpp"
+#elif defined(Q_OS_MAC)
+#  include "qmutex_mac.cpp"
+#elif defined(Q_OS_WIN)
+#  include "qmutex_win.cpp"
+#else
+#  include "qmutex_unix.cpp"
+#endif
 
 #endif // QT_NO_THREAD

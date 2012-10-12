@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -47,31 +47,46 @@
 #define TREE_H
 
 #include "node.h"
-#include <QDomElement>
-#include <QXmlStreamWriter>
 
 QT_BEGIN_NAMESPACE
 
-class Generator;
 class QStringList;
-class TreePrivate;
+class QDocDatabase;
 
 class Tree
 {
-public:
-    enum FindFlag { SearchBaseClasses = 0x1,
-                    SearchEnumValues = 0x2,
-                    NonFunction = 0x4 };
+ private:
+    friend class QDocDatabase;
 
-    Tree();
+    typedef QMap<PropertyNode::FunctionRole, QString> RoleMap;
+    typedef QMap<PropertyNode*, RoleMap> PropertyMap;
+
+    struct InheritanceBound
+    {
+        Node::Access access;
+        QStringList basePath;
+        QString dataTypeWithTemplateArgs;
+        InnerNode* parent;
+
+      InheritanceBound() : access(Node::Public) { }
+      InheritanceBound(Node::Access access0,
+                       const QStringList& basePath0,
+                       const QString& dataTypeWithTemplateArgs0,
+                       InnerNode* parent)
+          : access(access0), basePath(basePath0),
+            dataTypeWithTemplateArgs(dataTypeWithTemplateArgs0),
+            parent(parent) { }
+    };
+
+    Tree(QDocDatabase* qdb);
     ~Tree();
 
     EnumNode* findEnumNode(const QStringList& path, Node* start = 0);
     ClassNode* findClassNode(const QStringList& path, Node* start = 0);
-    QmlClassNode* findQmlClassNode(const QStringList& path, Node* start = 0);
-    NamespaceNode* findNamespaceNode(const QStringList& path, Node* start = 0);
-    FakeNode* findGroupNode(const QStringList& path, Node* start = 0);
-    FakeNode* findQmlModuleNode(const QStringList& path, Node* start = 0);
+    QmlClassNode* findQmlTypeNode(const QStringList& path);
+    NamespaceNode* findNamespaceNode(const QStringList& path);
+    DocNode* findGroupNode(const QStringList& path, Node* start = 0);
+    DocNode* findQmlModuleNode(const QStringList& path, Node* start = 0);
 
     Node* findNodeByNameAndType(const QStringList& path,
                                 Node::Type type,
@@ -91,15 +106,12 @@ public:
                          int findFlags = 0,
                          const Node* self=0) const;
 
- private:
     const Node* findNode(const QStringList& path,
                          const Node* start,
                          int findFlags,
                          const Node* self,
                          bool qml) const;
 
- public:
-    QmlClassNode* findQmlClassNode(const QString& module, const QString& name);
     NameCollisionNode* checkForCollision(const QString& name) const;
     NameCollisionNode* findCollisionNode(const QString& name) const;
     FunctionNode *findFunctionNode(const QStringList &path,
@@ -113,24 +125,21 @@ public:
                       Node::Access access,
                       const QStringList &basePath,
                       const QString &dataTypeWithTemplateArgs,
-                      InnerNode *parent = 0);
+                      InnerNode *parent);
     void addPropertyFunction(PropertyNode *property,
                              const QString &funcName,
                              PropertyNode::FunctionRole funcRole);
     void addToGroup(Node *node, const QString &group);
     void addToPublicGroup(Node *node, const QString &group);
     void addToQmlModule(Node* node);
-    NodeMultiMap groups() const;
+    const NodeMultiMap& groups() const;
     QMultiMap<QString,QString> publicGroups() const;
     void resolveInheritance(NamespaceNode *rootNode = 0);
     void resolveProperties();
     void resolveGroups();
-    void resolveTargets(InnerNode* root);
     void resolveCppToQmlLinks();
     void fixInheritance(NamespaceNode *rootNode = 0);
-    void setVersion(const QString &version) { vers = version; }
-    NamespaceNode *root() { return &roo; }
-    QString version() const { return vers; }
+    NamespaceNode *root() { return &root_; }
 
     const FunctionNode *findFunctionNode(const QStringList &path,
                                          const Node *relative = 0,
@@ -139,43 +148,21 @@ public:
                                          const FunctionNode *clone,
                                          const Node *relative = 0,
                                          int findFlags = 0) const;
-    const FakeNode *findFakeNodeByTitle(const QString &title, const Node* relative = 0) const;
-    const Node *findUnambiguousTarget(const QString &target, Atom *&atom, const Node* relative) const;
-    Atom *findTarget(const QString &target, const Node *node) const;
-    const NamespaceNode *root() const { return &roo; }
-    void readIndexes(const QStringList &indexFiles);
-    bool generateIndexSection(QXmlStreamWriter& writer, Node* node, bool generateInternalNodes = false);
-    void generateIndexSections(QXmlStreamWriter& writer, Node* node, bool generateInternalNodes = false);
-    void generateIndex(const QString &fileName,
-                       const QString &url,
-                       const QString &title,
-                       Generator* g,
-                       bool generateInternalNodes = false);
-    void generateTagFileCompounds(QXmlStreamWriter &writer,
-                                  const InnerNode *inner);
-    void generateTagFileMembers(QXmlStreamWriter &writer,
-                                const InnerNode *inner);
-    void generateTagFile(const QString &fileName);
-    void addExternalLink(const QString &url, const Node *relative);
-    void resolveQmlInheritance();
+    const NamespaceNode *root() const { return &root_; }
 
-private:
     void resolveInheritance(int pass, ClassNode *classe);
     FunctionNode *findVirtualFunctionInBaseClasses(ClassNode *classe,
                                                    FunctionNode *clone);
     void fixPropertyUsingBaseClasses(ClassNode *classe, PropertyNode *property);
     NodeList allBaseClasses(const ClassNode *classe) const;
-    void readIndexFile(const QString &path);
-    void readIndexSection(const QDomElement &element, InnerNode *parent,
-                          const QString &indexUrl);
-    QString readIndexText(const QDomElement &element);
-    void resolveIndex();
 
 private:
-    NamespaceNode roo;
-    QString vers;
-    Generator* gen_;
-    TreePrivate *priv;
+    QDocDatabase* qdb_;
+    NamespaceNode root_;
+    QMap<ClassNode* , QList<InheritanceBound> > unresolvedInheritanceMap;
+    PropertyMap unresolvedPropertyMap;
+    NodeMultiMap groupMap;
+    QMultiMap<QString, QString> publicGroupMap;
 };
 
 QT_END_NAMESPACE

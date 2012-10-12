@@ -1,38 +1,38 @@
 /***************************************************************************
 **
 ** Copyright (C) 2011 - 2012 Research In Motion
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -62,6 +62,7 @@
 #endif
 
 #if defined(QQNX_PPS)
+#  include "qqnxbuttoneventnotifier.h"
 #  include "qqnxnavigatoreventnotifier.h"
 #  include "qqnxclipboard.h"
 
@@ -112,6 +113,7 @@ QQnxIntegration::QQnxIntegration()
 #if defined(QQNX_PPS)
     , m_navigatorEventNotifier(0)
     , m_inputContext(0)
+    , m_buttonsNotifier(new QQnxButtonEventNotifier())
 #endif
     , m_services(0)
     , m_fontDatabase(new QGenericUnixFontDatabase())
@@ -122,7 +124,7 @@ QQnxIntegration::QQnxIntegration()
     , m_eventDispatcher(createUnixEventDispatcher())
 #endif
     , m_nativeInterface(new QQnxNativeInterface())
-    , m_screenEventHandler(new QQnxScreenEventHandler())
+    , m_screenEventHandler(new QQnxScreenEventHandler(this))
 #if !defined(QT_NO_CLIPBOARD)
     , m_clipboard(0)
 #endif
@@ -135,7 +137,7 @@ QQnxIntegration::QQnxIntegration()
         qFatal("QQnx: failed to connect to composition manager, errno=%d", errno);
     }
 
-    // Not on BlackBerry, it has specialised event dispatcher which also handles navigator events
+    // Not on BlackBerry, it has specialized event dispatcher which also handles navigator events
 #if !defined(Q_OS_BLACKBERRY) && defined(QQNX_PPS)
     // Create/start navigator event notifier
     m_navigatorEventNotifier = new QQnxNavigatorEventNotifier(m_navigatorEventHandler);
@@ -156,7 +158,7 @@ QQnxIntegration::QQnxIntegration()
     m_screenEventThread->start();
 #endif
 
-    // Not on BlackBerry, it has specialised event dispatcher which also handles virtual keyboard events
+    // Not on BlackBerry, it has specialized event dispatcher which also handles virtual keyboard events
 #if !defined(Q_OS_BLACKBERRY) && defined(QQNX_PPS)
     // Create/start the keyboard class.
     m_virtualKeyboard = new QQnxVirtualKeyboardPps();
@@ -210,6 +212,11 @@ QQnxIntegration::QQnxIntegration()
 #endif
     }
 
+#if defined(QQNX_PPS)
+    // delay invocation of start() to the time the event loop is up and running
+    // needed to have the QThread internals of the main thread properly initialized
+    QMetaObject::invokeMethod(m_buttonsNotifier, "start", Qt::QueuedConnection);
+#endif
 }
 
 QQnxIntegration::~QQnxIntegration()
@@ -218,6 +225,9 @@ QQnxIntegration::~QQnxIntegration()
     delete m_nativeInterface;
 
 #if defined(QQNX_PPS)
+    // Destroy the hardware button notifier
+    delete m_buttonsNotifier;
+
     // Destroy input context
     delete m_inputContext;
 #endif
@@ -427,20 +437,45 @@ void QQnxIntegration::createDisplays()
     }
 
     for (int i=0; i<displayCount; i++) {
+        int isAttached = 0;
+        result = screen_get_display_property_iv(displays[i], SCREEN_PROPERTY_ATTACHED, &isAttached);
+        if (result != 0) {
+            qWarning("QQnxIntegration: failed to query display attachment, errno=%d", errno);
+            isAttached = 1; // assume attached
+        }
+
+        if (!isAttached) {
+            qIntegrationDebug() << Q_FUNC_INFO << "Skipping non-attached display" << i;
+            continue;
+        }
+
         qIntegrationDebug() << Q_FUNC_INFO << "Creating screen for display" << i;
-        QQnxScreen *screen = new QQnxScreen(m_screenContext, displays[i], i==0);
-        m_screens.append(screen);
-        screenAdded(screen);
+        createDisplay(displays[i], i==0);
+    } // of displays iteration
+}
 
-        QObject::connect(m_screenEventHandler, SIGNAL(newWindowCreated(void*)),
-                         screen, SLOT(newWindowCreated(void*)));
-        QObject::connect(m_screenEventHandler, SIGNAL(windowClosed(void*)),
-                         screen, SLOT(windowClosed(void*)));
+void QQnxIntegration::createDisplay(screen_display_t display, bool isPrimary)
+{
+    QQnxScreen *screen = new QQnxScreen(m_screenContext, display, isPrimary);
+    m_screens.append(screen);
+    screenAdded(screen);
 
-        QObject::connect(m_navigatorEventHandler, SIGNAL(rotationChanged(int)), screen, SLOT(setRotation(int)));
-        QObject::connect(m_navigatorEventHandler, SIGNAL(windowGroupActivated(QByteArray)), screen, SLOT(activateWindowGroup(QByteArray)));
-        QObject::connect(m_navigatorEventHandler, SIGNAL(windowGroupDeactivated(QByteArray)), screen, SLOT(deactivateWindowGroup(QByteArray)));
-    }
+    QObject::connect(m_screenEventHandler, SIGNAL(newWindowCreated(void*)),
+                     screen, SLOT(newWindowCreated(void*)));
+    QObject::connect(m_screenEventHandler, SIGNAL(windowClosed(void*)),
+                     screen, SLOT(windowClosed(void*)));
+
+    QObject::connect(m_navigatorEventHandler, SIGNAL(rotationChanged(int)), screen, SLOT(setRotation(int)));
+    QObject::connect(m_navigatorEventHandler, SIGNAL(windowGroupActivated(QByteArray)), screen, SLOT(activateWindowGroup(QByteArray)));
+    QObject::connect(m_navigatorEventHandler, SIGNAL(windowGroupDeactivated(QByteArray)), screen, SLOT(deactivateWindowGroup(QByteArray)));
+}
+
+void QQnxIntegration::removeDisplay(QQnxScreen *screen)
+{
+    Q_CHECK_PTR(screen);
+    Q_ASSERT(m_screens.contains(screen));
+    m_screens.removeAll(screen);
+    screen->deleteLater();
 }
 
 void QQnxIntegration::destroyDisplays()
@@ -448,6 +483,16 @@ void QQnxIntegration::destroyDisplays()
     qIntegrationDebug() << Q_FUNC_INFO;
     qDeleteAll(m_screens);
     m_screens.clear();
+}
+
+QQnxScreen *QQnxIntegration::screenForNative(screen_display_t qnxScreen) const
+{
+    Q_FOREACH (QQnxScreen *screen, m_screens) {
+        if (screen->nativeDisplay() == qnxScreen)
+            return screen;
+    }
+
+    return 0;
 }
 
 QQnxScreen *QQnxIntegration::primaryDisplay() const

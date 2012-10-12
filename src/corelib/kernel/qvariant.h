@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -210,7 +210,7 @@ class Q_CORE_EXPORT QVariant
     QVariant(qulonglong ull);
     QVariant(bool b);
     QVariant(double d);
-    QVariant(float f) { d.is_null = false; d.type = QMetaType::Float; d.data.f = f; }
+    QVariant(float f);
 #ifndef QT_NO_CAST_FROM_ASCII
     QT_ASCII_CAST_WARN QVariant(const char *str);
 #endif
@@ -364,7 +364,14 @@ class Q_CORE_EXPORT QVariant
     };
     struct Private
     {
-        inline Private(): type(Invalid), is_shared(false), is_null(true) { data.ptr = 0; }
+        inline Private(): type(Invalid), is_shared(false), is_null(true)
+        { data.ptr = 0; }
+
+        // Internal constructor for initialized variants.
+        explicit inline Private(uint variantType)
+            : type(variantType), is_shared(false), is_null(false)
+        {}
+
         inline Private(const Private &other)
             : data(other.data), type(other.type),
               is_shared(other.is_shared), is_null(other.is_null)
@@ -447,6 +454,23 @@ public:
 private:
     // force compile error, prevent QVariant(bool) to be called
     inline QVariant(void *) Q_DECL_EQ_DELETE;
+    // QVariant::Type is marked as \obsolete, but we don't want to
+    // provide a constructor from its intended replacement,
+    // QMetaType::Type, instead, because the idea behind these
+    // constructors is flawed in the first place. But we also don't
+    // want QVariant(QMetaType::String) to compile and falsely be an
+    // int variant, so delete this constructor:
+    QVariant(QMetaType::Type) Q_DECL_EQ_DELETE;
+
+    // These constructors don't create QVariants of the type associcated
+    // with the enum, as expected, but they would create a QVariant of
+    // type int with the value of the enum value.
+    // Use QVariant v = QColor(Qt::red) instead of QVariant v = Qt::red for
+    // example.
+    QVariant(Qt::GlobalColor) Q_DECL_EQ_DELETE;
+    QVariant(Qt::BrushStyle) Q_DECL_EQ_DELETE;
+    QVariant(Qt::PenStyle) Q_DECL_EQ_DELETE;
+    QVariant(Qt::CursorShape) Q_DECL_EQ_DELETE;
 #ifdef QT_NO_CAST_FROM_ASCII
     // force compile error when implicit conversion is not wanted
     inline QVariant(const char *) Q_DECL_EQ_DELETE;

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,6 +44,7 @@ static const int QTEXTSTREAM_BUFFERSIZE = 16384;
 
 /*!
     \class QTextStream
+    \inmodule QtCore
 
     \brief The QTextStream class provides a convenient interface for
     reading and writing text.
@@ -428,7 +429,8 @@ public:
     QTextStream *q_ptr;
 };
 
-/*! \internal
+/*!
+    \internal
 */
 QTextStreamPrivate::QTextStreamPrivate(QTextStream *q_ptr)
     :
@@ -442,7 +444,8 @@ QTextStreamPrivate::QTextStreamPrivate(QTextStream *q_ptr)
     reset();
 }
 
-/*! \internal
+/*!
+    \internal
 */
 QTextStreamPrivate::~QTextStreamPrivate()
 {
@@ -478,7 +481,8 @@ static void copyConverterStateHelper(QTextCodec::ConverterState *dest,
 }
 #endif
 
-/*! \internal
+/*!
+    \internal
 */
 void QTextStreamPrivate::reset()
 {
@@ -511,7 +515,8 @@ void QTextStreamPrivate::reset()
 #endif
 }
 
-/*! \internal
+/*!
+    \internal
 */
 bool QTextStreamPrivate::fillReadBuffer(qint64 maxBytes)
 {
@@ -627,7 +632,8 @@ bool QTextStreamPrivate::fillReadBuffer(qint64 maxBytes)
     return true;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 void QTextStreamPrivate::resetReadBuffer()
 {
@@ -636,7 +642,8 @@ void QTextStreamPrivate::resetReadBuffer()
     readBufferStartDevicePos = (device ? device->pos() : 0);
 }
 
-/*! \internal
+/*!
+    \internal
 */
 void QTextStreamPrivate::flushWriteBuffer()
 {
@@ -729,7 +736,8 @@ QString QTextStreamPrivate::read(int maxlen)
     return ret;
 }
 
-/*! \internal
+/*!
+    \internal
 
     Scans no more than \a maxlen QChars in the current buffer for the
     first \a delimiter. Stores a pointer to the start offset of the
@@ -830,7 +838,8 @@ bool QTextStreamPrivate::scan(const QChar **ptr, int *length, int maxlen, TokenD
     return true;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline const QChar *QTextStreamPrivate::readPtr() const
 {
@@ -840,7 +849,8 @@ inline const QChar *QTextStreamPrivate::readPtr() const
     return readBuffer.constData() + readBufferOffset;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::consumeLastToken()
 {
@@ -849,7 +859,8 @@ inline void QTextStreamPrivate::consumeLastToken()
     lastTokenSize = 0;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::consume(int size)
 {
@@ -874,7 +885,8 @@ inline void QTextStreamPrivate::consume(int size)
     }
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::saveConverterState(qint64 newPos)
 {
@@ -894,7 +906,8 @@ inline void QTextStreamPrivate::saveConverterState(qint64 newPos)
     readConverterSavedStateOffset = 0;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::restoreToSavedConverterState()
 {
@@ -911,7 +924,8 @@ inline void QTextStreamPrivate::restoreToSavedConverterState()
 #endif
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::write(const QString &data)
 {
@@ -925,7 +939,8 @@ inline void QTextStreamPrivate::write(const QString &data)
     }
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline bool QTextStreamPrivate::getChar(QChar *ch)
 {
@@ -941,7 +956,8 @@ inline bool QTextStreamPrivate::getChar(QChar *ch)
     return true;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::ungetChar(QChar ch)
 {
@@ -961,7 +977,8 @@ inline void QTextStreamPrivate::ungetChar(QChar ch)
     readBuffer[--readBufferOffset] = ch;
 }
 
-/*! \internal
+/*!
+    \internal
 */
 inline void QTextStreamPrivate::putString(const QString &s, bool number)
 {
@@ -1696,7 +1713,8 @@ QString QTextStream::read(qint64 maxlen)
     return d->read(int(maxlen));
 }
 
-/*! \internal
+/*!
+    \internal
 */
 QTextStreamPrivate::NumberParsingStatus QTextStreamPrivate::getNumber(qulonglong *ret)
 {
@@ -1871,7 +1889,8 @@ QTextStreamPrivate::NumberParsingStatus QTextStreamPrivate::getNumber(qulonglong
     return npsOk;
 }
 
-/*! \internal
+/*!
+    \internal
     (hihi)
 */
 bool QTextStreamPrivate::getReal(double *f)
@@ -2273,7 +2292,8 @@ QTextStream &QTextStream::operator>>(char *c)
     return *this;
 }
 
-/*! \internal
+/*!
+    \internal
  */
 void QTextStreamPrivate::putNumber(qulonglong number, bool negative)
 {

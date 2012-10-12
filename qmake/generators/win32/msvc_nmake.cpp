@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the qmake application of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -59,8 +59,8 @@ NmakeMakefileGenerator::writeMakefile(QTextStream &t)
 {
     writeHeader(t);
     if(!project->values("QMAKE_FAILED_REQUIREMENTS").isEmpty()) {
-        const QStringList &qut = project->values("QMAKE_EXTRA_TARGETS");
-        for (QStringList::ConstIterator it = qut.begin(); it != qut.end(); ++it)
+        const ProStringList &qut = project->values("QMAKE_EXTRA_TARGETS");
+        for (ProStringList::ConstIterator it = qut.begin(); it != qut.end(); ++it)
             t << *it << " ";
         t << "all first clean:" << "\n\t"
           << "@echo \"Some of the required modules ("
@@ -78,12 +78,12 @@ NmakeMakefileGenerator::writeMakefile(QTextStream &t)
             return MakefileGenerator::writeStubMakefile(t);
 #endif
         if (!project->isHostBuild()) {
-            const QHash<QString, QStringList> &variables = project->variables();
+            const ProValueMap &variables = project->variables();
             if (variables["QMAKESPEC"].first().contains("wince", Qt::CaseInsensitive)) {
                 CeSdkHandler sdkhandler;
                 sdkhandler.parse();
-                const QString sdkName = variables["CE_SDK"].join(" ")
-                                        + " (" + variables["CE_ARCH"].join(" ") + ")";
+                const QString sdkName = variables["CE_SDK"].join(' ')
+                                        + " (" + variables["CE_ARCH"].join(' ') + ")";
                 const QList<CeSdkInfo> sdkList = sdkhandler.listAll();
                 CeSdkInfo sdk;
                 foreach (const CeSdkInfo &info, sdkList) {
@@ -96,6 +96,17 @@ NmakeMakefileGenerator::writeMakefile(QTextStream &t)
                     t << "\nINCLUDE = " << sdk.includePath();
                     t << "\nLIB = " << sdk.libPath();
                     t << "\nPATH = " << sdk.binPath() << "\n";
+                } else {
+                    QStringList sdkStringList;
+                    foreach (const CeSdkInfo &info, sdkList)
+                        sdkStringList << info.name();
+
+                    fprintf(stderr, "Failed to find Windows CE SDK matching %s, found: %s\n"
+                                    "SDK needs to be specified in mkspec (using: %s/qmake.conf)\n"
+                                    "SDK name needs to match the following format: CE_SDK (CE_ARCH)\n",
+                            qPrintable(sdkName), qPrintable(sdkStringList.join(", ")),
+                            qPrintable(variables["QMAKESPEC"].first().toQString()));
+                    return false;
                 }
             }
         }
@@ -133,8 +144,8 @@ QString NmakeMakefileGenerator::defaultInstall(const QString &t)
     QString ret = Win32MakefileGenerator::defaultInstall(t);
 
     const QString root = "$(INSTALL_ROOT)";
-    QStringList &uninst = project->values(t + ".uninstall");
-    QString targetdir = Option::fixPathToTargetOS(project->first(t + ".path"), false);
+    ProStringList &uninst = project->values(ProKey(t + ".uninstall"));
+    QString targetdir = Option::fixPathToTargetOS(project->first(ProKey(t + ".path")).toQString(), false);
     targetdir = fileFixify(targetdir, FileFixifyAbsolute);
     if(targetdir.right(1) != Option::dir_sep)
         targetdir += Option::dir_sep;
@@ -186,7 +197,7 @@ void NmakeMakefileGenerator::writeNmakeParts(QTextStream &t)
     }
 }
 
-QString NmakeMakefileGenerator::var(const QString &value)
+QString NmakeMakefileGenerator::var(const ProKey &value)
 {
     if (usePCH) {
         if ((value == "QMAKE_RUN_CXX_IMP_BATCH"
@@ -252,15 +263,15 @@ void NmakeMakefileGenerator::init()
     }
 
     if (!project->values("DEF_FILE").isEmpty()) {
-        QString defFileName = fileFixify(project->values("DEF_FILE")).first();
+        QString defFileName = fileFixify(project->first("DEF_FILE").toQString());
         project->values("QMAKE_LFLAGS").append(QString("/DEF:") + escapeFilePath(defFileName));
     }
 
     if(!project->values("VERSION").isEmpty()) {
-        QString version = project->values("VERSION")[0];
+        ProString version = project->values("VERSION")[0];
         int firstDot = version.indexOf(".");
-        QString major = version.left(firstDot);
-        QString minor = version.right(version.length() - firstDot - 1);
+        QString major = version.left(firstDot).toQString();
+        QString minor = version.right(version.length() - firstDot - 1).toQString();
         minor.replace(".", "");
         project->values("QMAKE_LFLAGS").append("/VERSION:" + major + "." + minor);
     }
@@ -269,7 +280,7 @@ void NmakeMakefileGenerator::init()
     MakefileGenerator::init();
 
     // Setup PCH variables
-    precompH = project->first("PRECOMPILED_HEADER");
+    precompH = project->first("PRECOMPILED_HEADER").toQString();
     usePCH = !precompH.isEmpty() && project->isActiveConfig("precompile_header");
     if (usePCH) {
         // Created files
@@ -280,11 +291,11 @@ void NmakeMakefileGenerator::init()
         // Add pch file to cleanup
         project->values("QMAKE_CLEAN")          += precompPch;
         // Return to variable pool
-        project->values("PRECOMPILED_OBJECT") = QStringList(precompObj);
-        project->values("PRECOMPILED_PCH")    = QStringList(precompPch);
+        project->values("PRECOMPILED_OBJECT") = ProStringList(precompObj);
+        project->values("PRECOMPILED_PCH")    = ProStringList(precompPch);
     }
 
-    QString version = project->first("TARGET_VERSION_EXT");
+    ProString version = project->first("TARGET_VERSION_EXT");
     if(project->isActiveConfig("shared")) {
         project->values("QMAKE_CLEAN").append(project->first("DESTDIR") + project->first("TARGET") + version + ".exp");
     }
@@ -312,22 +323,22 @@ void NmakeMakefileGenerator::writeImplicitRulesPart(QTextStream &t)
 
         QHash<QString, void*> source_directories;
         source_directories.insert(".", (void*)1);
-        QString directories[] = { QString("UI_SOURCES_DIR"), QString("UI_DIR"), QString() };
-        for(int y = 0; !directories[y].isNull(); y++) {
-            QString dirTemp = project->first(directories[y]);
+        static const char * const directories[] = { "UI_SOURCES_DIR", "UI_DIR", 0 };
+        for (int y = 0; directories[y]; y++) {
+            QString dirTemp = project->first(directories[y]).toQString();
             if (dirTemp.endsWith("\\"))
                 dirTemp.truncate(dirTemp.length()-1);
             if(!dirTemp.isEmpty())
                 source_directories.insert(dirTemp, (void*)1);
         }
-        QString srcs[] = { QString("SOURCES"), QString("GENERATED_SOURCES"), QString() };
-        for(int x = 0; !srcs[x].isNull(); x++) {
-            const QStringList &l = project->values(srcs[x]);
-            for (QStringList::ConstIterator sit = l.begin(); sit != l.end(); ++sit) {
+        static const char * const srcs[] = { "SOURCES", "GENERATED_SOURCES", 0 };
+        for (int x = 0; srcs[x]; x++) {
+            const ProStringList &l = project->values(srcs[x]);
+            for (ProStringList::ConstIterator sit = l.begin(); sit != l.end(); ++sit) {
                 QString sep = "\\";
                 if((*sit).indexOf(sep) == -1)
                     sep = "/";
-                QString dir = (*sit).section(sep, 0, -2);
+                QString dir = (*sit).toQString().section(sep, 0, -2);
                 if(!dir.isEmpty() && !source_directories[dir])
                     source_directories.insert(dir, (void*)1);
             }
@@ -355,13 +366,19 @@ void NmakeMakefileGenerator::writeImplicitRulesPart(QTextStream &t)
 
 }
 
+static QString cQuoted(const QString &str)
+{
+    QString ret = str;
+    ret.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    ret.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    ret.prepend(QLatin1Char('"'));
+    ret.append(QLatin1Char('"'));
+    return ret;
+}
+
 void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
 {
-    if (project->first("TEMPLATE") == "aux") {
-        t << "first:" << endl;
-        t << "all:" << endl;
-        return;
-    }
+    const ProString templateName = project->first("TEMPLATE");
 
     t << "first: all" << endl;
     t << "all: " << fileFixify(Option::output.fileName()) << " " << varGlue("ALL_DEPS"," "," "," ") << "$(DESTDIR_TARGET)" << endl << endl;
@@ -371,12 +388,66 @@ void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         t << "\n\t" <<var("QMAKE_PRE_LINK");
     if(project->isActiveConfig("staticlib")) {
         t << "\n\t" << "$(LIBAPP) $(LIBFLAGS) /OUT:$(DESTDIR_TARGET) @<<" << "\n\t  "
-          << "$(OBJECTS)";
-    } else {
-        t << "\n\t" << "$(LINK) $(LFLAGS) /OUT:$(DESTDIR_TARGET) @<< " << "\n\t  "
-          << "$(OBJECTS) $(LIBS)";
+          << "$(OBJECTS)"
+          << "\n<<";
+    } else if (templateName != "aux") {
+        const bool embedManifest = ((templateName == "app" && project->isActiveConfig("embed_manifest_exe"))
+                                    || (templateName == "lib" && project->isActiveConfig("embed_manifest_dll")
+                                        && !(project->isActiveConfig("plugin") && project->isActiveConfig("no_plugin_manifest"))
+                                        ));
+        if (embedManifest) {
+            bool generateManifest = false;
+            const QString target = var("DEST_TARGET");
+            QString manifest = project->first("QMAKE_MANIFEST").toQString();
+            QString extraLFlags;
+            if (manifest.isEmpty()) {
+                generateManifest = true;
+                manifest = escapeFilePath(target + ".embed.manifest");
+                extraLFlags = "/MANIFEST /MANIFESTFILE:" + manifest;
+                project->values("QMAKE_CLEAN") << manifest;
+            } else {
+                manifest = escapeFilePath(fileFixify(manifest));
+            }
+
+            const bool incrementalLinking = project->values("QMAKE_LFLAGS").toQStringList().filter(QRegExp("(/|-)INCREMENTAL:NO")).isEmpty();
+            if (incrementalLinking) {
+                // Link a resource that contains the manifest without modifying the exe/dll after linking.
+
+                QString manifest_rc = escapeFilePath(target +  "_manifest.rc");
+                QString manifest_res = escapeFilePath(target +  "_manifest.res");
+                QString manifest_bak = escapeFilePath(target +  "_manifest.bak");
+                project->values("QMAKE_CLEAN") << manifest_rc << manifest_res;
+
+                t << "\n\techo 1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "
+                  << cQuoted(unescapeFilePath(manifest)) << ">" << manifest_rc;
+
+                if (generateManifest) {
+                    t << "\n\tif not exist $(DESTDIR_TARGET) del " << manifest << ">NUL 2>&1";
+                    t << "\n\tif exist " << manifest << " copy /Y " << manifest << ' ' << manifest_bak;
+                    const QString extraInlineFileContent = "\n!IF EXIST(" + manifest_res + ")\n" + manifest_res + "\n!ENDIF";
+                    t << "\n\t";
+                    writeLinkCommand(t, extraLFlags, extraInlineFileContent);
+                    t << "\n\tif exist " << manifest_bak << " fc /b " << manifest << ' ' << manifest_bak << " >NUL || del " << manifest_bak;
+                    t << "\n\tif not exist " << manifest_bak << " rc.exe /fo" << manifest_res << ' ' << manifest_rc;
+                    t << "\n\tif not exist " << manifest_bak << ' ';
+                    writeLinkCommand(t, extraLFlags, manifest_res);
+                    t << "\n\tif exist " << manifest_bak << " del " << manifest_bak;
+                } else {
+                    t << "\n\t" << "rc.exe /fo" << manifest_res << " " << manifest_rc;
+                    t << "\n\t";
+                    writeLinkCommand(t, extraLFlags, manifest_res);
+                }
+            } else {
+                // directly embed the manifest in the executable after linking
+                t << "\n\t";
+                writeLinkCommand(t, extraLFlags);
+                t << "\n\t" << "mt.exe /nologo /manifest " << manifest << " /outputresource:$(DESTDIR_TARGET);1";
+            }
+        }  else {
+            t << "\n\t";
+            writeLinkCommand(t);
+        }
     }
-    t << endl << "<<";
     QString signature = !project->isEmpty("SIGNATURE_FILE") ? var("SIGNATURE_FILE") : var("DEFAULT_SIGNATURE");
     bool useSignature = !signature.isEmpty() && !project->isActiveConfig("staticlib") && 
                         !project->isEmpty("CE_SDK") && !project->isEmpty("CE_ARCH");
@@ -387,6 +458,18 @@ void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         t << "\n\t" << var("QMAKE_POST_LINK");
     }
     t << endl;
+}
+
+void NmakeMakefileGenerator::writeLinkCommand(QTextStream &t, const QString &extraFlags, const QString &extraInlineFileContent)
+{
+    t << "$(LINK) $(LFLAGS)";
+    if (!extraFlags.isEmpty())
+        t << ' ' << extraFlags;
+    t << " /OUT:$(DESTDIR_TARGET) @<<\n"
+      << "$(OBJECTS) $(LIBS)";
+    if (!extraInlineFileContent.isEmpty())
+        t << ' ' << extraInlineFileContent;
+    t << "\n<<";
 }
 
 QT_END_NAMESPACE

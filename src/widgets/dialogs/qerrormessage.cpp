@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -153,7 +153,7 @@ QSize QErrorMessageTextView::sizeHint() const
     connecting signals to it.
 
     The static qtHandler() function installs a message handler
-    using qInstallMsgHandler() and creates a QErrorMessage that displays
+    using qInstallMessageHandler() and creates a QErrorMessage that displays
     qDebug(), qWarning() and qFatal() messages. This is most useful in
     environments where no console is available to display warnings and
     error messages.
@@ -184,7 +184,7 @@ static void deleteStaticcQErrorMessage() // post-routine
 
 static bool metFatal = false;
 
-static void jump(QtMsgType t, const char * m)
+static void jump(QtMsgType t, const QMessageLogContext & /*context*/, const QString &m)
 {
     if (!qtMessageHandler)
         return;
@@ -203,7 +203,7 @@ static void jump(QtMsgType t, const char * m)
         rich = QErrorMessage::tr("Fatal Error:");
     }
     rich = QString::fromLatin1("<p><b>%1</b></p>").arg(rich);
-    rich += Qt::convertFromPlainText(QLatin1String(m), Qt::WhiteSpaceNormal);
+    rich += Qt::convertFromPlainText(m, Qt::WhiteSpaceNormal);
 
     // ### work around text engine quirk
     if (rich.endsWith(QLatin1String("</p>")))
@@ -273,10 +273,10 @@ QErrorMessage::~QErrorMessage()
 {
     if (this == qtMessageHandler) {
         qtMessageHandler = 0;
-        QtMsgHandler tmp = qInstallMsgHandler(0);
+        QtMessageHandler tmp = qInstallMessageHandler(0);
         // in case someone else has later stuck in another...
         if (tmp != jump)
-            qInstallMsgHandler(tmp);
+            qInstallMessageHandler(tmp);
     }
 }
 
@@ -314,7 +314,7 @@ QErrorMessage * QErrorMessage::qtHandler()
         qtMessageHandler = new QErrorMessage(0);
         qAddPostRoutine(deleteStaticcQErrorMessage); // clean up
         qtMessageHandler->setWindowTitle(QApplication::applicationName());
-        qInstallMsgHandler(jump);
+        qInstallMessageHandler(jump);
     }
     return qtMessageHandler;
 }
@@ -406,12 +406,6 @@ void QErrorMessagePrivate::retranslateStrings()
     okAction->setText(ok->text());
 #endif
 }
-
-/*!
-    \fn void QErrorMessage::message(const QString & message)
-
-    Use showMessage(\a message) instead.
-*/
 
 QT_END_NAMESPACE
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -87,6 +87,7 @@ void QPersistentModelIndexData::destroy(QPersistentModelIndexData *data)
 
 /*!
   \class QPersistentModelIndex
+  \inmodule QtCore
 
   \brief The QPersistentModelIndex class is used to locate data in a data model.
 
@@ -327,15 +328,15 @@ void *QPersistentModelIndex::internalPointer() const
 }
 
 /*!
-    \fn void *QPersistentModelIndex::internalId() const
+    \fn quintptr QPersistentModelIndex::internalId() const
 
     \internal
 
-    Returns a \c{qint64} used by the model to associate the index with
+    Returns a \c{quintptr} used by the model to associate the index with
     the internal data structure.
 */
 
-qint64 QPersistentModelIndex::internalId() const
+quintptr QPersistentModelIndex::internalId() const
 {
     if (d)
         return d->index.internalId();
@@ -865,6 +866,7 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 
 /*!
     \class QModelIndex
+    \inmodule QtCore
 
     \brief The QModelIndex class is used to locate data in a data model.
 
@@ -923,19 +925,6 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 
     Creates a new model index at the given \a row and \a column,
     pointing to some \a data.
-*/
-
-/*!
-    \fn QModelIndex::QModelIndex(const QModelIndex &other)
-
-    Creates a new model index that is a copy of the \a other model
-    index.
-*/
-
-/*!
-    \fn QModelIndex::~QModelIndex()
-
-    Destroys the model index.
 */
 
 /*!
@@ -1057,6 +1046,7 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 
 /*!
     \class QAbstractItemModel
+    \inmodule QtCore
 
     \brief The QAbstractItemModel class provides the abstract interface for
     item model classes.
@@ -1070,11 +1060,13 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
     Instead, you should subclass it to create new models.
 
     The QAbstractItemModel class is one of the \l{Model/View Classes}
-    and is part of Qt's \l{Model/View Programming}{model/view framework}.
+    and is part of Qt's \l{Model/View Programming}{model/view framework}. It
+    can be used as the underlying data model for the item view elements in
+    QML or the item view classes in the QtWidgets module.
 
-    If you need a model to use with a QListView or a QTableView, you should
-    consider subclassing QAbstractListModel or QAbstractTableModel instead of
-    this class.
+    If you need a model to use with an item view such as QML's List View
+    element or the C++ widgets QListView or QTableView, you should consider
+    subclassing QAbstractListModel or QAbstractTableModel instead of this class.
 
     The underlying data model is exposed to views and delegates as a hierarchy
     of tables. If you do not make use of the hierarchy, then the model is a
@@ -1289,6 +1281,31 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 */
 
 /*!
+    \fn bool QAbstractItemModel::moveRow(const QModelIndex &sourceParent, int sourceColumn, const QModelIndex &destinationParent, int destinationChild)
+
+    On models that support this, moves \a sourceColumn from \a sourceParent to \a destinationChild under
+    \a destinationParent.
+
+    Returns true if the columns were successfully moved; otherwise returns
+    false.
+
+    \sa moveRows(), moveColumn()
+*/
+
+/*!
+    \fn bool QAbstractItemModel::moveColumn(const QModelIndex &sourceParent, int sourceColumn, const QModelIndex &destinationParent, int destinationChild)
+
+    On models that support this, moves \a sourceColumn from \a sourceParent to \a destinationChild under
+    \a destinationParent.
+
+    Returns true if the columns were successfully moved; otherwise returns
+    false.
+
+    \sa moveColumns(), moveRow()
+*/
+
+
+/*!
     \fn void QAbstractItemModel::headerDataChanged(Qt::Orientation orientation, int first, int last)
 
     This signal is emitted whenever a header is changed. The \a orientation
@@ -1305,9 +1322,24 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
     \sa headerData(), setHeaderData(), dataChanged()
 */
 
+
 /*!
-    \fn void QAbstractItemModel::layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>())
-    \since 4.2
+    \enum QAbstractItemModel::LayoutChangeHint
+
+    This enum describes the way the model changes layout.
+
+    \value NoLayoutChangeHint   No hint is available.
+    \value VerticalSortHint     Rows are being sorted.
+    \value HorizontalSortHint   Columns are being sorted.
+
+    Note that VerticalSortHint and HorizontalSortHint carry the meaning that
+    items are being moved within the same parent, not moved to a different
+    parent in the model, and not filtered out or in.
+*/
+
+/*!
+    \fn void QAbstractItemModel::layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint)
+    \since 5.0
 
     This signal is emitted just before the layout of a model is changed.
     Components connected to this signal use it to adapt to changes in the
@@ -1316,15 +1348,17 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
     Subclasses should update any persistent model indexes after emitting
     layoutAboutToBeChanged().
 
-    The optional @p parents parameter is used to give a more specific notification
+    The optional \a parents parameter is used to give a more specific notification
     about what parts of the layout of the model are changing. An empty list indicates
-    a change to the layout of the entire model.
+    a change to the layout of the entire model. The order of elements in the \a parents list is not significant. The optional \a hint parameter is used
+    to give a hint about what is happening while the model is relayouting.
 
     \sa layoutChanged(), changePersistentIndex()
 */
 
 /*!
-    \fn void QAbstractItemModel::layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>())
+    \fn void QAbstractItemModel::layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint)
+    \since 5.0
 
     This signal is emitted whenever the layout of items exposed by the model
     has changed; for example, when the model has been sorted. When this signal
@@ -1336,9 +1370,10 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
     altering the structure of the data you expose to views, and emit
     layoutChanged() after changing the layout.
 
-    The optional @p parents parameter is used to give a more specific notification
+    The optional \a parents parameter is used to give a more specific notification
     about what parts of the layout of the model are changing. An empty list indicates
-    a change to the layout of the entire model.
+    a change to the layout of the entire model. The order of elements in the \a parents list is not significant. The optional \a hint parameter is used
+    to give a hint about what is happening while the model is relayouting.
 
     Subclasses should update any persistent model indexes before emitting
     layoutChanged(). In other words, when the structure changes:
@@ -1378,19 +1413,6 @@ QAbstractItemModel::~QAbstractItemModel()
 {
     d_func()->invalidatePersistentIndexes();
 }
-
-/*!
-    \fn QModelIndex QAbstractItemModel::sibling(int row, int column, const QModelIndex &index) const
-
-    Returns the sibling at \a row and \a column for the item at \a index, or an
-    invalid QModelIndex if there is no sibling at that location.
-
-    sibling() is just a convenience function that finds the item's parent, and
-    uses it to retrieve the index of the child item in the specified \a row and
-    \a column.
-
-    \sa index(), QModelIndex::row(), QModelIndex::column()
-*/
 
 
 /*!
@@ -1642,6 +1664,25 @@ bool QAbstractItemModel::hasChildren(const QModelIndex &parent) const
     return (rowCount(parent) > 0) && (columnCount(parent) > 0);
 }
 
+/*!
+    \fn QModelIndex QAbstractItemModel::sibling(int row, int column, const QModelIndex &index) const
+
+    Returns the sibling at \a row and \a column for the item at \a index, or an
+    invalid QModelIndex if there is no sibling at that location.
+
+    sibling() is just a convenience function that finds the item's parent, and
+    uses it to retrieve the index of the child item in the specified \a row and
+    \a column.
+
+    This method can optionally be overridden for implementation-specific optimization.
+
+    \sa index(), QModelIndex::row(), QModelIndex::column()
+*/
+QModelIndex QAbstractItemModel::sibling(int row, int column, const QModelIndex &idx) const
+{
+    return (row == idx.row() && column == idx.column()) ? idx : index(row, column, parent(idx));
+}
+
 
 /*!
     Returns a map with values for all predefined roles in the model for the
@@ -1759,7 +1800,8 @@ QMimeData *QAbstractItemModel::mimeData(const QModelIndexList &indexes) const
     This can be used to indicate whether a drop of certain data is allowed, for example
     by using a 'forbidden' emblem on a mouse cursor during a drag operation.
 
-    This method returns true by default.
+    This method returns true by default. Reimplementations can return whether the
+    \a data can be dropped at \a row, \a column, \a parent with \a action.
 
     \sa dropMimeData(), {Using drag and drop with item views}
  */
@@ -2321,15 +2363,7 @@ bool QAbstractItemModel::setHeaderData(int section, Qt::Orientation orientation,
 */
 
 /*!
-    \fn QModelIndex QAbstractItemModel::createIndex(int row, int column, int id) const
-    \obsolete
-
-    Use QModelIndex
-    QAbstractItemModel::createIndex(int row, int column, quint32 id) instead.
-*/
-
-/*!
-    \fn QModelIndex QAbstractItemModel::createIndex(int row, int column, quint32 id) const
+    \fn QModelIndex QAbstractItemModel::createIndex(int row, int column, quintptr id) const
 
     Creates a model index for the given \a row and \a column with the internal
     identifier, \a id.
@@ -2879,7 +2913,7 @@ void QAbstractItemModel::endRemoveColumns()
     columns up to \a sourceLast.
 
     However, when moving columns down in the same parent (\a sourceParent
-    and \a destinationParent are equal), the columnss will be placed before the
+    and \a destinationParent are equal), the columns will be placed before the
     \a destinationChild index. That is, if you wish to move columns 0 and 1 so
     they will become columns 1 and 2, \a destinationChild should be 3. In this
     case, the new index for the source column \c i (which is between
@@ -3111,6 +3145,7 @@ QModelIndexList QAbstractItemModel::persistentIndexList() const
 
 /*!
     \class QAbstractTableModel
+    \inmodule QtCore
     \brief The QAbstractTableModel class provides an abstract model that can be
     subclassed to create table models.
 
@@ -3212,7 +3247,7 @@ QAbstractTableModel::~QAbstractTableModel()
 
 QModelIndex QAbstractTableModel::index(int row, int column, const QModelIndex &parent) const
 {
-    return hasIndex(row, column, parent) ? createIndex(row, column, 0) : QModelIndex();
+    return hasIndex(row, column, parent) ? createIndex(row, column) : QModelIndex();
 }
 
 /*!
@@ -3237,6 +3272,7 @@ bool QAbstractTableModel::hasChildren(const QModelIndex &parent) const
 
 /*!
     \class QAbstractListModel
+    \inmodule QtCore
     \brief The QAbstractListModel class provides an abstract model that can be
     subclassed to create one-dimensional list models.
 
@@ -3340,7 +3376,7 @@ QAbstractListModel::~QAbstractListModel()
 
 QModelIndex QAbstractListModel::index(int row, int column, const QModelIndex &parent) const
 {
-    return hasIndex(row, column, parent) ? createIndex(row, column, 0) : QModelIndex();
+    return hasIndex(row, column, parent) ? createIndex(row, column) : QModelIndex();
 }
 
 /*!
@@ -3514,6 +3550,10 @@ bool QAbstractListModel::dropMimeData(const QMimeData *data, Qt::DropAction acti
 
     Returns true if this model index is smaller than the \a other
     model index; otherwise returns false.
+
+    The less than calculation is not directly useful to developers - the way that indexes
+    with different parents compare is not defined. This operator only exists so that the
+    class can be used with QMap.
 */
 
 /*!

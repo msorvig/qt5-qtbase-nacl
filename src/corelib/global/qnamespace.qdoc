@@ -1,26 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
+**
+** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
-**
+** this file.  Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -148,6 +148,11 @@
            will also flip accordingly (i.e., QKeySequence::Copy will be
            Command+C on the keyboard regardless of the value set, though what is output for
            QKeySequence::toString(QKeySequence::PortableText) will be different).
+
+    \value AA_Use96Dpi Assume the screen has a resolution of 96 DPI rather
+           than using the OS-provided resolution. This will cause font rendering
+           to be consistent in pixels-per-point across devices rather than
+           defining 1 point as 1/72 inch.
 
     \value AA_X11InitThreads Calls XInitThreads() as part of the QApplication
            construction in order to make Xlib calls thread-safe. This
@@ -1170,9 +1175,6 @@
     to this top level window. This attribute has no effect on non-X11
     platforms.
 
-    \value WA_MacNoShadow Since Qt 4.8, this attribute disables drop shadows
-    for this top level window. Only affects Cocoa builds of Qt for Mac OS X.
-
     \omitvalue WA_SetLayoutDirection
     \omitvalue WA_InputMethodTransparent
     \omitvalue WA_WState_CompressKeys
@@ -1203,6 +1205,7 @@
     \omitvalue WA_SetWindowModality
     \omitvalue WA_WState_WindowOpacitySet
     \omitvalue WA_WState_AcceptedTouchBeginEvent
+    \omitvalue WA_MacNoShadow
 */
 
 /*! \typedef Qt::HANDLE
@@ -1660,8 +1663,6 @@
                     exactly with input-sensitive parts of the document.
     \value FuzzyHit The point at which input occurred can lie close to
                     input-sensitive parts of the document.
-
-    This enum is defined in the \c <QTextDocument> header file.
 */
 
 /*!
@@ -1678,8 +1679,6 @@
     \value WhiteSpaceNoWrap
 
     \omitvalue WhiteSpaceModeUndefined
-
-    This enum is defined in the \c <QTextDocument> header file.
 */
 
 /*!
@@ -1863,6 +1862,8 @@
 
 /*!
     \typedef Qt::WFlags
+    \obsolete
+    This typedef is obsolete. Use Qt::WindowFlags instead.
 
     Synonym for Qt::WindowFlags.
 */
@@ -1965,6 +1966,8 @@
            ability to understand Motif and/or NETWM hints. Most existing
            modern window managers can handle this.
 
+    \value NoDropShadowWindowHint  Disables window drop shadow on supporting platforms.
+
     The \c CustomizeWindowHint flag is used to enable customization of
     the window controls. This flag must be set to allow the \c
     WindowTitleHint, \c WindowSystemMenuHint, \c
@@ -2035,6 +2038,10 @@
            when invisible. With this hint the softkey actions are triggered
            even the softkeys are invisible i.e. the window is displayed with
            \c showFullscreen(). Only supported for Symbian.
+
+    \value WindowTransparentForInput Informs the window system that this window
+           is used only for output (displaying something) and does not take input.
+           Therefore input events should pass through as if it wasn't there.
 
     \value WindowOverridesSystemGestures Informs the window system that this window
            implements its own set of gestures and that system level gestures, like for
@@ -2348,6 +2355,7 @@
     \enum Qt::InputMethodQuery
 
     \value ImEnabled            The widget accepts input method input.
+    \value ImMicroFocus         \obsolete replaced by \c ImCursorRectangle
     \value ImCursorRectangle    The rectangle covering the area of the input cursor in widget coordinates.
     \value ImFont               The currently used font for text input.
     \value ImCursorPosition     The logical position of the cursor within the text surrounding the input area
@@ -2669,6 +2677,18 @@
     of the object.
 */
 
+/*! \enum Qt::TouchPointState
+    \since 4.6
+
+    This enum represents the state of a touch point at the time a
+    QTouchEvent occurred.
+
+    \value TouchPointPressed The touch point is now pressed.
+    \value TouchPointMoved The touch point moved.
+    \value TouchPointStationary The touch point did not move.
+    \value TouchPointReleased The touch point was released.
+*/
+
 /*!
     \enum Qt::GestureState
     \since 4.6
@@ -2756,6 +2776,21 @@
            On other platforms, it behaves as NavigationModeNone.
     \sa QApplication::setNavigationMode()
     \sa QApplication::navigationMode()
+*/
+
+/*!
+    \enum Qt::CursorMoveStyle
+
+    This enum describes the movement style available to text cursors. The options
+    are:
+
+    \value LogicalMoveStyle Within a left-to-right text block, decrease cursor
+    position when pressing left arrow key, increase cursor position when pressing
+    the right arrow key. If the text block is right-to-left, the opposite behavior
+    applies.
+    \value VisualMoveStyle Pressing the left arrow key will always cause the cursor
+    to move left, regardless of the text's writing direction. Pressing the right
+    arrow key will always cause the cursor to move right.
 */
 
 /*!

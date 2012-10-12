@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the examples of the Qt Toolkit.
 **
@@ -17,10 +17,10 @@
 **     notice, this list of conditions and the following disclaimer in
 **     the documentation and/or other materials provided with the
 **     distribution.
-**   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-**     the names of its contributors may be used to endorse or promote
-**     products derived from this software without specific prior written
-**     permission.
+**   * Neither the name of Digia Plc and its Subsidiary(-ies) nor the names
+**     of its contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
 **
 ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -173,29 +173,11 @@ void Patch::translate(const QVector3D &t)
     mat.translate(t);
 }
 
-static inline void qMultMatrix(const QMatrix4x4 &mat)
-{
-    if (sizeof(qreal) == sizeof(GLfloat))
-        glMultMatrixf((GLfloat*)mat.constData());
-#ifndef QT_OPENGL_ES
-    else if (sizeof(qreal) == sizeof(GLdouble))
-        glMultMatrixd((GLdouble*)mat.constData());
-#endif
-    else
-    {
-        GLfloat fmat[16];
-        qreal const *r = mat.constData();
-        for (int i = 0; i < 16; ++i)
-            fmat[i] = r[i];
-        glMultMatrixf(fmat);
-    }
-}
-
 //! [2]
 void Patch::draw() const
 {
     glPushMatrix();
-    qMultMatrix(mat);
+    glMultMatrixf(mat.constData());
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, faceColor);
 
     const GLushort *indices = geom->faces.constData();

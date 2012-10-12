@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -808,7 +808,7 @@ void tst_QSslSocket::protocol()
 
     QCOMPARE(socket->protocol(), QSsl::SecureProtocols);
     {
-        // Fluke allows SSLv3.
+        // qt-test-server allows SSLv3.
         socket->setProtocol(QSsl::SslV3);
         QCOMPARE(socket->protocol(), QSsl::SslV3);
         socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
@@ -824,7 +824,7 @@ void tst_QSslSocket::protocol()
         socket->abort();
     }
     {
-        // Fluke allows TLSV1.
+        // qt-test-server allows TLSV1.
         socket->setProtocol(QSsl::TlsV1_0);
         QCOMPARE(socket->protocol(), QSsl::TlsV1_0);
         socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
@@ -839,9 +839,43 @@ void tst_QSslSocket::protocol()
         QCOMPARE(socket->protocol(), QSsl::TlsV1_0);
         socket->abort();
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+    {
+        // qt-test-server probably doesn't allow TLSV1.1
+        socket->setProtocol(QSsl::TlsV1_1);
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_1);
+        socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
+        QVERIFY2(socket->waitForEncrypted(), qPrintable(socket->errorString()));
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_1);
+        socket->abort();
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_1);
+        socket->connectToHost(QtNetworkSettings::serverName(), 443);
+        QVERIFY2(socket->waitForConnected(), qPrintable(socket->errorString()));
+        socket->startClientEncryption();
+        QVERIFY2(socket->waitForEncrypted(), qPrintable(socket->errorString()));
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_1);
+        socket->abort();
+    }
+    {
+        // qt-test-server probably doesn't allows TLSV1.2
+        socket->setProtocol(QSsl::TlsV1_2);
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_2);
+        socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
+        QVERIFY2(socket->waitForEncrypted(), qPrintable(socket->errorString()));
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_2);
+        socket->abort();
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_2);
+        socket->connectToHost(QtNetworkSettings::serverName(), 443);
+        QVERIFY2(socket->waitForConnected(), qPrintable(socket->errorString()));
+        socket->startClientEncryption();
+        QVERIFY2(socket->waitForEncrypted(), qPrintable(socket->errorString()));
+        QCOMPARE(socket->protocol(), QSsl::TlsV1_2);
+        socket->abort();
+    }
+#endif
 #ifndef OPENSSL_NO_SSL2
     {
-        // Fluke allows SSLV2.
+        // qt-test-server allows SSLV2.
         socket->setProtocol(QSsl::SslV2);
         QCOMPARE(socket->protocol(), QSsl::SslV2);
         socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
@@ -857,7 +891,7 @@ void tst_QSslSocket::protocol()
     }
 #endif
     {
-        // Fluke allows SSLV3, so it allows AnyProtocol.
+        // qt-test-server allows SSLV3, so it allows AnyProtocol.
         socket->setProtocol(QSsl::AnyProtocol);
         QCOMPARE(socket->protocol(), QSsl::AnyProtocol);
         socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
@@ -873,7 +907,7 @@ void tst_QSslSocket::protocol()
         socket->abort();
     }
     {
-        // Fluke allows SSLV3, so it allows NoSslV2
+        // qt-test-server allows SSLV3, so it allows NoSslV2
         socket->setProtocol(QSsl::TlsV1SslV3);
         QCOMPARE(socket->protocol(), QSsl::TlsV1SslV3);
         socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
@@ -2075,9 +2109,15 @@ void tst_QSslSocket::sslOptions()
     if (!QSslSocket::supportsSsl())
         return;
 
+#ifdef SSL_OP_NO_COMPRESSION
+    QCOMPARE(QSslSocketBackendPrivate::setupOpenSslOptions(QSsl::SecureProtocols,
+                                                           QSslConfigurationPrivate::defaultSslOptions),
+             long(SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_COMPRESSION));
+#else
     QCOMPARE(QSslSocketBackendPrivate::setupOpenSslOptions(QSsl::SecureProtocols,
                                                            QSslConfigurationPrivate::defaultSslOptions),
              long(SSL_OP_ALL|SSL_OP_NO_SSLv2));
+#endif
 
     QCOMPARE(QSslSocketBackendPrivate::setupOpenSslOptions(QSsl::SecureProtocols,
                                                            QSsl::SslOptionDisableEmptyFragments

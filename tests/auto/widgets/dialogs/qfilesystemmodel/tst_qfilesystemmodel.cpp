@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -83,8 +83,10 @@ private slots:
     void indexPath();
 
     void rootPath();
+#ifdef QT_BUILD_INTERNAL
     void naturalCompare_data();
     void naturalCompare();
+#endif
     void readOnly();
     void iconProvider();
 
@@ -124,6 +126,9 @@ private slots:
 
     void roleNames_data();
     void roleNames();
+
+    void permissions_data();
+    void permissions();
 
 protected:
     bool createFiles(const QString &test_path, const QStringList &initial_files, int existingFileCount = 0, const QStringList &intial_dirs = QStringList());
@@ -231,6 +236,7 @@ void tst_QFileSystemModel::rootPath()
     }
 }
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileSystemModel::naturalCompare_data()
 {
     QTest::addColumn<QString>("s1");
@@ -277,10 +283,11 @@ void tst_QFileSystemModel::naturalCompare_data()
     }
 #undef ROWNAME
 }
+#endif
 
+#ifdef QT_BUILD_INTERNAL
 void tst_QFileSystemModel::naturalCompare()
 {
-#ifdef QT_BUILD_INTERNAL
     QFETCH(QString, s1);
     QFETCH(QString, s2);
     QFETCH(int, caseSensitive);
@@ -298,8 +305,8 @@ void tst_QFileSystemModel::naturalCompare()
     // created. The scheduler takes its time to recognize ended threads.
     QTest::qWait(300);
 #endif
-#endif
 }
+#endif
 
 void tst_QFileSystemModel::readOnly()
 {
@@ -1017,6 +1024,52 @@ void tst_QFileSystemModel::roleNames()
     QList<QByteArray> values = roles.values(role);
     QVERIFY(values.contains(roleName));
 }
+
+void tst_QFileSystemModel::permissions_data()
+{
+    QTest::addColumn<int>("permissions");
+    QTest::addColumn<bool>("readOnly");
+
+    static const int permissions[] = {
+        QFile::WriteOwner,
+        QFile::ReadOwner,
+        QFile::WriteOwner|QFile::ReadOwner,
+    };
+#define ROW_NAME(i) qPrintable(QString().sprintf("%s-0%04x", readOnly ? "ro" : "rw", permissions[i]))
+    for (int readOnly = false ; readOnly <= true; ++readOnly)
+        for (size_t i = 0; i < sizeof permissions / sizeof *permissions; ++i)
+            QTest::newRow(ROW_NAME(i)) << permissions[i] << bool(readOnly);
+#undef ROW_NAME
+}
+
+void tst_QFileSystemModel::permissions() // checks QTBUG-20503
+{
+    QFETCH(int, permissions);
+    QFETCH(bool, readOnly);
+
+    const QString tmp = flatDirTestPath;
+    const QString file  = tmp + '/' + "f";
+    QVERIFY(createFiles(tmp, QStringList() << "f"));
+
+    QVERIFY(QFile::setPermissions(file,  QFile::Permissions(permissions)));
+
+    const QModelIndex root = model->setRootPath(tmp);
+
+    model->setReadOnly(readOnly);
+
+    QCOMPARE(model->isReadOnly(), readOnly);
+
+    QTRY_COMPARE(model->rowCount(root), 1);
+
+    const QFile::Permissions modelPermissions = model->permissions(model->index(0, 0, root));
+    const QFile::Permissions modelFileInfoPermissions = model->fileInfo(model->index(0, 0, root)).permissions();
+    const QFile::Permissions fileInfoPermissions = QFileInfo(file).permissions();
+
+    QCOMPARE(modelPermissions, modelFileInfoPermissions);
+    QCOMPARE(modelFileInfoPermissions, fileInfoPermissions);
+    QCOMPARE(fileInfoPermissions, modelPermissions);
+}
+
 
 QTEST_MAIN(tst_QFileSystemModel)
 #include "tst_qfilesystemmodel.moc"

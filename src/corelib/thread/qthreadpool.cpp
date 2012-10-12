@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,6 +42,8 @@
 #include "qthreadpool.h"
 #include "qthreadpool_p.h"
 #include "qelapsedtimer.h"
+
+#include <algorithm>
 
 #ifndef QT_NO_THREAD
 
@@ -68,15 +70,15 @@ public:
 */
 
 
-/*!\internal
-
+/*!
+    \internal
 */
 QThreadPoolThread::QThreadPoolThread(QThreadPoolPrivate *manager)
     :manager(manager), runnable(0)
 { }
 
-/* \internal
-
+/*
+    \internal
 */
 void QThreadPoolThread::run()
 {
@@ -150,8 +152,8 @@ void QThreadPoolThread::registerTheadInactive()
 }
 
 
-/* \internal
-
+/*
+    \internal
 */
 QThreadPoolPrivate:: QThreadPoolPrivate()
     : isExiting(false),
@@ -214,7 +216,7 @@ void QThreadPoolPrivate::enqueueTask(QRunnable *runnable, int priority)
     QList<QPair<QRunnable *, int> >::const_iterator begin = queue.constBegin();
     QList<QPair<QRunnable *, int> >::const_iterator it = queue.constEnd();
     if (it != begin && priority < (*(it - 1)).second)
-        it = qUpperBound(begin, --it, priority);
+        it = std::upper_bound(begin, --it, priority);
     queue.insert(it - begin, qMakePair(runnable, priority));
     runnableReady.wakeOne();
 }
@@ -242,8 +244,8 @@ bool QThreadPoolPrivate::tooManyThreadsActive() const
     return activeThreadCount > maxThreadCount && (activeThreadCount - reservedThreads) > 1;
 }
 
-/*! \internal
-
+/*!
+    \internal
 */
 void QThreadPoolPrivate::startThread(QRunnable *runnable)
 {
@@ -258,7 +260,8 @@ void QThreadPoolPrivate::startThread(QRunnable *runnable)
     thread.take()->start();
 }
 
-/*! \internal
+/*!
+    \internal
     Makes all threads exit, waits for each tread to exit and deletes it.
 */
 void QThreadPoolPrivate::reset()
@@ -267,10 +270,10 @@ void QThreadPoolPrivate::reset()
     isExiting = true;
     runnableReady.wakeAll();
 
-    do {
-        // make a copy of the set so that we can iterate without the lock
-        QSet<QThreadPoolThread *> allThreadsCopy = allThreads;
-        allThreads.clear();
+    while (!allThreads.empty()) {
+        // move the contents of the set out so that we can iterate without the lock
+        QSet<QThreadPoolThread *> allThreadsCopy;
+        allThreadsCopy.swap(allThreads);
         locker.unlock();
 
         foreach (QThreadPoolThread *thread, allThreadsCopy) {
@@ -280,7 +283,7 @@ void QThreadPoolPrivate::reset()
 
         locker.relock();
         // repeat until all newly arrived threads have also completed
-    } while (!allThreads.isEmpty());
+    }
 
     waitingThreads = 0;
     expiredThreads.clear();
@@ -305,14 +308,15 @@ bool QThreadPoolPrivate::waitForDone(int msecs)
     return queue.isEmpty() && activeThreads == 0;
 }
 
-/*! \internal
+/*!
+    \internal
     Seaches for \a runnable in the queue, removes it from the queue and
     runs it if found. This functon does not return until the runnable
     has completed.
 */
 void QThreadPoolPrivate::stealRunnable(QRunnable *runnable)
 {
-    if (runnable == 0 || queue.isEmpty())
+    if (runnable == 0)
         return;
     bool found = false;
     {
@@ -345,6 +349,7 @@ void QThreadPoolPrivate::stealRunnable(QRunnable *runnable)
 
 /*!
     \class QThreadPool
+    \inmodule QtCore
     \brief The QThreadPool class manages a collection of QThreads.
     \since 4.4
     \threadsafe
@@ -390,9 +395,7 @@ void QThreadPoolPrivate::stealRunnable(QRunnable *runnable)
     QThreadPool.
 
     Note that QThreadPool is a low-level class for managing threads, see
-    QtConcurrent::run() or the other
-    \l {Concurrent Programming}{Qt Concurrent} APIs for higher
-    level alternatives.
+    the Qt Concurrent module for higher level alternatives.
 
     \sa QRunnable
 */

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -100,7 +100,7 @@ static QList<struct QWindowSystemInterface::TouchPoint> touchPointList(const QLi
 
 
 
-extern bool Q_GUI_EXPORT qt_tab_all_widgets; // from qapplication.cpp
+extern bool Q_GUI_EXPORT qt_tab_all_widgets(); // from qapplication.cpp
 QT_END_NAMESPACE
 
 class tst_QApplication : public QObject
@@ -447,8 +447,8 @@ void tst_QApplication::args_data()
 
     QTest::newRow( "App name" ) << 1 << "/usr/bin/appname" << 1 << "/usr/bin/appname";
     QTest::newRow( "No arguments" ) << 0 << QString() << 0 << QString();
-    QTest::newRow( "App name, style" ) << 3 << "/usr/bin/appname -style motif" << 1 << "/usr/bin/appname";
-    QTest::newRow( "App name, style, arbitrary, reverse" ) << 5 << "/usr/bin/appname -style motif -arbitrary -reverse"
+    QTest::newRow( "App name, style" ) << 3 << "/usr/bin/appname -style windows" << 1 << "/usr/bin/appname";
+    QTest::newRow( "App name, style, arbitrary, reverse" ) << 5 << "/usr/bin/appname -style windows -arbitrary -reverse"
 							<< 2 << "/usr/bin/appname -arbitrary";
 }
 
@@ -516,6 +516,8 @@ void tst_QApplication::args()
     QCOMPARE( argv_out, args_out );
 
     delete [] argv;
+    // Make sure we switch back to native style.
+    QApplicationPrivate::styleOverride = QString();
 }
 
 void tst_QApplication::appName()
@@ -753,7 +755,7 @@ void tst_QApplication::quitOnLastWindowClosed()
         int returnValue = app.exec();
         QCOMPARE(returnValue, 0);
         // failure here means the timer above didn't fire, and the
-        // quit was caused the the dialog being closed (not the window)
+        // quit was caused the dialog being closed (not the window)
         QCOMPARE(timerSpy.count(), 1);
         QCOMPARE(appSpy.count(), 2);
     }
@@ -1595,14 +1597,10 @@ void tst_QApplication::focusChanged()
     QSettings appleSettings(QLatin1String("apple.com"));
     QVariant appleValue = appleSettings.value(QLatin1String("AppleKeyboardUIMode"), 0);
     tabAllControls = (appleValue.toInt() & 0x2);
-    if (!tabAllControls) {
-        QEXPECT_FAIL("", "QTBUG-24372 Mac tab key \"Text boxes and lists only\" vs "
-                         "\"All controls\" setting is not respected in Qt5", Abort);
-    }
 #endif
 
     // make sure Qt's idea of tabbing between widgets matches what we think it should
-    QCOMPARE(qt_tab_all_widgets, tabAllControls);
+    QCOMPARE(qt_tab_all_widgets(), tabAllControls);
 
     tab.simulate(now);
     if (!tabAllControls) {
@@ -1926,6 +1924,9 @@ void tst_QApplication::touchEventPropagation()
     int argc = 1;
     QApplication app(argc, &argv0, QApplication::GuiServer);
 
+    const bool mouseEventSynthesizing = QGuiApplicationPrivate::platformIntegration()
+        ->styleHint(QPlatformIntegration::SynthesizeMouseFromTouchEvents).toBool();
+
     QList<QTouchEvent::TouchPoint> pressedTouchPoints;
     QTouchEvent::TouchPoint press(0);
     press.setState(Qt::TouchPointPressed);
@@ -1963,7 +1964,7 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(!window.seenTouchEvent);
-        QVERIFY(window.seenMouseEvent); // Since QApplication transforms ignored touch events in mouse events
+        QCOMPARE(window.seenMouseEvent, mouseEventSynthesizing); // QApplication may transform ignored touch events in mouse events
 
         window.reset();
         window.setAttribute(Qt::WA_AcceptTouchEvents);
@@ -1977,7 +1978,7 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(window.seenTouchEvent);
-        QVERIFY(window.seenMouseEvent);
+        QCOMPARE(window.seenMouseEvent, mouseEventSynthesizing);
 
         window.reset();
         window.acceptTouchEvent = true;
@@ -2015,9 +2016,9 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(!widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
         QVERIFY(!window.seenTouchEvent);
-        QVERIFY(window.seenMouseEvent);
+        QCOMPARE(window.seenMouseEvent, mouseEventSynthesizing);
 
         window.reset();
         widget.reset();
@@ -2032,9 +2033,9 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
         QVERIFY(!window.seenTouchEvent);
-        QVERIFY(window.seenMouseEvent);
+        QCOMPARE(window.seenMouseEvent, mouseEventSynthesizing);
 
         window.reset();
         widget.reset();
@@ -2049,7 +2050,7 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
         QVERIFY(!window.seenTouchEvent);
         QVERIFY(!window.seenMouseEvent);
 
@@ -2084,9 +2085,9 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(!widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
         QVERIFY(window.seenTouchEvent);
-        QVERIFY(window.seenMouseEvent);
+        QCOMPARE(window.seenMouseEvent, mouseEventSynthesizing);
 
         window.reset();
         widget.reset();
@@ -2101,7 +2102,7 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(!widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
         QVERIFY(window.seenTouchEvent);
         QVERIFY(!window.seenMouseEvent);
 
@@ -2119,8 +2120,8 @@ void tst_QApplication::touchEventPropagation()
                                                  touchPointList(releasedTouchPoints));
         QCoreApplication::processEvents();
         QVERIFY(!widget.seenTouchEvent);
-        QVERIFY(widget.seenMouseEvent);
-        QVERIFY(!window.seenTouchEvent);
+        QCOMPARE(widget.seenMouseEvent, mouseEventSynthesizing);
+        QCOMPARE(!window.seenTouchEvent, mouseEventSynthesizing);
         QVERIFY(!window.seenMouseEvent);
     }
 }

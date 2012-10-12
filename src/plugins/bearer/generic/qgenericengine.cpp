@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -56,6 +56,11 @@
 #include "../platformdefs_win.h"
 #endif
 
+#ifdef Q_OS_WINCE
+typedef ULONG NDIS_OID, *PNDIS_OID;
+#include <nuiouser.h>
+#endif
+
 #ifdef Q_OS_LINUX
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -71,31 +76,60 @@ QT_BEGIN_NAMESPACE
 #ifndef QT_NO_NETWORKINTERFACE
 static QNetworkConfiguration::BearerType qGetInterfaceType(const QString &interface)
 {
-#ifdef Q_OS_WIN32
-    unsigned long oid;
+#if defined(Q_OS_WIN)
     DWORD bytesWritten;
-
     NDIS_MEDIUM medium;
     NDIS_PHYSICAL_MEDIUM physicalMedium;
 
+#ifdef Q_OS_WINCE
+    NDISUIO_QUERY_OID nicGetOid;
+    HANDLE handle = CreateFile((PTCHAR)NDISUIO_DEVICE_NAME, 0,
+                               FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+#else
+    unsigned long oid;
     HANDLE handle = CreateFile((TCHAR *)QString::fromLatin1("\\\\.\\%1").arg(interface).utf16(), 0,
                                FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+#endif
     if (handle == INVALID_HANDLE_VALUE)
         return QNetworkConfiguration::BearerUnknown;
 
-    oid = OID_GEN_MEDIA_SUPPORTED;
     bytesWritten = 0;
+
+#ifdef Q_OS_WINCE
+    ZeroMemory(&nicGetOid, sizeof(NDISUIO_QUERY_OID));
+    nicGetOid.Oid = OID_GEN_MEDIA_SUPPORTED;
+    nicGetOid.ptcDeviceName = (PTCHAR)interface.utf16();
+    bool result = DeviceIoControl(handle, IOCTL_NDISUIO_QUERY_OID_VALUE, &nicGetOid, sizeof(nicGetOid),
+                                  &nicGetOid, sizeof(nicGetOid), &bytesWritten, 0);
+#else
+    oid = OID_GEN_MEDIA_SUPPORTED;
     bool result = DeviceIoControl(handle, IOCTL_NDIS_QUERY_GLOBAL_STATS, &oid, sizeof(oid),
                                   &medium, sizeof(medium), &bytesWritten, 0);
+#endif
     if (!result) {
         CloseHandle(handle);
         return QNetworkConfiguration::BearerUnknown;
     }
 
-    oid = OID_GEN_PHYSICAL_MEDIUM;
     bytesWritten = 0;
+
+#ifdef Q_OS_WINCE
+    medium = NDIS_MEDIUM( *(LPDWORD)nicGetOid.Data );
+
+    ZeroMemory(&nicGetOid, sizeof(NDISUIO_QUERY_OID));
+    nicGetOid.Oid = OID_GEN_PHYSICAL_MEDIUM;
+    nicGetOid.ptcDeviceName = (PTCHAR)interface.utf16();
+
+    result = DeviceIoControl(handle, IOCTL_NDISUIO_QUERY_OID_VALUE, &nicGetOid, sizeof(nicGetOid),
+                             &nicGetOid, sizeof(nicGetOid), &bytesWritten, 0);
+
+    physicalMedium = NDIS_PHYSICAL_MEDIUM( *(LPDWORD)nicGetOid.Data );
+#else
+    oid = OID_GEN_PHYSICAL_MEDIUM;
     result = DeviceIoControl(handle, IOCTL_NDIS_QUERY_GLOBAL_STATS, &oid, sizeof(oid),
                              &physicalMedium, sizeof(physicalMedium), &bytesWritten, 0);
+#endif
+
     if (!result) {
         CloseHandle(handle);
 

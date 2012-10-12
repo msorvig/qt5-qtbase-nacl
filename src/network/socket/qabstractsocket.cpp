@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -95,10 +95,9 @@
     convenience functions readLine() and readAll(). QAbstractSocket
     also inherits getChar(), putChar(), and ungetChar() from
     QIODevice, which work on single bytes. The bytesWritten() signal
-    is emitted when data has been written to the socket (i.e., when
-    the client has read the data). Note that Qt does not limit the
-    write buffer size. You can monitor its size by listening to this
-    signal.
+    is emitted when data has been written to the socket. Note that Qt does
+    not limit the write buffer size. You can monitor its size by listening
+    to this signal.
 
     The readyRead() signal is emitted every time a new chunk of data
     has arrived. bytesAvailable() then returns the number of bytes
@@ -152,7 +151,7 @@
     require an event loop and typically leads to simpler code.
     However, in a GUI application, blocking sockets should only be
     used in non-GUI threads, to avoid freezing the user interface.
-    See the \l network/fortuneclient and \l network/blockingfortuneclient
+    See the \l fortuneclient and \l blockingfortuneclient
     examples for an overview of both approaches.
 
     \note We discourage the use of the blocking functions together
@@ -322,6 +321,8 @@
            probably the result of a bad installation or misconfiguration of the library.
     \value SslInvalidUserDataError Invalid data(certificate, key, cypher, etc.) was
            provided and its use resulted in an error in the SSL library.
+    \value TemporaryError A temporary error occurred(e.g., operation would block and socket
+           is non-blocking).
 
     \value UnknownSocketError An unidentified error occurred.
     \sa QAbstractSocket::error()
@@ -367,7 +368,7 @@
     IP_MULTICAST_LOOP (multicast loopback) socket option.
 
     \value TypeOfServiceOption This option is not supported on
-    Windows. This maps to to the IP_TOS socket option.
+    Windows. This maps to the IP_TOS socket option.
 
     Possible values for the \e{TypeOfServiceOption} are:
 
@@ -906,15 +907,6 @@ bool QAbstractSocketPrivate::flush()
 */
 void QAbstractSocketPrivate::resolveProxy(const QString &hostname, quint16 port)
 {
-    QHostAddress parsed;
-    if (hostname == QLatin1String("localhost")
-        || hostname.startsWith(QLatin1String("localhost."))
-        || (parsed.setAddress(hostname)
-            && (parsed.isLoopback()))) {
-        proxyInUse = QNetworkProxy::NoProxy;
-        return;
-    }
-
     QList<QNetworkProxy> proxies;
 
     if (proxy.type() != QNetworkProxy::DefaultProxy) {
@@ -1434,7 +1426,7 @@ QAbstractSocket::PauseModes QAbstractSocket::pauseMode() const
 /*!
     \since 5.0
 
-    Controls whether to pause upon receiving a notification. The \pauseMode parameter
+    Controls whether to pause upon receiving a notification. The \a pauseMode parameter
     specifies the conditions in which the socket should be paused. The only notification
     currently supported is QSslSocket::sslErrors(). If set to PauseOnSslErrors,
     data transfer on the socket will be paused and needs to be enabled explicitly

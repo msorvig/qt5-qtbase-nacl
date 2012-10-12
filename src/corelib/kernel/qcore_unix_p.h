@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -54,11 +54,13 @@
 //
 
 #include "qplatformdefs.h"
+#include "qatomic.h"
 
 #ifndef Q_OS_UNIX
 # error "qcore_unix_p.h included on a non-Unix system"
 #endif
 
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -141,6 +143,22 @@ inline timeval operator*(const timeval &t1, int mul)
     tmp.tv_sec = t1.tv_sec * mul;
     tmp.tv_usec = t1.tv_usec * mul;
     return normalizedTimeval(tmp);
+}
+
+inline void qt_ignore_sigpipe()
+{
+    // Set to ignore SIGPIPE once only.
+    static QBasicAtomicInt atom = Q_BASIC_ATOMIC_INITIALIZER(0);
+    if (!atom.load()) {
+        // More than one thread could turn off SIGPIPE at the same time
+        // But that's acceptable because they all would be doing the same
+        // action
+        struct sigaction noaction;
+        memset(&noaction, 0, sizeof(noaction));
+        noaction.sa_handler = SIG_IGN;
+        ::sigaction(SIGPIPE, &noaction, 0);
+        atom.store(1);
+    }
 }
 
 // don't call QT_OPEN or ::open
@@ -265,6 +283,12 @@ static inline qint64 qt_safe_write(int fd, const void *data, qint64 len)
 #undef QT_WRITE
 #define QT_WRITE qt_safe_write
 
+static inline qint64 qt_safe_write_nosignal(int fd, const void *data, qint64 len)
+{
+    qt_ignore_sigpipe();
+    return qt_safe_write(fd, data, len);
+}
+
 static inline int qt_safe_close(int fd)
 {
     register int ret;
@@ -310,7 +334,9 @@ static inline pid_t qt_safe_waitpid(pid_t pid, int *status, int options)
 #  define _POSIX_MONOTONIC_CLOCK -1
 #endif
 
-timeval qt_gettime(); // in qelapsedtimer_mac.cpp or qtimestamp_unix.cpp
+// in qelapsedtimer_mac.cpp or qtimestamp_unix.cpp
+timeval qt_gettime() Q_DECL_NOTHROW;
+void qt_nanosleep(timespec amount);
 
 Q_CORE_EXPORT int qt_safe_select(int nfds, fd_set *fdread, fd_set *fdwrite, fd_set *fdexcept,
                                  const struct timeval *tv);

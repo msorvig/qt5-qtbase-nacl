@@ -1,39 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Copyright (C) 2012 Intel Corporation.
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1317,6 +1317,12 @@ void tst_QSharedPointer::customDeleter()
     QCOMPARE(derivedDataDeleter.callCount, 1);
     QCOMPARE(refcount, 2);
     safetyCheck();
+
+    // a custom deleter with a different pointer parameter
+    {
+        QSharedPointer<char> ptr(static_cast<char *>(malloc(1)), free);
+    }
+    safetyCheck();
 }
 
 void tst_QSharedPointer::lambdaCustomDeleter()
@@ -1760,6 +1766,13 @@ void tst_QSharedPointer::invalidConstructs_data()
            "QSharedPointer<Data> ptr1 = QSharedPointer<Data>(aData);\n"
            "QSharedPointer<Data> ptr2 = QSharedPointer<Data>(aData);\n";
 
+    // two QObjects with the same pointer
+    QTest::newRow("same-pointer-to-qobject")
+        << &QTest::QExternalTest::tryRunFail
+        << "QObject *anObj = new QObject;\n"
+           "QSharedPointer<QObject> ptr1 = QSharedPointer<QObject>(anObj);\n"
+           "QSharedPointer<QObject> ptr2 = QSharedPointer<QObject>(anObj);\n";
+
     // re-creation:
     QTest::newRow("re-creation")
         << &QTest::QExternalTest::tryRunFail
@@ -1797,6 +1810,20 @@ void tst_QSharedPointer::invalidConstructs_data()
         << &QTest::QExternalTest::tryCompileFail
         << "Data *ptr = 0;\n"
            "QSharedPointer<Data> weakptr = Qt::Uninitialized;\n";
+
+    QTest::newRow("incompatible-custom-deleter1")
+        << &QTest::QExternalTest::tryCompileFail
+        << "extern void incompatibleCustomDeleter(int *);\n"
+           "QSharedPointer<Data> ptr(new Data, incompatibleCustomDeleter);\n";
+    QTest::newRow("incompatible-custom-deleter2")
+        << &QTest::QExternalTest::tryCompileFail
+        << "struct IncompatibleCustomDeleter { void operator()(int *); };\n"
+           "QSharedPointer<Data> ptr(new Data, IncompatibleCustomDeleter());\n";
+#ifdef Q_COMPILER_LAMBDA
+    QTest::newRow("incompatible-custom-lambda-deleter")
+        << &QTest::QExternalTest::tryCompileFail
+        << "QSharedPointer<Data> ptr(new Data, [](int *) {});\n";
+#endif
 }
 
 void tst_QSharedPointer::invalidConstructs()

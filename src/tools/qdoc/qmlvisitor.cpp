@@ -1,47 +1,47 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-#include <QFileInfo>
-#include <QStringList>
-#include <QtGlobal>
+#include <qfileinfo.h>
+#include <qstringlist.h>
+#include <qglobal.h>
 #include "qqmljsast_p.h"
 #include "qqmljsastfwd_p.h"
 #include "qqmljsengine_p.h"
@@ -49,6 +49,7 @@
 #include "node.h"
 #include "codeparser.h"
 #include "qmlvisitor.h"
+#include "qdocdatabase.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -84,7 +85,6 @@ QT_BEGIN_NAMESPACE
 QmlDocVisitor::QmlDocVisitor(const QString &filePath,
                              const QString &code,
                              QQmlJS::Engine *engine,
-                             Tree *tree,
                              QSet<QString> &commands,
                              QSet<QString> &topics)
     : nestingLevel(0)
@@ -93,10 +93,9 @@ QmlDocVisitor::QmlDocVisitor(const QString &filePath,
     this->name = QFileInfo(filePath).baseName();
     document = code;
     this->engine = engine;
-    this->tree = tree;
     this->commands = commands;
     this->topics = topics;
-    current = tree->root();
+    current = QDocDatabase::qdocDB()->treeRoot();
 }
 
 /*!
@@ -235,6 +234,8 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
                                       Node* node,
                                       Doc& doc)
 {
+    QDocDatabase* qdb = QDocDatabase::qdocDB();
+
     const TopicList& topicsUsed = doc.topicsUsed();
     if (topicsUsed.size() > 0) {
         if (node->type() == Node::QmlProperty) {
@@ -309,7 +310,7 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
             QString command = *i;
             args = doc.metaCommandArgs(command);
             if (command == COMMAND_QMLABSTRACT) {
-                if ((node->type() == Node::Fake) && (node->subType() == Node::QmlClass)) {
+                if ((node->type() == Node::Document) && (node->subType() == Node::QmlClass)) {
                     node->setAbstract(true);
                 }
             }
@@ -317,12 +318,7 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
                 node->setStatus(Node::Deprecated);
             }
             else if (command == COMMAND_INQMLMODULE) {
-                node->setQmlModule(args[0]);
-                FakeNode* fn = FakeNode::lookupQmlModuleNode(tree, args[0]);
-                fn->addQmlModuleMember(node);
-                QString qmid = node->qmlModuleIdentifier();
-                QmlClassNode* qcn = static_cast<QmlClassNode*>(node);
-                QmlClassNode::insertQmlModuleMember(qmid, qcn);
+                qdb->addToQmlModule(args[0].first,node);
             }
             else if (command == COMMAND_QMLINHERITS) {
                 if (node->name() == args[0].first)
@@ -349,7 +345,7 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
             else if ((command == COMMAND_INGROUP) && !args.isEmpty()) {
                 ArgList::ConstIterator argsIter = args.constBegin();
                 while (argsIter != args.constEnd()) {
-                    tree->addToGroup(node, argsIter->first);
+                    QDocDatabase::qdocDB()->addToGroup(node, argsIter->first);
                     ++argsIter;
                 }
             }
@@ -368,7 +364,7 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
                 node->setStatus(Node::Preliminary);
             }
             else if (command == COMMAND_SINCE) {
-                QString arg = args[0].first; //.join(" ");
+                QString arg = args[0].first; //.join(' ');
                 node->setSince(arg);
             }
             else {
@@ -380,10 +376,10 @@ void QmlDocVisitor::applyMetacommands(QQmlJS::AST::SourceLocation,
 }
 
 /*!
-  Begin the visit of the object \a definition, recording it in a tree
-  structure.  Increment the object nesting level, which is used to
-  test whether we are at the public API level. The public level is
-  level 1.
+  Begin the visit of the object \a definition, recording it in the
+  qdoc database. Increment the object nesting level, which is used
+  to test whether we are at the public API level. The public level
+  is level 1.
 */
 bool QmlDocVisitor::visit(QQmlJS::AST::UiObjectDefinition *definition)
 {
@@ -462,7 +458,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::UiPublicMember *member)
     switch (member->type) {
     case QQmlJS::AST::UiPublicMember::Signal:
     {
-        if (current->type() == Node::Fake) {
+        if (current->type() == Node::Document) {
             QmlClassNode *qmlClass = static_cast<QmlClassNode *>(current);
             if (qmlClass) {
 
@@ -472,7 +468,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::UiPublicMember *member)
                 QList<Parameter> parameters;
                 for (QQmlJS::AST::UiParameterList *it = member->parameters; it; it = it->next) {
                     if (!it->type.isEmpty() && !it->name.isEmpty())
-                        parameters.append(Parameter(it->type.toString(), "", it->name.toString()));
+                        parameters.append(Parameter(it->type.toString(), QString(), it->name.toString()));
                 }
 
                 qmlSignal->setParameters(parameters);
@@ -485,7 +481,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::UiPublicMember *member)
     {
         QString type = member->memberType.toString();
         QString name = member->name.toString();
-        if (current->type() == Node::Fake) {
+        if (current->type() == Node::Document) {
             QmlClassNode *qmlClass = static_cast<QmlClassNode *>(current);
             if (qmlClass) {
                 QString name = member->name.toString();
@@ -526,7 +522,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::FunctionDeclaration* fd)
 {
     if (nestingLevel > 1)
         return true;
-    if (current->type() == Node::Fake) {
+    if (current->type() == Node::Document) {
         QmlClassNode* qmlClass = static_cast<QmlClassNode*>(current);
         if (qmlClass) {
             QString name = fd->name.toString();
@@ -545,7 +541,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::FunctionDeclaration* fd)
             if (formals) {
                 QQmlJS::AST::FormalParameterList* fpl = formals;
                 do {
-                    parameters.append(Parameter(QString(""), QString(""), fpl->name.toString()));
+                    parameters.append(Parameter(QString(), QString(), fpl->name.toString()));
                     fpl = fpl->next;
                 } while (fpl && fpl != formals);
                 qmlMethod->setParameters(parameters);
@@ -572,7 +568,7 @@ bool QmlDocVisitor::visit(QQmlJS::AST::UiScriptBinding* sb)
 {
     if (nestingLevel > 1)
         return true;
-    if (current->type() == Node::Fake) {
+    if (current->type() == Node::Document) {
         QString handler = sb->qualifiedId->name.toString();
         if (handler.length() > 2 && handler.startsWith("on") && handler.at(2).isUpper()) {
             QmlClassNode* qmlClass = static_cast<QmlClassNode*>(current);

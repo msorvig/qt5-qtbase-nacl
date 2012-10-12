@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -72,7 +72,7 @@
 #include <qtableview.h>
 #include <qtreewidget.h>
 #include <qabstractnativeeventfilter.h>
-
+#include <qproxystyle.h>
 #include <QtWidgets/QGraphicsView>
 #include <QtWidgets/QGraphicsProxyWidget>
 
@@ -352,7 +352,6 @@ private slots:
     void initialPosForDontShowOnScreenWidgets();
     void updateOnDestroyedSignal();
     void toplevelLineEditFocus();
-    void inputFocus_task257832();
 
     void focusWidget_task254563();
 #ifndef Q_OS_WINCE_WM
@@ -384,9 +383,11 @@ private slots:
 
     void nativeChildFocus();
     void grab();
+    void grabMouse();
 
     void touchEventSynthesizedMouseEvent();
 
+    void styleSheetPropagation();
 private:
     bool ensureScreenSize(int width, int height);
     QWidget *testWidget;
@@ -2617,9 +2618,6 @@ void tst_QWidget::raise()
     foreach (UpdateWidget *child, allChildren) {
         int expectedPaintEvents = child == child2 ? 1 : 0;
         int expectedZOrderChangeEvents = child == child2 ? 1 : 0;
-#ifdef Q_OS_MAC
-        QSKIP("Not yet sure why this fails.");
-#endif
         QTRY_COMPARE(child->numPaintEvents, expectedPaintEvents);
         QCOMPARE(child->numZOrderChangeEvents, expectedZOrderChangeEvents);
         child->reset();
@@ -3736,16 +3734,13 @@ void tst_QWidget::winIdChangeEvent()
 
     {
         // Changing parent of a native widget
-        // Should cause winId of child to change, on all platforms
         QWidget parent1, parent2;
         WinIdChangeWidget child(&parent1);
         const WId winIdBefore = child.winId();
         QCOMPARE(child.winIdChangeEventCount(), 1);
         child.setParent(&parent2);
         const WId winIdAfter = child.internalWinId();
-        if (m_platform == QStringLiteral("windows"))
-            QEXPECT_FAIL("", "QTBUG-26424", Continue);
-        QVERIFY(winIdBefore != winIdAfter);
+        QCOMPARE(winIdBefore, winIdAfter);
         QCOMPARE(child.winIdChangeEventCount(), 3);
         // winId is set to zero during reparenting
         QVERIFY(0 == child.m_winIdList[1]);
@@ -3785,9 +3780,7 @@ void tst_QWidget::winIdChangeEvent()
         const Qt::WindowFlags flags = child.windowFlags();
         child.setWindowFlags(flags | Qt::Window);
         const WId winIdAfter = child.internalWinId();
-        if (m_platform == QStringLiteral("windows"))
-            QEXPECT_FAIL("", "QTBUG-26424", Continue);
-        QVERIFY(winIdBefore != winIdAfter);
+        QCOMPARE(winIdBefore, winIdAfter);
         QCOMPARE(child.winIdChangeEventCount(), 3);
         // winId is set to zero during reparenting
         QVERIFY(0 == child.m_winIdList[1]);
@@ -3808,61 +3801,37 @@ void tst_QWidget::persistentWinId()
     WId winId2 = w2->winId();
     WId winId3 = w3->winId();
 
-    // reparenting should change the winId of the widget being reparented, but not of its children
+    // reparenting should preserve the winId of the widget being reparented and of its children
     w1->setParent(0);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w1->winId() != winId1);
-    winId1 = w1->winId();
+    QCOMPARE(w1->winId(), winId1);
     QCOMPARE(w2->winId(), winId2);
     QCOMPARE(w3->winId(), winId3);
 
     w1->setParent(parent.data());
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w1->winId() != winId1);
-    winId1 = w1->winId();
+    QCOMPARE(w1->winId(), winId1);
     QCOMPARE(w2->winId(), winId2);
     QCOMPARE(w3->winId(), winId3);
 
     w2->setParent(0);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w2->winId() != winId2);
-    winId2 = w2->winId();
+    QCOMPARE(w2->winId(), winId2);
     QCOMPARE(w3->winId(), winId3);
 
     w2->setParent(parent.data());
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w2->winId() != winId2);
-    winId2 = w2->winId();
+    QCOMPARE(w2->winId(), winId2);
     QCOMPARE(w3->winId(), winId3);
 
     w2->setParent(w1);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w2->winId() != winId2);
-    winId2 = w2->winId();
+    QCOMPARE(w2->winId(), winId2);
     QCOMPARE(w3->winId(), winId3);
 
     w3->setParent(0);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w3->winId() != winId3);
-    winId3 = w3->winId();
+    QCOMPARE(w3->winId(), winId3);
 
     w3->setParent(w1);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w3->winId() != winId3);
-    winId3 = w3->winId();
+    QCOMPARE(w3->winId(), winId3);
 
     w3->setParent(w2);
-    if (m_platform == QStringLiteral("windows"))
-        QEXPECT_FAIL("", "QTBUG-26424", Continue);
-    QVERIFY(w3->winId() != winId3);
-    winId3 = w3->winId();
+    QCOMPARE(w3->winId(), winId3);
 }
 
 void tst_QWidget::showNativeChild()
@@ -5305,6 +5274,7 @@ void tst_QWidget::setCursor()
         QWidget child(&window);
 
         window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
         window.setCursor(Qt::WaitCursor);
         QVERIFY(window.testAttribute(Qt::WA_SetCursor));
         QVERIFY(!child.testAttribute(Qt::WA_SetCursor));
@@ -5375,6 +5345,15 @@ void tst_QWidget::setCursor()
 void tst_QWidget::setToolTip()
 {
     QWidget widget;
+    widget.resize(200, 200);
+    // Showing the widget is not required for the tooltip event count test
+    // to work. It should just prevent the application from becoming inactive
+    // which would cause it to close all popups, interfering with the test
+    // in the loop below.
+    widget.setObjectName(QLatin1String("tst_qwidget setToolTip"));
+    widget.setWindowTitle(widget.objectName());
+    widget.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&widget));
     EventSpy spy(&widget, QEvent::ToolTipChange);
     QCOMPARE(spy.count(), 0);
 
@@ -5390,6 +5369,8 @@ void tst_QWidget::setToolTip()
 #ifndef Q_OS_WINCE_WM
     for (int pass = 0; pass < 2; ++pass) {
         QScopedPointer<QWidget> popup(new QWidget(0, Qt::Popup));
+        popup->setObjectName(QString::fromLatin1("tst_qwidget setToolTip #%1").arg(pass));
+        popup->setWindowTitle(popup->objectName());
         popup->resize(150, 50);
         QFrame *frame = new QFrame(popup.data());
         frame->setGeometry(0, 0, 50, 50);
@@ -8868,18 +8849,6 @@ void tst_QWidget::rectOutsideCoordinatesLimit_task144779()
 }
 #endif
 
-void tst_QWidget::inputFocus_task257832()
-{
-      QScopedPointer<QLineEdit> widget(new QLineEdit);
-      widget->setFocus();
-      widget->winId();    // make sure, widget has been created
-      widget->show();
-      QTRY_VERIFY(widget->hasFocus());
-      QCOMPARE(qApp->inputMethod()->inputItem(), widget.data());
-      widget->setReadOnly(true);
-      QVERIFY(!qApp->inputMethod()->inputItem());
-}
-
 void tst_QWidget::setGraphicsEffect()
 {
     // Check that we don't have any effect by default.
@@ -9003,19 +8972,7 @@ void tst_QWidget::focusProxyAndInputMethods()
     QVERIFY(QTest::qWaitForWindowActive(toplevel.data()));
     QVERIFY(toplevel->hasFocus());
     QVERIFY(child->hasFocus());
-
-    // verify that toggling input methods on the child widget
-    // correctly propagate to the focus proxy's input method
-    // and that the input method gets the focus proxy passed
-    // as the focus widget instead of the child widget.
-    // otherwise input method queries go to the wrong widget
-    QCOMPARE(qApp->inputPanel()->inputItem(), toplevel.data());
-
-    toplevel->setAttribute(Qt::WA_InputMethodEnabled, false);
-    QVERIFY(!qApp->inputPanel()->inputItem());
-
-    toplevel->setAttribute(Qt::WA_InputMethodEnabled, true);
-    QCOMPARE(qApp->inputPanel()->inputItem(), toplevel.data());
+    QCOMPARE(qApp->focusObject(), toplevel.data());
 }
 
 #ifdef QT_BUILD_INTERNAL
@@ -9345,6 +9302,75 @@ void tst_QWidget::grab()
     }
 }
 
+/* grabMouse() tests whether mouse grab for a widget without window handle works.
+ * It creates a top level widget with another nested widget inside. The inner widget grabs
+ * the mouse and a series of mouse presses moving over the top level's window is simulated.
+ * Only the inner widget should receive events. */
+
+static inline QString mouseEventLogEntry(const QString &objectName, QEvent::Type t, const QPoint &p, Qt::MouseButtons b)
+{
+    QString result;
+    QDebug(&result).nospace() << objectName << " Mouse event " << t << " at " << p << " buttons " << b;
+    return result;
+}
+
+class GrabLoggerWidget : public QWidget {
+public:
+    explicit GrabLoggerWidget(QStringList *log, QWidget *parent = 0)  : QWidget(parent), m_log(log) {}
+
+protected:
+    bool event(QEvent *e)
+    {
+        switch (e->type()) {
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseMove:
+        case QEvent::MouseButtonRelease: {
+            QMouseEvent *me = static_cast<QMouseEvent *>(e);
+            m_log->push_back(mouseEventLogEntry(objectName(), me->type(), me->pos(), me->buttons()));
+            me->accept();
+            return true;
+        }
+        default:
+            break;
+        }
+        return QWidget::event(e);
+    }
+private:
+    QStringList *m_log;
+};
+
+void tst_QWidget::grabMouse()
+{
+    QStringList log;
+    GrabLoggerWidget w(&log);
+    w.setObjectName(QLatin1String("tst_qwidget_grabMouse"));
+    w.setWindowTitle(w.objectName());
+    QLayout *layout = new QVBoxLayout(&w);
+    layout->setMargin(50);
+    GrabLoggerWidget *grabber = new GrabLoggerWidget(&log, &w);
+    const QString grabberObjectName = QLatin1String("tst_qwidget_grabMouse_grabber");
+    grabber->setObjectName(grabberObjectName);
+    grabber->setMinimumSize(100, 100);
+    layout->addWidget(grabber);
+    w.show();
+    qApp->setActiveWindow(&w);
+    QVERIFY(QTest::qWaitForWindowActive(&w));
+
+    QStringList expectedLog;
+    grabber->grabMouse();
+    QPoint mousePos = QPoint(w.width() / 2, 10);
+    const int step = w.height() / 5;
+    for ( ; mousePos.y() < w.height() ; mousePos.ry() += step) {
+        QTest::mouseClick(w.windowHandle(), Qt::LeftButton, 0, mousePos);
+        // Events should go to the grabber child using its coordinates.
+        const QPoint expectedPos = grabber->mapFromParent(mousePos);
+        expectedLog.push_back(mouseEventLogEntry(grabberObjectName, QEvent::MouseButtonPress, expectedPos, Qt::LeftButton));
+        expectedLog.push_back(mouseEventLogEntry(grabberObjectName, QEvent::MouseButtonRelease, expectedPos, Qt::NoButton));
+    }
+    grabber->releaseMouse();
+    QCOMPARE(log, expectedLog);
+}
+
 class TouchMouseWidget : public QWidget {
 public:
     explicit TouchMouseWidget(QWidget *parent = 0)
@@ -9408,6 +9434,10 @@ public:
 
 void tst_QWidget::touchEventSynthesizedMouseEvent()
 {
+    // Pass if the platform does not want mouse event synhesizing
+    if (!QGuiApplicationPrivate::platformIntegration()->styleHint(QPlatformIntegration::SynthesizeMouseFromTouchEvents).toBool())
+        return;
+
     {
         // Simple case, we ignore the touch events, we get mouse events instead
         QTouchDevice *device = new QTouchDevice;
@@ -9510,6 +9540,16 @@ void tst_QWidget::touchEventSynthesizedMouseEvent()
         QCOMPARE(child.m_touchEventCount, 0);
         QCOMPARE(child.m_mouseEventCount, 1); // Attempt at mouse event before propagation
         QCOMPARE(child.m_lastMouseEventPos, QPointF(10, 10));
+    }
+}
+
+void tst_QWidget::styleSheetPropagation()
+{
+    QTableView tw;
+    tw.setStyleSheet("background-color: red;");
+    foreach (QObject *child, tw.children()) {
+        if (QWidget *w = qobject_cast<QWidget *>(child))
+            QCOMPARE(w->style(), tw.style());
     }
 }
 

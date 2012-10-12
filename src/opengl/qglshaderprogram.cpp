@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -54,6 +54,7 @@ QT_BEGIN_NAMESPACE
     \class QGLShaderProgram
     \brief The QGLShaderProgram class allows OpenGL shader programs to be linked and used.
     \since 4.6
+    \obsolete
     \ingroup painting-3D
 
     \section1 Introduction
@@ -117,6 +118,8 @@ QT_BEGIN_NAMESPACE
     specified and linked, allowing other operations to be performed
     on the shader program.
 
+    \note This class has been deprecated in favor of QOpenGLShaderProgram.
+
     \sa QGLShader
 */
 
@@ -124,6 +127,7 @@ QT_BEGIN_NAMESPACE
     \class QGLShader
     \brief The QGLShader class allows OpenGL shaders to be compiled.
     \since 4.6
+    \obsolete
     \ingroup painting-3D
 
     This class supports shaders written in the OpenGL Shading Language (GLSL)
@@ -131,6 +135,8 @@ QT_BEGIN_NAMESPACE
 
     QGLShader and QGLShaderProgram shelter the programmer from the details of
     compiling and linking vertex and fragment shaders.
+
+    \note This class has been deprecated in favor of QOpenGLShader.
 
     \sa QGLShaderProgram
 */
@@ -232,8 +238,10 @@ bool QGLShaderPrivate::create()
         GLuint shader;
         if (shaderType == QGLShader::Vertex)
             shader = glCreateShader(GL_VERTEX_SHADER);
+#if !defined(QT_OPENGL_ES_2)
         else if (shaderType == QGLShader::Geometry)
             shader = glCreateShader(GL_GEOMETRY_SHADER_EXT);
+#endif
         else
             shader = glCreateShader(GL_FRAGMENT_SHADER);
         if (!shader) {
@@ -880,6 +888,7 @@ bool QGLShaderProgram::link()
             return true;
     }
 
+#if !defined(QT_OPENGL_ES_2)
     // Set up the geometry shader parameters
     if (glProgramParameteriEXT) {
         foreach (QGLShader *shader, d->shaders) {
@@ -894,6 +903,7 @@ bool QGLShaderProgram::link()
             }
         }
     }
+#endif
 
     glLinkProgram(program);
     value = 0;
@@ -2187,58 +2197,6 @@ void QGLShaderProgram::setUniformValue(const char *name, const QSizeF& size)
     setUniformValue(uniformLocation(name), size);
 }
 
-// We have to repack matrices from qreal to GLfloat.
-#define setUniformMatrix(func,location,value,cols,rows) \
-    if (location == -1) \
-        return; \
-    if (sizeof(qreal) == sizeof(GLfloat)) { \
-        func(location, 1, GL_FALSE, \
-             reinterpret_cast<const GLfloat *>(value.constData())); \
-    } else { \
-        GLfloat mat[cols * rows]; \
-        const qreal *data = value.constData(); \
-        for (int i = 0; i < cols * rows; ++i) \
-            mat[i] = data[i]; \
-        func(location, 1, GL_FALSE, mat); \
-    }
-#if !defined(QT_OPENGL_ES_2)
-#define setUniformGenericMatrix(func,colfunc,location,value,cols,rows) \
-    if (location == -1) \
-        return; \
-    if (sizeof(qreal) == sizeof(GLfloat)) { \
-        const GLfloat *data = reinterpret_cast<const GLfloat *> \
-            (value.constData());  \
-        if (func) \
-            func(location, 1, GL_FALSE, data); \
-        else \
-            colfunc(location, cols, data); \
-    } else { \
-        GLfloat mat[cols * rows]; \
-        const qreal *data = value.constData(); \
-        for (int i = 0; i < cols * rows; ++i) \
-            mat[i] = data[i]; \
-        if (func) \
-            func(location, 1, GL_FALSE, mat); \
-        else \
-            colfunc(location, cols, mat); \
-    }
-#else
-#define setUniformGenericMatrix(func,colfunc,location,value,cols,rows) \
-    if (location == -1) \
-        return; \
-    if (sizeof(qreal) == sizeof(GLfloat)) { \
-        const GLfloat *data = reinterpret_cast<const GLfloat *> \
-            (value.constData());  \
-        colfunc(location, cols, data); \
-    } else { \
-        GLfloat mat[cols * rows]; \
-        const qreal *data = value.constData(); \
-        for (int i = 0; i < cols * rows; ++i) \
-            mat[i] = data[i]; \
-        colfunc(location, cols, mat); \
-    }
-#endif
-
 /*!
     Sets the uniform variable at \a location in the current context
     to a 2x2 matrix \a value.
@@ -2249,7 +2207,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix2x2& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(glUniformMatrix2fv, location, value, 2, 2);
+    glUniformMatrix2fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -2275,8 +2233,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix2x3& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix2x3fv, glUniform3fv, location, value, 2, 3);
+    glUniform3fv(location, 2, value.constData());
 }
 
 /*!
@@ -2302,8 +2259,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix2x4& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix2x4fv, glUniform4fv, location, value, 2, 4);
+    glUniform4fv(location, 2, value.constData());
 }
 
 /*!
@@ -2329,8 +2285,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix3x2& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix3x2fv, glUniform2fv, location, value, 3, 2);
+    glUniform2fv(location, 3, value.constData());
 }
 
 /*!
@@ -2356,7 +2311,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix3x3& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(glUniformMatrix3fv, location, value, 3, 3);
+    glUniformMatrix3fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -2382,8 +2337,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix3x4& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix3x4fv, glUniform4fv, location, value, 3, 4);
+    glUniform4fv(location, 3, value.constData());
 }
 
 /*!
@@ -2409,8 +2363,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix4x2& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix4x2fv, glUniform2fv, location, value, 4, 2);
+    glUniform2fv(location, 4, value.constData());
 }
 
 /*!
@@ -2436,8 +2389,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix4x3& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformGenericMatrix
-        (glUniformMatrix4x3fv, glUniform3fv, location, value, 4, 3);
+    glUniform3fv(location, 4, value.constData());
 }
 
 /*!
@@ -2463,7 +2415,7 @@ void QGLShaderProgram::setUniformValue(int location, const QMatrix4x4& value)
 {
     Q_D(QGLShaderProgram);
     Q_UNUSED(d);
-    setUniformMatrix(glUniformMatrix4fv, location, value, 4, 4);
+    glUniformMatrix4fv(location, 1, GL_FALSE, value.constData());
 }
 
 /*!
@@ -3114,8 +3066,10 @@ void QGLShaderProgram::setUniformValueArray(const char *name, const QMatrix4x4 *
 */
 int QGLShaderProgram::maxGeometryOutputVertices() const
 {
-    GLint n;
+    GLint n = 0;
+#if !defined(QT_OPENGL_ES_2)
     glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES_EXT, &n);
+#endif
     return n;
 }
 

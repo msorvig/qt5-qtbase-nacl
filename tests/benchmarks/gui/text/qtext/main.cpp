@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -51,6 +51,7 @@
 #include <qtest.h>
 
 Q_DECLARE_METATYPE(QTextDocument*)
+Q_DECLARE_METATYPE(QList<QTextLayout::FormatRange>)
 
 class tst_QText: public QObject
 {
@@ -80,6 +81,7 @@ private slots:
 
     void layout_data();
     void layout();
+    void formattedLayout_data();
     void formattedLayout();
     void paintLayoutToPixmap();
     void paintLayoutToPixmap_painterFill();
@@ -328,28 +330,53 @@ void tst_QText::layout()
     }
 }*/
 
-void tst_QText::formattedLayout()
+void tst_QText::formattedLayout_data()
 {
-    //set up formatting
-    QList<QTextLayout::FormatRange> ranges;
+    QTest::addColumn<QString>("text");
+    QTest::addColumn<QList<QTextLayout::FormatRange> >("ranges");
+
+    QTextCharFormat format;
+    format.setForeground(QColor("steelblue"));
+
     {
-        QTextCharFormat format;
-        format.setForeground(QColor("steelblue"));
+        QList<QTextLayout::FormatRange> ranges;
 
         QTextLayout::FormatRange formatRange;
         formatRange.format = format;
         formatRange.start = 0;
         formatRange.length = 50;
-
         ranges.append(formatRange);
-    }
 
-    QTextLayout layout(m_shortLorem);
+        QTest::newRow("short-single") << m_shortLorem << ranges;
+    }
+    {
+        QList<QTextLayout::FormatRange> ranges;
+
+        QString text = m_lorem.repeated(100);
+        const int width = 1;
+        for (int i = 0; i < text.size(); i += width) {
+            QTextLayout::FormatRange formatRange;
+            formatRange.format.setForeground(QBrush(QColor(i % 255, 255, 255)));
+            formatRange.start = i;
+            formatRange.length = width;
+            ranges.append(formatRange);
+        }
+
+        QTest::newRow("long-many") << m_shortLorem << ranges;
+    }
+}
+
+void tst_QText::formattedLayout()
+{
+    QFETCH(QString, text);
+    QFETCH(QList<QTextLayout::FormatRange>, ranges);
+
+    QTextLayout layout(text);
     layout.setAdditionalFormats(ranges);
     setupTextLayout(&layout);
 
     QBENCHMARK {
-        QTextLayout layout(m_shortLorem);
+        QTextLayout layout(text);
         layout.setAdditionalFormats(ranges);
         setupTextLayout(&layout);
     }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Research In Motion
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -46,6 +46,14 @@
 
 #include <bps/bps.h>
 #include <bps/event.h>
+
+//#define QEVENTDISPATCHERBLACKBERRY_DEBUG
+
+#ifdef QEVENTDISPATCHERBLACKBERRY_DEBUG
+#define qEventDispatcherDebug qDebug() << QThread::currentThread()
+#else
+#define qEventDispatcherDebug QT_NO_QDEBUG_MACRO()
+#endif
 
 struct bpsIOHandlerData {
     bpsIOHandlerData()
@@ -63,6 +71,7 @@ static int bpsIOReadyDomain = -1;
 
 static int bpsIOHandler(int fd, int io_events, void *data)
 {
+    qEventDispatcherDebug << Q_FUNC_INFO;
     // decode callback payload
     bpsIOHandlerData *ioData = static_cast<bpsIOHandlerData*>(data);
 
@@ -71,16 +80,19 @@ static int bpsIOHandler(int fd, int io_events, void *data)
 
     // update ready state of file
     if (io_events & BPS_IO_INPUT) {
+        qEventDispatcherDebug << fd << "ready for Read";
         FD_SET(fd, ioData->readfds);
         ioData->count++;
     }
 
     if (io_events & BPS_IO_OUTPUT) {
+        qEventDispatcherDebug << fd << "ready for Write";
         FD_SET(fd, ioData->writefds);
         ioData->count++;
     }
 
     if (io_events & BPS_IO_EXCEPT) {
+        qEventDispatcherDebug << fd << "ready for Exception";
         FD_SET(fd, ioData->exceptfds);
         ioData->count++;
     }
@@ -88,6 +100,7 @@ static int bpsIOHandler(int fd, int io_events, void *data)
     // force bps_get_event() to return immediately by posting an event to ourselves;
     // but this only needs to happen once if multiple files become ready at the same time
     if (firstReady) {
+        qEventDispatcherDebug << "Sending bpsIOReadyDomain event";
         // create IO ready event
         bps_event_t *event;
         int result = bps_event_create(&event, bpsIOReadyDomain, 0, NULL, NULL);
@@ -123,18 +136,20 @@ QEventDispatcherBlackberryPrivate::QEventDispatcherBlackberryPrivate()
             qWarning("QEventDispatcherBlackberryPrivate::QEventDispatcherBlackberry: bps_register_domain() failed");
     }
 
-    // \TODO Reinstate this when bps is fixed. See comment in select() below.
     // Register thread_pipe[0] with bps
-    /*
     int io_events = BPS_IO_INPUT;
     result = bps_add_fd(thread_pipe[0], io_events, &bpsIOHandler, ioData.data());
     if (result != BPS_SUCCESS)
         qWarning() << Q_FUNC_INFO << "bps_add_fd() failed";
-    */
 }
 
 QEventDispatcherBlackberryPrivate::~QEventDispatcherBlackberryPrivate()
 {
+    // Unregister thread_pipe[0] from bps
+    const int result = bps_remove_fd(thread_pipe[0]);
+    if (result != BPS_SUCCESS)
+        qWarning() << Q_FUNC_INFO << "bps_remove_fd() failed";
+
     // we're done using BPS
     bps_shutdown();
 }
@@ -162,6 +177,7 @@ void QEventDispatcherBlackberry::registerSocketNotifier(QSocketNotifier *notifie
     // Register the fd with bps
     int sockfd = notifier->socket();
     int type = notifier->type();
+    qEventDispatcherDebug << Q_FUNC_INFO << "fd =" << sockfd;
 
     int io_events = ioEvents(sockfd);
 
@@ -173,13 +189,16 @@ void QEventDispatcherBlackberry::registerSocketNotifier(QSocketNotifier *notifie
 
     switch (type) {
     case QSocketNotifier::Read:
+        qEventDispatcherDebug << "Registering" << sockfd << "for Reads";
         io_events |= BPS_IO_INPUT;
         break;
     case QSocketNotifier::Write:
+        qEventDispatcherDebug << "Registering" << sockfd << "for Writes";
         io_events |= BPS_IO_OUTPUT;
         break;
     case QSocketNotifier::Exception:
     default:
+        qEventDispatcherDebug << "Registering" << sockfd << "for Exceptions";
         io_events |= BPS_IO_EXCEPT;
         break;
     }
@@ -200,6 +219,7 @@ void QEventDispatcherBlackberry::unregisterSocketNotifier(QSocketNotifier *notif
 
     // Unregister the fd with bps
     int sockfd = notifier->socket();
+    qEventDispatcherDebug << Q_FUNC_INFO << "fd =" << sockfd;
 
     const int io_events = ioEvents(sockfd);
 
@@ -223,10 +243,35 @@ void QEventDispatcherBlackberry::unregisterSocketNotifier(QSocketNotifier *notif
     }
 }
 
+static inline bool updateTimeout(int *timeout, const struct timeval &start)
+{
+    // A timeout of -1 means we should block indefinitely. If we get here, we got woken up by a
+    // non-IO BPS event, and that event has been processed already. This means we can go back and
+    // block in bps_get_event().
+    // Note that processing the BPS event might have triggered a wakeup, in that case we get a
+    // IO event in the next bps_get_event() right away.
+    if (*timeout == -1)
+        return true;
+
+    if (Q_UNLIKELY(!QElapsedTimer::isMonotonic())) {
+        // we cannot recalculate the timeout without a monotonic clock as the time may have changed
+        return false;
+    }
+
+    // clock source is monotonic, so we can recalculate how much timeout is left
+    timeval t2 = qt_gettime();
+    int elapsed = (t2.tv_sec * 1000 + t2.tv_usec / 1000) - (start.tv_sec * 1000 + start.tv_usec / 1000);
+    *timeout -= elapsed;
+    return *timeout >= 0;
+}
+
 int QEventDispatcherBlackberry::select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
                                        timeval *timeout)
 {
     Q_UNUSED(nfds);
+
+    // Make a note of the start time
+    timeval startTime = qt_gettime();
 
     // prepare file sets for bps callback
     Q_D(QEventDispatcherBlackberry);
@@ -234,22 +279,6 @@ int QEventDispatcherBlackberry::select(int nfds, fd_set *readfds, fd_set *writef
     d->ioData->readfds = readfds;
     d->ioData->writefds = writefds;
     d->ioData->exceptfds = exceptfds;
-
-    // \TODO Remove this when bps is fixed
-    //
-    // Work around a bug in BPS with which if we register the thread_pipe[0] fd with bps in the
-    // private class' ctor once only then we get spurious notifications that thread_pipe[0] is
-    // ready for reading. The first time the notification is correct and the pipe is emptied in
-    // the calling doSelect() function. The 2nd notification is an error and the resulting attempt
-    // to read and call to wakeUps.testAndSetRelease(1, 0) fails as there has been no intervening
-    // call to QEventDispatcherUNIX::wakeUp().
-    //
-    // Registering thread_pipe[0] here and unregistering it at the end of this call works around
-    // this issue.
-    int io_events = BPS_IO_INPUT;
-    int result = bps_add_fd(d->thread_pipe[0], io_events, &bpsIOHandler, d->ioData.data());
-    if (result != BPS_SUCCESS)
-        qWarning() << Q_FUNC_INFO << "bps_add_fd() failed";
 
     // reset all file sets
     if (readfds)
@@ -261,41 +290,39 @@ int QEventDispatcherBlackberry::select(int nfds, fd_set *readfds, fd_set *writef
     if (exceptfds)
         FD_ZERO(exceptfds);
 
-    // convert timeout to milliseconds
-    int timeout_ms = -1;
+    // Convert timeout to milliseconds
+    int timeout_bps = -1;
     if (timeout)
-        timeout_ms = (timeout->tv_sec * 1000) + (timeout->tv_usec / 1000);
+        timeout_bps = (timeout->tv_sec * 1000) + (timeout->tv_usec / 1000);
 
-    QElapsedTimer timer;
-    timer.start();
-
-    do {
-        // wait for event or file to be ready
+    // This loop exists such that we can drain the bps event queue of all native events
+    // more efficiently than if we were to return control to Qt after each event. This
+    // is important for handling touch events which can come in rapidly.
+    forever {
+        // Wait for event or file to be ready
         bps_event_t *event = NULL;
-
-        // \TODO Remove this when bps is fixed
-        // BPS has problems respecting timeouts.
-        // Replace the bps_get_event statement
-        // with the following commented version
-        // once bps is fixed.
-        // result = bps_get_event(&event, timeout_ms);
-        result = bps_get_event(&event, 0);
+        const int result = bps_get_event(&event, timeout_bps);
 
         if (result != BPS_SUCCESS)
             qWarning("QEventDispatcherBlackberry::select: bps_get_event() failed");
 
-        if (!event)
+        // In the case of !event, we break out of the loop to let Qt process the timers
+        // that are now ready (since timeout has expired).
+        // In the case of bpsIOReadyDomain, we break out to let Qt process the FDs that
+        // are ready. If we do not do this activation of QSocketNotifiers etc would be
+        // delayed.
+        if (!event || bps_event_get_domain(event) == bpsIOReadyDomain)
             break;
 
-        // pass all received events through filter - except IO ready events
-        if (event && bps_event_get_domain(event) != bpsIOReadyDomain)
-            filterNativeEvent(QByteArrayLiteral("bps_event_t"), static_cast<void*>(event), 0);
-    } while (timer.elapsed() < timeout_ms);
+        // Any other events must be bps native events so we pass all such received
+        // events through the native event filter chain
+        filterNativeEvent(QByteArrayLiteral("bps_event_t"), static_cast<void*>(event), 0);
 
-    // \TODO Remove this when bps is fixed (see comment above)
-    result = bps_remove_fd(d->thread_pipe[0]);
-    if (result != BPS_SUCCESS)
-        qWarning() << Q_FUNC_INFO << "bps_remove_fd() failed";
+        // Update the timeout. If this fails we have exceeded our alloted time or the system
+        // clock has changed time and we cannot calculate a new timeout so we bail out.
+        if (!updateTimeout(&timeout_bps, startTime))
+            break;
+    }
 
     // the number of bits set in the file sets
     return d->ioData->count;

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -42,6 +42,7 @@
 #include "qscreen.h"
 #include "qscreen_p.h"
 #include "qpixmap.h"
+#include "qguiapplication_p.h"
 #include <qpa/qplatformscreen.h>
 
 #include <QtCore/private/qobject_p.h>
@@ -286,8 +287,10 @@ QList<QScreen *> QScreen::virtualSiblings() const
 }
 
 /*!
-  \property QScreen::virtualSize
-  \brief the pixel size of the virtual desktop corresponding to this screen
+    \property QScreen::virtualSize
+    \brief the pixel size of the virtual desktop to which this screen belongs
+
+  Returns the pixel size of the virtual desktop corresponding to this screen.
 
   This is the combined size of the virtual siblings' individual geometries.
 
@@ -299,8 +302,10 @@ QSize QScreen::virtualSize() const
 }
 
 /*!
-  \property QScreen::virtualGeometry
-  \brief the pixel geometry of the virtual desktop corresponding to this screen
+    \property QScreen::virtualGeometry
+    \brief the pixel geometry of the virtual desktop to which this screen belongs
+
+  Returns the pixel geometry of the virtual desktop corresponding to this screen.
 
   This is the union of the virtual siblings' individual geometries.
 
@@ -315,13 +320,14 @@ QRect QScreen::virtualGeometry() const
 }
 
 /*!
-  \property QScreen::availableVirtualSize
-  \brief the available pixel size of the virtual desktop corresponding to this screen
+    \property QScreen::availableVirtualSize
+    \brief the available size of the virtual desktop to which this screen belongs
+
+  Returns the available pixel size of the virtual desktop corresponding to this screen.
 
   This is the combined size of the virtual siblings' individual available geometries.
 
-  \sa availableSize()
-  \sa virtualSiblings()
+  \sa availableSize(), virtualSiblings()
 */
 QSize QScreen::availableVirtualSize() const
 {
@@ -329,13 +335,14 @@ QSize QScreen::availableVirtualSize() const
 }
 
 /*!
-  \property QScreen::availableVirtualGeometry
-  \brief the available size of the virtual desktop corresponding to this screen
+    \property QScreen::availableVirtualGeometry
+    \brief the available geometry of the virtual desktop to which this screen belongs
+
+  Returns the available geometry of the virtual desktop corresponding to this screen.
 
   This is the union of the virtual siblings' individual available geometries.
 
-  \sa availableGeometry()
-  \sa virtualSiblings()
+  \sa availableGeometry(), virtualSiblings()
 */
 QRect QScreen::availableVirtualGeometry() const
 {
@@ -351,8 +358,8 @@ QRect QScreen::availableVirtualGeometry() const
 
     For example, to receive orientation() updates and thus have
     orientationChanged() signals being emitted for LandscapeOrientation and
-    InvertedLandscapeOrientation, call setOrientationUpdateMask() with the
-    argument Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation.
+    InvertedLandscapeOrientation, call setOrientationUpdateMask() with
+    \a{mask} set to Qt::LandscapeOrientation | Qt::InvertedLandscapeOrientation.
 
     The default, 0, means no orientationChanged() signals are fired.
 */
@@ -361,6 +368,7 @@ void QScreen::setOrientationUpdateMask(Qt::ScreenOrientations mask)
     Q_D(QScreen);
     d->orientationUpdateMask = mask;
     d->platformScreen->setOrientationUpdateMask(mask);
+    QGuiApplicationPrivate::updateFilteredScreenOrientation(this);
 }
 
 /*!
@@ -390,7 +398,7 @@ Qt::ScreenOrientations QScreen::orientationUpdateMask() const
 
     Qt::PrimaryOrientation is never returned.
 
-    \sa primaryOrientation(), orientationChanged()
+    \sa primaryOrientation()
 */
 Qt::ScreenOrientation QScreen::orientation() const
 {
@@ -415,8 +423,6 @@ qreal QScreen::refreshRate() const
     The primary screen orientation is Qt::LandscapeOrientation
     if the screen geometry's width is greater than or equal to its
     height, or Qt::PortraitOrientation otherwise.
-
-    \sa primaryOrientationChanged()
 */
 Qt::ScreenOrientation QScreen::primaryOrientation() const
 {
@@ -516,8 +522,8 @@ QTransform QScreen::transformBetween(Qt::ScreenOrientation a, Qt::ScreenOrientat
 /*!
     Maps the rect between two screen orientations.
 
-    This will flip the x and y dimensions of the rectangle if orientation \a is
-    Qt::PortraitOrientation or Qt::InvertedPortraitOrientation and orientation \b is
+    This will flip the x and y dimensions of the rectangle \a{rect} if the orientation \a{a} is
+    Qt::PortraitOrientation or Qt::InvertedPortraitOrientation and orientation \a{b} is
     Qt::LandscapeOrientation or Qt::InvertedLandscapeOrientation, or vice versa.
 
     Qt::PrimaryOrientation is interpreted as the screen's primaryOrientation().
@@ -543,8 +549,8 @@ QRect QScreen::mapBetween(Qt::ScreenOrientation a, Qt::ScreenOrientation b, cons
 }
 
 /*!
-    Convenience function to check if a screen orientation is either portrait
-    or inverted portrait.
+    Convenience function that returns true if \a o is either portrait or inverted portrait;
+    otherwise returns false.
 
     Qt::PrimaryOrientation is interpreted as the screen's primaryOrientation().
 */
@@ -555,8 +561,8 @@ bool QScreen::isPortrait(Qt::ScreenOrientation o) const
 }
 
 /*!
-    Convenience function to check if a screen orientation is either landscape
-    or inverted landscape.
+    Convenience function that returns true if \a o is either landscape or inverted landscape;
+    otherwise returns false.
 
     Qt::PrimaryOrientation is interpreted as the screen's primaryOrientation().
 */
@@ -567,7 +573,7 @@ bool QScreen::isLandscape(Qt::ScreenOrientation o) const
 }
 
 /*!
-    \fn QScreen::orientationChanged(Qt::ScreenOrientation orientation)
+    \fn void QScreen::orientationChanged(Qt::ScreenOrientation orientation)
 
     This signal is emitted when the orientation of the screen
     changes.
@@ -576,7 +582,7 @@ bool QScreen::isLandscape(Qt::ScreenOrientation o) const
 */
 
 /*!
-    \fn QScreen::primaryOrientationChanged(Qt::ScreenOrientation orientation)
+    \fn void QScreen::primaryOrientationChanged(Qt::ScreenOrientation orientation)
 
     This signal is emitted when the primary orientation of the screen
     changes.
@@ -625,14 +631,14 @@ void QScreenPrivate::updatePrimaryOrientation()
     safe. This depends on the underlying window system.
 */
 
-QPixmap QScreen::grabWindow(WId window, int x, int y, int w, int h)
+QPixmap QScreen::grabWindow(WId window, int x, int y, int width, int height)
 {
     const QPlatformScreen *platformScreen = handle();
     if (!platformScreen) {
         qWarning("%s invoked with handle==0", Q_FUNC_INFO);
         return QPixmap();
     }
-    return platformScreen->grabWindow(window, x, y, w, h);
+    return platformScreen->grabWindow(window, x, y, width, height);
 }
 
 QT_END_NAMESPACE

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -102,9 +102,7 @@ struct Q_CORE_EXPORT QMapNodeBase
     void setParent(QMapNodeBase *pp) { p = (p & Mask) | quintptr(pp); }
 
     QMapNodeBase *minimumNode() { QMapNodeBase *n = this; while (n->left) n = n->left; return n; }
-    QMapNodeBase *maximumNode() { QMapNodeBase *n = this; while (n->right) n = n->right; return n; }
     const QMapNodeBase *minimumNode() const { const QMapNodeBase *n = this; while (n->left) n = n->left; return n; }
-    const QMapNodeBase *maximumNode() const { const QMapNodeBase *n = this; while (n->right) n = n->right; return n; }
 };
 
 template <class Key, class T>
@@ -122,9 +120,7 @@ struct QMapNode : public QMapNodeBase
     inline QMapNode *previousNode() { return static_cast<QMapNode *>(QMapNodeBase::previousNode()); }
 
     QMapNode *minimumNode() { return static_cast<QMapNode *>(QMapNodeBase::minimumNode()); }
-    QMapNode *maximumNode() { return static_cast<QMapNode *>(QMapNodeBase::maximumNode()); }
     const QMapNode *minimumNode() const { return static_cast<QMapNode *>(QMapNodeBase::minimumNode()); }
-    const QMapNode *maximumNode() const { return static_cast<QMapNode *>(QMapNodeBase::maximumNode()); }
 
     QMapNode<Key, T> *copy(QMapData<Key, T> *d) const;
 

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -100,13 +100,16 @@ bool Moc::parseClassHead(ClassDef *def)
     QByteArray name = lexem();
 
     // support "class IDENT name" and "class IDENT(IDENT) name"
+    // also support "class IDENT name (final|sealed|Q_DECL_FINAL)"
     if (test(LPAREN)) {
         until(RPAREN);
         if (!test(IDENTIFIER))
             return false;
         name = lexem();
     } else  if (test(IDENTIFIER)) {
-        name = lexem();
+        const QByteArray lex = lexem();
+        if (lex != "final" && lex != "sealed" && lex != "Q_DECL_FINAL")
+            name = lex;
     }
 
     def->qualified += name;
@@ -118,6 +121,13 @@ bool Moc::parseClassHead(ClassDef *def)
         }
     }
     def->classname = name;
+
+    if (test(IDENTIFIER)) {
+        const QByteArray lex = lexem();
+        if (lex != "final" && lex != "sealed" && lex != "Q_DECL_FINAL")
+            return false;
+    }
+
     if (test(COLON)) {
         do {
             test(VIRTUAL);
@@ -787,6 +797,38 @@ void Moc::parse()
     }
 }
 
+static void findRequiredContainers(ClassDef *cdef, QSet<QByteArray> *requiredQtContainers)
+{
+    static const QVector<QByteArray> candidates = QVector<QByteArray>()
+#define STREAM_SMART_POINTER(SMART_POINTER) << #SMART_POINTER
+        QT_FOR_EACH_AUTOMATIC_TEMPLATE_SMART_POINTER(STREAM_SMART_POINTER)
+#undef STREAM_SMART_POINTER
+#define STREAM_1ARG_TEMPLATE(TEMPLATENAME) << #TEMPLATENAME
+        QT_FOR_EACH_AUTOMATIC_TEMPLATE_1ARG(STREAM_1ARG_TEMPLATE)
+#undef STREAM_1ARG_TEMPLATE
+        ;
+
+    for (int i = 0; i < cdef->propertyList.count(); ++i) {
+        const PropertyDef &p = cdef->propertyList.at(i);
+        foreach (const QByteArray candidate, candidates) {
+            if (p.type.contains(candidate + "<"))
+                requiredQtContainers->insert(candidate);
+        }
+    }
+
+    QList<FunctionDef> allFunctions = cdef->slotList + cdef->signalList + cdef->methodList;
+
+    for (int i = 0; i < allFunctions.count(); ++i) {
+        const FunctionDef &f = allFunctions.at(i);
+        foreach (const ArgumentDef &arg, f.arguments) {
+            foreach (const QByteArray candidate, candidates) {
+                if (arg.normalizedType.contains(candidate + "<"))
+                    requiredQtContainers->insert(candidate);
+            }
+        }
+    }
+}
+
 void Moc::generate(FILE *out)
 {
 
@@ -827,6 +869,16 @@ void Moc::generate(FILE *out)
     if (mustIncludeQPluginH)
         fprintf(out, "#include <QtCore/qplugin.h>\n");
 
+    QSet<QByteArray> requiredQtContainers;
+    for (i = 0; i < classList.size(); ++i) {
+        findRequiredContainers(&classList[i], &requiredQtContainers);
+    }
+
+    foreach (const QByteArray &qtContainer, requiredQtContainers) {
+        fprintf(out, "#include <QtCore/%s>\n", qtContainer.constData());
+    }
+
+
     fprintf(out, "#if !defined(Q_MOC_OUTPUT_REVISION)\n"
             "#error \"The header file '%s' doesn't include <QObject>.\"\n", fn.constData());
     fprintf(out, "#elif Q_MOC_OUTPUT_REVISION != %d\n", mocOutputRevision);
@@ -839,7 +891,7 @@ void Moc::generate(FILE *out)
     fprintf(out, "QT_BEGIN_MOC_NAMESPACE\n");
 
     for (i = 0; i < classList.size(); ++i) {
-        Generator generator(&classList[i], metaTypes, out);
+        Generator generator(&classList[i], metaTypes, knownQObjectClasses, out);
         generator.generateCode();
     }
 

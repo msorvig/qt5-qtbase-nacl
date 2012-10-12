@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -116,6 +116,40 @@ void QPlatformOpenGLContext::setContext(QOpenGLContext *context)
 {
     Q_D(QPlatformOpenGLContext);
     d->context = context;
+}
+
+bool QPlatformOpenGLContext::parseOpenGLVersion(const QByteArray &versionString, int &major, int &minor)
+{
+    bool majorOk = false;
+    bool minorOk = false;
+    QList<QByteArray> parts = versionString.split(' ');
+    if (versionString.startsWith(QByteArrayLiteral("OpenGL ES"))) {
+        if (parts.size() >= 3) {
+            QList<QByteArray> versionParts = parts.at(2).split('.');
+            if (versionParts.size() >= 2) {
+                major = versionParts.at(0).toInt(&majorOk);
+                minor = versionParts.at(1).toInt(&minorOk);
+            } else {
+                qWarning("Unrecognized OpenGL ES version");
+            }
+        } else {
+            // If < 3 parts to the name, it is an unrecognised OpenGL ES
+            qWarning("Unrecognised OpenGL ES version");
+        }
+    } else {
+        // Not OpenGL ES, but regular OpenGL, the version numbers are first in the string
+        QList<QByteArray> versionParts = parts.at(0).split('.');
+        if (versionParts.size() >= 2) {
+            major = versionParts.at(0).toInt(&majorOk);
+            minor = versionParts.at(1).toInt(&minorOk);
+        } else {
+            qWarning("Unrecognized OpenGL version");
+        }
+    }
+
+    if (!majorOk || !minorOk)
+        qWarning("Unrecognized OpenGL version");
+    return (majorOk && minorOk);
 }
 
 QT_END_NAMESPACE

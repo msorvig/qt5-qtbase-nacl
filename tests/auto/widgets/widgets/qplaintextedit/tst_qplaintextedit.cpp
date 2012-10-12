@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -58,6 +58,7 @@
 #include <qtextdocumentfragment.h>
 
 #include "qplaintextedit.h"
+#include "../../../shared/platformclipboard.h"
 
 //Used in copyAvailable
 typedef QPair<Qt::Key, Qt::KeyboardModifier> keyPairType;
@@ -65,10 +66,6 @@ typedef QList<keyPairType> pairListType;
 Q_DECLARE_METATYPE(pairListType);
 Q_DECLARE_METATYPE(keyPairType);
 Q_DECLARE_METATYPE(QList<bool>);
-
-#ifdef Q_OS_MAC
-#include <Carbon/Carbon.h>
-#endif
 
 QT_FORWARD_DECLARE_CLASS(QPlainTextEdit)
 
@@ -155,23 +152,10 @@ private:
     void createSelection();
     int blockCount() const;
     int lineCount() const;
-    bool nativeClipboardWorking();
 
     QPlainTextEdit *ed;
     qreal rootFrameMargin;
 };
-
-bool tst_QPlainTextEdit::nativeClipboardWorking()
-{
-#ifdef Q_OS_MAC
-    PasteboardRef pasteboard;
-    OSStatus status = PasteboardCreate(0, &pasteboard);
-    if (status == noErr)
-        CFRelease(pasteboard);
-    return status == noErr;
-#endif
-    return true;
-}
 
 // Testing get/set functions
 void tst_QPlainTextEdit::getSetCheck()
@@ -305,7 +289,7 @@ void tst_QPlainTextEdit::createSelection()
 #ifndef QT_NO_CLIPBOARD
 void tst_QPlainTextEdit::clearMustNotChangeClipboard()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
     ed->textCursor().insertText("Hello World");
     QString txt("This is different text");
@@ -482,7 +466,7 @@ void tst_QPlainTextEdit::setTextCursor()
 #ifndef QT_NO_CLIPBOARD
 void tst_QPlainTextEdit::undoAvailableAfterPaste()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     QSignalSpy spy(ed->document(), SIGNAL(undoAvailable(bool)));
@@ -675,7 +659,7 @@ void tst_QPlainTextEdit::preserveCharFormatInAppend()
 #ifndef QT_NO_CLIPBOARD
 void tst_QPlainTextEdit::copyAndSelectAllInReadonly()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     ed->setReadOnly(true);
@@ -1192,7 +1176,7 @@ void tst_QPlainTextEdit::selectWordsFromStringsContainingSeparators()
 #ifndef QT_NO_CLIPBOARD
 void tst_QPlainTextEdit::canPaste()
 {
-    if (!nativeClipboardWorking())
+    if (!PlatformClipboard::isAvailable())
         QSKIP("Clipboard not working with cron-started unit tests");
 
     QApplication::clipboard()->setText(QString());

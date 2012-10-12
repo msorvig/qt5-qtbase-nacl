@@ -5,7 +5,10 @@ DEFINES += QT_NO_TEXTCODEC QT_NO_LIBRARY QT_NO_COMPRESS QT_NO_UNICODETABLES \
            QT_NO_GEOM_VARIANT QT_NO_DATASTREAM
 
 #qmake code
-SOURCES += project.cpp property.cpp main.cpp generators/makefile.cpp \
+SOURCES += project.cpp property.cpp main.cpp \
+           library/ioutils.cpp library/proitems.cpp library/qmakeglobals.cpp \
+           library/qmakeparser.cpp library/qmakeevaluator.cpp library/qmakebuiltins.cpp \
+           generators/makefile.cpp \
            generators/unix/unixmake2.cpp generators/unix/unixmake.cpp meta.cpp \
            option.cpp generators/win32/winmakefile.cpp generators/win32/mingw_make.cpp \
            generators/makefiledeps.cpp generators/metamakefile.cpp generators/mac/pbuilder_pbx.cpp \
@@ -17,7 +20,10 @@ SOURCES += project.cpp property.cpp main.cpp generators/makefile.cpp \
            generators/integrity/gbuild.cpp \
            generators/win32/cesdkhandler.cpp
 
-HEADERS += project.h property.h generators/makefile.h \
+HEADERS += project.h property.h \
+           library/qmake_global.h library/ioutils.h library/proitems.h library/qmakeglobals.h \
+           library/qmakeparser.h library/qmakeevaluator.h library/qmakeevaluator_p.h \
+           generators/makefile.h \
            generators/unix/unixmake.h meta.h option.h cachekeys.h \
            generators/win32/winmakefile.h generators/win32/mingw_make.h generators/projectgenerator.h \
            generators/makefiledeps.h generators/metamakefile.h generators/mac/pbuilder_pbx.h \
@@ -128,12 +134,14 @@ bootstrap { #Qt code
         SOURCES += qfilesystemengine_unix.cpp qfilesystemiterator_unix.cpp qfsfileengine_unix.cpp
         mac {
           SOURCES += qfilesystemengine_mac.cpp
-          SOURCES += qcore_mac.cpp qsettings_mac.cpp
+          SOURCES += qcore_mac.cpp qsettings_mac.cpp qlocale_mac.mm
           LIBS += -framework ApplicationServices
+        } else {
+          SOURCES += qlocale_unix.cpp
         }
     } else:win32 {
         SOURCES += qfilesystemengine_win.cpp qfsfileengine_win.cpp qfilesystemiterator_win.cpp qsettings_win.cpp \
-            qsystemlibrary.cpp
+            qsystemlibrary.cpp qlocale_win.cpp registry.cpp
         win32-msvc*:LIBS += ole32.lib advapi32.lib
         win32-g++*:LIBS += -lole32 -luuid -ladvapi32 -lkernel32
     }
@@ -144,7 +152,7 @@ bootstrap { #Qt code
     }
     DEFINES *= QT_NO_QOBJECT
 } else {
-    CONFIG += qt 
+    CONFIG += qt
     QT = core
 }
 *-g++:profiling {

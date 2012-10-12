@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -92,7 +92,6 @@
 
 QT_BEGIN_NAMESPACE
 
-static bool displayDepth  =  -1;
 Q_GLOBAL_STATIC(QGtkStyleUpdateScheduler, styleScheduler)
 
 Ptr_gtk_container_forall QGtkStylePrivate::gtk_container_forall = 0;
@@ -140,6 +139,7 @@ Ptr_gtk_range_set_adjustment QGtkStylePrivate::gtk_range_set_adjustment = 0;
 Ptr_gtk_range_set_inverted QGtkStylePrivate::gtk_range_set_inverted = 0;
 Ptr_gtk_icon_factory_lookup_default QGtkStylePrivate::gtk_icon_factory_lookup_default = 0;
 Ptr_gtk_icon_theme_get_default QGtkStylePrivate::gtk_icon_theme_get_default = 0;
+Ptr_gtk_widget_get_style QGtkStylePrivate::gtk_widget_get_style = 0;
 Ptr_gtk_widget_style_get QGtkStylePrivate::gtk_widget_style_get = 0;
 Ptr_gtk_icon_set_render_icon QGtkStylePrivate::gtk_icon_set_render_icon = 0;
 Ptr_gtk_fixed_new QGtkStylePrivate::gtk_fixed_new = 0;
@@ -173,9 +173,14 @@ Ptr_gtk_widget_path QGtkStylePrivate::gtk_widget_path = 0;
 Ptr_gtk_container_get_type QGtkStylePrivate::gtk_container_get_type = 0;
 Ptr_gtk_window_get_type QGtkStylePrivate::gtk_window_get_type = 0;
 Ptr_gtk_widget_get_type QGtkStylePrivate::gtk_widget_get_type = 0;
+Ptr_gtk_widget_get_parent QGtkStylePrivate::gtk_widget_get_parent = 0;
+Ptr_gtk_widget_is_toplevel QGtkStylePrivate::gtk_widget_is_toplevel = 0;
 Ptr_gtk_rc_get_style_by_paths QGtkStylePrivate::gtk_rc_get_style_by_paths = 0;
 Ptr_gtk_check_version QGtkStylePrivate::gtk_check_version = 0;
 Ptr_gtk_border_free QGtkStylePrivate::gtk_border_free = 0;
+Ptr_gtk_widget_get_allocation QGtkStylePrivate::gtk_widget_get_allocation = 0;
+Ptr_gtk_widget_set_allocation QGtkStylePrivate::gtk_widget_set_allocation = 0;
+
 Ptr_pango_font_description_get_size QGtkStylePrivate::pango_font_description_get_size = 0;
 Ptr_pango_font_description_get_weight QGtkStylePrivate::pango_font_description_get_weight = 0;
 Ptr_pango_font_description_get_family QGtkStylePrivate::pango_font_description_get_family = 0;
@@ -204,7 +209,6 @@ Ptr_gdk_pixbuf_get_from_drawable QGtkStylePrivate::gdk_pixbuf_get_from_drawable 
 Ptr_gdk_draw_rectangle QGtkStylePrivate::gdk_draw_rectangle = 0;
 Ptr_gdk_pixbuf_unref QGtkStylePrivate::gdk_pixbuf_unref = 0;
 Ptr_gdk_drawable_unref QGtkStylePrivate::gdk_drawable_unref = 0;
-Ptr_gdk_drawable_get_depth QGtkStylePrivate::gdk_drawable_get_depth = 0;
 Ptr_gdk_color_free QGtkStylePrivate::gdk_color_free = 0;
 Ptr_gdk_x11_window_set_user_time QGtkStylePrivate::gdk_x11_window_set_user_time = 0;
 Ptr_gdk_x11_drawable_get_xid QGtkStylePrivate::gdk_x11_drawable_get_xid = 0;
@@ -285,7 +289,7 @@ QList<QGtkStylePrivate *> QGtkStylePrivate::instances;
 QGtkStylePrivate::WidgetMap *QGtkStylePrivate::widgetMap = 0;
 
 QGtkStylePrivate::QGtkStylePrivate()
-  : QCleanlooksStylePrivate()
+  : QWindowsStylePrivate()
   , filter(this)
 {
     instances.append(this);
@@ -315,7 +319,7 @@ GtkWidget* QGtkStylePrivate::gtkWidget(const QHashableLatin1Literal &path)
 GtkStyle* QGtkStylePrivate::gtkStyle(const QHashableLatin1Literal &path)
 {
     if (GtkWidget *w = gtkWidgetMap()->value(path))
-        return w->style;
+        return QGtkStylePrivate::gtk_widget_get_style(w);
     return 0;
 }
 
@@ -357,7 +361,6 @@ void QGtkStylePrivate::resolveGtk() const
     gdk_draw_rectangle = (Ptr_gdk_draw_rectangle)libgtk.resolve("gdk_draw_rectangle");
     gdk_pixbuf_unref = (Ptr_gdk_pixbuf_unref)libgtk.resolve("gdk_pixbuf_unref");
     gdk_drawable_unref = (Ptr_gdk_drawable_unref)libgtk.resolve("gdk_drawable_unref");
-    gdk_drawable_get_depth = (Ptr_gdk_drawable_get_depth)libgtk.resolve("gdk_drawable_get_depth");
     gdk_color_free = (Ptr_gdk_color_free)libgtk.resolve("gdk_color_free");
     gdk_x11_window_set_user_time = (Ptr_gdk_x11_window_set_user_time)libgtk.resolve("gdk_x11_window_set_user_time");
     gdk_x11_drawable_get_xid = (Ptr_gdk_x11_drawable_get_xid)libgtk.resolve("gdk_x11_drawable_get_xid");
@@ -398,6 +401,7 @@ void QGtkStylePrivate::resolveGtk() const
     gtk_container_add = (Ptr_gtk_container_add)libgtk.resolve("gtk_container_add");
     gtk_icon_factory_lookup_default = (Ptr_gtk_icon_factory_lookup_default)libgtk.resolve("gtk_icon_factory_lookup_default");
     gtk_icon_theme_get_default = (Ptr_gtk_icon_theme_get_default)libgtk.resolve("gtk_icon_theme_get_default");
+    gtk_widget_get_style = (Ptr_gtk_widget_get_style)libgtk.resolve("gtk_widget_get_style");
     gtk_widget_style_get = (Ptr_gtk_widget_style_get)libgtk.resolve("gtk_widget_style_get");
     gtk_icon_set_render_icon = (Ptr_gtk_icon_set_render_icon)libgtk.resolve("gtk_icon_set_render_icon");
     gtk_fixed_new = (Ptr_gtk_fixed_new)libgtk.resolve("gtk_fixed_new");
@@ -438,10 +442,15 @@ void QGtkStylePrivate::resolveGtk() const
     gtk_container_get_type =(Ptr_gtk_container_get_type)libgtk.resolve("gtk_container_get_type");
     gtk_window_get_type =(Ptr_gtk_window_get_type)libgtk.resolve("gtk_window_get_type");
     gtk_widget_get_type =(Ptr_gtk_widget_get_type)libgtk.resolve("gtk_widget_get_type");
+    gtk_widget_get_parent =(Ptr_gtk_widget_get_parent)libgtk.resolve("gtk_widget_get_parent");
+    gtk_widget_is_toplevel =(Ptr_gtk_widget_is_toplevel)libgtk.resolve("gtk_widget_is_toplevel");
 
     gtk_rc_get_style_by_paths =(Ptr_gtk_rc_get_style_by_paths)libgtk.resolve("gtk_rc_get_style_by_paths");
     gtk_check_version =(Ptr_gtk_check_version)libgtk.resolve("gtk_check_version");
     gtk_border_free =(Ptr_gtk_border_free)libgtk.resolve("gtk_border_free");
+    gtk_widget_get_allocation = (Ptr_gtk_widget_get_allocation)libgtk.resolve("gtk_widget_get_allocation");
+    gtk_widget_set_allocation = (Ptr_gtk_widget_set_allocation)libgtk.resolve("gtk_widget_set_allocation");
+
     pango_font_description_get_size = (Ptr_pango_font_description_get_size)libgtk.resolve("pango_font_description_get_size");
     pango_font_description_get_weight = (Ptr_pango_font_description_get_weight)libgtk.resolve("pango_font_description_get_weight");
     pango_font_description_get_family = (Ptr_pango_font_description_get_family)libgtk.resolve("pango_font_description_get_family");
@@ -519,10 +528,7 @@ void QGtkStylePrivate::initGtkWidgets() const
     if (!gtkWidgetMap()->contains("GtkWindow") && themeName.isEmpty()) {
         themeName = getThemeName();
 
-        if (themeName.isEmpty()) {
-            qWarning("QGtkStyle was unable to detect the current GTK+ theme.");
-            return;
-        } else if (themeName == QLS("Qt") || themeName == QLS("Qt4")) {
+        if (themeName == QLS("Qt") || themeName == QLS("Qt4")) {
             // Due to namespace conflicts with Qt3 and obvious recursion with Qt4,
             // we cannot support the GTK_Qt Gtk engine
             qWarning("QGtkStyle cannot be used together with the GTK_Qt engine.");
@@ -539,8 +545,6 @@ void QGtkStylePrivate::initGtkWidgets() const
         // make a window
         GtkWidget* gtkWindow = QGtkStylePrivate::gtk_window_new(GTK_WINDOW_POPUP);
         QGtkStylePrivate::gtk_widget_realize(gtkWindow);
-        if (displayDepth == -1)
-            displayDepth = QGtkStylePrivate::gdk_drawable_get_depth(gtkWindow->window);
         QHashableLatin1Literal widgetPath = QHashableLatin1Literal::fromData(strdup("GtkWindow"));
         removeWidgetFromMap(widgetPath);
         gtkWidgetMap()->insert(widgetPath, gtkWindow);
@@ -706,7 +710,7 @@ int QGtkStylePrivate::getSpinboxArrowSize() const
 {
     const int MIN_ARROW_WIDTH = 6;
     GtkWidget *spinButton = gtkWidget("GtkSpinButton");
-    GtkStyle *style = spinButton->style;
+    GtkStyle *style = QGtkStylePrivate::gtk_widget_get_style(spinButton);
     gint size = pango_font_description_get_size (style->font_desc);
     gint arrow_size;
     arrow_size = qMax(PANGO_PIXELS (size), MIN_ARROW_WIDTH) + style->xthickness;
@@ -726,7 +730,7 @@ bool QGtkStylePrivate::isKDE4Session()
 void QGtkStylePrivate::applyCustomPaletteHash()
 {
     QPalette menuPal = gtkWidgetPalette("GtkMenu");
-    GdkColor gdkBg = gtkWidget("GtkMenu")->style->bg[GTK_STATE_NORMAL];
+    GdkColor gdkBg = QGtkStylePrivate::gtk_widget_get_style(gtkWidget("GtkMenu"))->bg[GTK_STATE_NORMAL];
     QColor bgColor(gdkBg.red>>8, gdkBg.green>>8, gdkBg.blue>>8);
     menuPal.setBrush(QPalette::Base, bgColor);
     menuPal.setBrush(QPalette::Window, bgColor);
@@ -757,7 +761,7 @@ void QGtkStylePrivate::setupGtkWidget(GtkWidget* widget)
         }
         Q_ASSERT(protoLayout);
 
-        if (!widget->parent && !GTK_WIDGET_TOPLEVEL(widget))
+        if (!QGtkStylePrivate::gtk_widget_get_parent(widget) && !QGtkStylePrivate::gtk_widget_is_toplevel(widget))
             QGtkStylePrivate::gtk_container_add((GtkContainer*)(protoLayout), widget);
         QGtkStylePrivate::gtk_widget_realize(widget);
     }
@@ -801,9 +805,9 @@ QPalette QGtkStylePrivate::gtkWidgetPalette(const QHashableLatin1Literal &gtkWid
     GtkWidget *gtkWidget = QGtkStylePrivate::gtkWidget(gtkWidgetName);
     Q_ASSERT(gtkWidget);
     QPalette pal = QApplication::palette();
-    GdkColor gdkBg = gtkWidget->style->bg[GTK_STATE_NORMAL];
-    GdkColor gdkText = gtkWidget->style->fg[GTK_STATE_NORMAL];
-    GdkColor gdkDisabledText = gtkWidget->style->fg[GTK_STATE_INSENSITIVE];
+    GdkColor gdkBg = gtk_widget_get_style(gtkWidget)->bg[GTK_STATE_NORMAL];
+    GdkColor gdkText = gtk_widget_get_style(gtkWidget)->fg[GTK_STATE_NORMAL];
+    GdkColor gdkDisabledText = gtk_widget_get_style(gtkWidget)->fg[GTK_STATE_INSENSITIVE];
     QColor bgColor(gdkBg.red>>8, gdkBg.green>>8, gdkBg.blue>>8);
     QColor textColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8);
     QColor disabledTextColor(gdkDisabledText.red>>8, gdkDisabledText.green>>8, gdkDisabledText.blue>>8);

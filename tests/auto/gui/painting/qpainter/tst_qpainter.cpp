@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -278,6 +278,8 @@ private slots:
     void drawTextOutsideGuiThread();
 
     void drawTextWithComplexBrush();
+    void QTBUG26013_squareCapStroke();
+    void QTBUG25153_drawLine();
 
 private:
     void fillData();
@@ -2410,7 +2412,7 @@ public:
 
 static bool success;
 
-void porterDuff_warningChecker(QtMsgType type, const char *msg)
+void porterDuff_warningChecker(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
     if (type == QtWarningMsg && msg == QLatin1String("QPainter::setCompositionMode: PorterDuff modes not supported on device"))
         success = false;
@@ -2418,7 +2420,7 @@ void porterDuff_warningChecker(QtMsgType type, const char *msg)
 
 void tst_QPainter::porterDuff_warning()
 {
-    QtMsgHandler old = qInstallMsgHandler(porterDuff_warningChecker);
+    QtMessageHandler old = qInstallMessageHandler(porterDuff_warningChecker);
     DummyPaintEngine dummy;
     QPainter p(&dummy);
 
@@ -2434,7 +2436,7 @@ void tst_QPainter::porterDuff_warning()
     p.setCompositionMode(QPainter::CompositionMode_DestinationOver);
     QVERIFY(!success);
 
-    QVERIFY(qInstallMsgHandler(old) == porterDuff_warningChecker);
+    QVERIFY(qInstallMessageHandler(old) == porterDuff_warningChecker);
 }
 
 class quint24
@@ -3096,8 +3098,6 @@ bool verifyOutlineFillConsistency(const QImage &img, QRgb outside, QRgb inside, 
 
 void tst_QPainter::outlineFillConsistency()
 {
-    QSKIP("currently broken...");
-
     QImage dst(256, 256, QImage::Format_ARGB32_Premultiplied);
 
     QPolygonF poly;
@@ -3172,7 +3172,7 @@ void tst_QPainter::drawImage_task258776()
     QImage src(16, 16, QImage::Format_RGB888);
     QImage dest(33, 33, QImage::Format_RGB888);
     src.fill(0x00ff00);
-    dest.fill(0x0000ff);
+    dest.fill(0xff0000);
 
     QPainter painter(&dest);
     painter.drawImage(QRectF(0.499, 0.499, 32, 32), src, QRectF(0, 0, 16, 16));
@@ -4359,6 +4359,54 @@ void tst_QPainter::drawTextWithComplexBrush()
 
     int paintedPixels = getPaintedPixels(image, Qt::white);
     QVERIFY(paintedPixels > 0);
+}
+
+void tst_QPainter::QTBUG26013_squareCapStroke()
+{
+    QImage image(4, 4, QImage::Format_RGB32);
+
+    QPainter p(&image);
+    p.setPen(QPen(Qt::black, 0, Qt::SolidLine, Qt::SquareCap));
+
+    for (int i = 0; i < 3; ++i) {
+        qreal d = i / 3.0;
+
+        image.fill(0xffffffff);
+
+        p.drawLine(QLineF(0, d, 0, d + 2));
+        p.drawLine(QLineF(1, d, 3, d));
+
+        // ensure that a horizontal line and a vertical line with square cap round up (downwards) at the same time
+        QCOMPARE(image.pixel(0, 0), image.pixel(1, 0));
+
+        image.fill(0xffffffff);
+
+        p.drawLine(QLineF(d, 0, d + 2, 0));
+        p.drawLine(QLineF(d, 1, d, 3));
+
+        // ensure that a vertical line and a horizontal line with square cap round up (to the right) at the same time
+        QCOMPARE(image.pixel(0, 0), image.pixel(0, 1));
+    }
+}
+
+void tst_QPainter::QTBUG25153_drawLine()
+{
+    QImage image(2, 2, QImage::Format_RGB32);
+
+    QVector<Qt::PenCapStyle> styles;
+    styles << Qt::FlatCap << Qt::SquareCap << Qt::RoundCap;
+
+    foreach (Qt::PenCapStyle style, styles) {
+        image.fill(0xffffffff);
+        QPainter p(&image);
+        p.setPen(QPen(Qt::black, 0, Qt::SolidLine, style));
+        p.drawLine(QLineF(0, 0, 0, 0));
+        p.end();
+
+        QCOMPARE(image.pixel(0, 0), 0xff000000);
+        QCOMPARE(image.pixel(0, 1), 0xffffffff);
+        QCOMPARE(image.pixel(1, 0), 0xffffffff);
+    }
 }
 
 QTEST_MAIN(tst_QPainter)

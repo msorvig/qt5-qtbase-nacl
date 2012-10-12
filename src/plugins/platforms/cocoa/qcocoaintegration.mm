@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -58,13 +58,31 @@
 #include <QtCore/qcoreapplication.h>
 
 #include <QtPlatformSupport/private/qcoretextfontdatabase_p.h>
+#include <IOKit/graphics/IOGraphicsLib.h>
+
+static void initResources()
+{
+    Q_INIT_RESOURCE_EXTERN(qcocoaresources)
+    Q_INIT_RESOURCE(qcocoaresources);
+}
 
 QT_BEGIN_NAMESPACE
 
-QCocoaScreen::QCocoaScreen(int screenIndex)
-    :QPlatformScreen()
+QCocoaScreen::QCocoaScreen(int screenIndex) :
+    QPlatformScreen(), m_refreshRate(60.0)
 {
     m_screen = [[NSScreen screens] objectAtIndex:screenIndex];
+    updateGeometry();
+    m_cursor = new QCocoaCursor;
+}
+
+QCocoaScreen::~QCocoaScreen()
+{
+    delete m_cursor;
+}
+
+void QCocoaScreen::updateGeometry()
+{
     NSRect frameRect = [m_screen frame];
     m_geometry = QRect(frameRect.origin.x, frameRect.origin.y, frameRect.size.width, frameRect.size.height);
     NSRect visibleRect = [m_screen visibleFrame];
@@ -73,19 +91,28 @@ QCocoaScreen::QCocoaScreen(int screenIndex)
                                 visibleRect.size.width, visibleRect.size.height);
 
     m_format = QImage::Format_RGB32;
-
     m_depth = NSBitsPerPixelFromDepth([m_screen depth]);
 
-    const int dpi = 72;
-    const qreal inch = 25.4;
-    m_physicalSize = QSizeF(m_geometry.size()) * inch / dpi;
+    NSDictionary *devDesc = [m_screen deviceDescription];
+    CGDirectDisplayID dpy = [[devDesc objectForKey:@"NSScreenNumber"] unsignedIntValue];
+    CGSize size = CGDisplayScreenSize(dpy);
+    m_physicalSize = QSizeF(size.width, size.height);
+    NSSize resolution = [[devDesc valueForKey:NSDeviceResolution] sizeValue];
+    m_logicalDpi.first = resolution.width;
+    m_logicalDpi.second = resolution.height;
+    m_refreshRate = CGDisplayModeGetRefreshRate(CGDisplayCopyDisplayMode(dpy));
 
-    m_cursor = new QCocoaCursor;
-};
+    // Get m_name (brand/model of the monitor)
+    NSDictionary *deviceInfo = (NSDictionary *)IODisplayCreateInfoDictionary(CGDisplayIOServicePort(dpy), kIODisplayOnlyPreferredName);
+    NSDictionary *localizedNames = [deviceInfo objectForKey:[NSString stringWithUTF8String:kDisplayProductName]];
+    if ([localizedNames count] > 0)
+        m_name = QString::fromUtf8([[localizedNames objectForKey:[[localizedNames allKeys] objectAtIndex:0]] UTF8String]);
+    [deviceInfo release];
 
-QCocoaScreen::~QCocoaScreen()
-{
-    delete m_cursor;
+    QWindowSystemInterface::handleScreenGeometryChange(screen(), geometry());
+    QWindowSystemInterface::handleScreenLogicalDotsPerInchChange(screen(), resolution.width, resolution.height);
+    QWindowSystemInterface::handleScreenRefreshRateChange(screen(), m_refreshRate);
+    QWindowSystemInterface::handleScreenAvailableGeometryChange(screen(), availableGeometry());
 }
 
 extern CGContextRef qt_mac_cg_context(const QPaintDevice *pdev);
@@ -159,13 +186,14 @@ QCocoaIntegration::QCocoaIntegration()
     , mNativeInterface(new QCocoaNativeInterface)
     , mServices(new QCocoaServices)
 {
+    initResources();
     QCocoaAutoReleasePool pool;
 
     qApp->setAttribute(Qt::AA_DontUseNativeMenuBar, false);
 
     NSApplication *cocoaApplication = [NSApplication sharedApplication];
 
-    if (qgetenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM").isEmpty()) {
+    if (qEnvironmentVariableIsEmpty("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM")) {
         // Applications launched from plain executables (without an app
         // bundle) are "background" applications that does not take keybaord
         // focus or have a dock icon or task switcher entry. Qt Gui apps generally
@@ -197,18 +225,14 @@ QCocoaIntegration::QCocoaIntegration()
         [newDelegate setMenuLoader:qtMenuLoader];
     }
 
-    NSArray *screens = [NSScreen screens];
-    for (uint i = 0; i < [screens count]; i++) {
-        QCocoaScreen *screen = new QCocoaScreen(i);
-        mScreens.append(screen);
-        screenAdded(screen);
-    }
+    updateScreens();
 
     QMacPasteboardMime::initializeMimeTypes();
 }
 
 QCocoaIntegration::~QCocoaIntegration()
 {
+    QCocoaAutoReleasePool pool;
     if (!QCoreApplication::testAttribute(Qt::AA_MacPluginApplication)) {
         // remove the apple event handlers installed by QCocoaApplicationDelegate
         QT_MANGLE_NAMESPACE(QCocoaApplicationDelegate) *delegate = [QT_MANGLE_NAMESPACE(QCocoaApplicationDelegate) sharedDelegate];
@@ -227,6 +251,52 @@ QCocoaIntegration::~QCocoaIntegration()
     while (!mScreens.isEmpty()) {
         delete mScreens.takeLast();
     }
+}
+
+/*!
+    \brief Synchronizes the screen list, adds new screens, removes deleted ones
+*/
+void QCocoaIntegration::updateScreens()
+{
+    NSArray *screens = [NSScreen screens];
+    QSet<QCocoaScreen*> remainingScreens = QSet<QCocoaScreen*>::fromList(mScreens);
+    QList<QPlatformScreen *> siblings;
+    for (uint i = 0; i < [screens count]; i++) {
+        NSScreen* scr = [[NSScreen screens] objectAtIndex:i];
+        CGDirectDisplayID dpy = [[[scr deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
+        // If this screen is a mirror and is not the primary one of the mirror set, ignore it.
+        if (CGDisplayIsInMirrorSet(dpy)) {
+            CGDirectDisplayID primary = CGDisplayMirrorsDisplay(dpy);
+            if (primary != kCGNullDirectDisplay && primary != dpy)
+                continue;
+        }
+        QCocoaScreen* screen = NULL;
+        foreach (QCocoaScreen* existingScr, mScreens)
+            // NSScreen documentation says do not cache the array returned from [NSScreen screens].
+            // However in practice, we can identify a screen by its pointer: if resolution changes,
+            // the NSScreen object will be the same instance, just with different values.
+            if (existingScr->osScreen() == scr) {
+                screen = existingScr;
+                break;
+            }
+        if (screen) {
+            remainingScreens.remove(screen);
+            screen->updateGeometry();
+        } else {
+            screen = new QCocoaScreen(i);
+            mScreens.append(screen);
+            screenAdded(screen);
+        }
+        siblings << screen;
+    }
+    // Now the leftovers in remainingScreens are no longer current, so we can delete them.
+    foreach (QCocoaScreen* screen, remainingScreens) {
+        mScreens.removeOne(screen);
+        delete screen;
+    }
+    // All screens in mScreens are siblings, because we ignored the mirrors.
+    foreach (QCocoaScreen* screen, mScreens)
+        screen->setVirtualSiblings(siblings);
 }
 
 bool QCocoaIntegration::hasCapability(QPlatformIntegration::Capability cap) const
@@ -313,6 +383,9 @@ QVariant QCocoaIntegration::styleHint(StyleHint hint) const
 {
     if (hint == QPlatformIntegration::FontSmoothingGamma)
         return 2.0;
+    if (hint == QPlatformIntegration::SynthesizeMouseFromTouchEvents)
+        return false;
+
     return QPlatformIntegration::styleHint(hint);
 }
 

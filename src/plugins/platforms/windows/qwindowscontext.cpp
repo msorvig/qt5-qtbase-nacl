@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -555,8 +555,9 @@ QWindowsWindow *QWindowsContext::findClosestPlatformWindow(HWND hwnd) const
     // Find the closest parent that has a platform window.
     if (!window) {
         for (HWND w = hwnd; w; w = GetParent(w)) {
-            if (window = d->m_windows.value(w))
-                return window;
+            window = d->m_windows.value(w);
+            if (window)
+                break;
         }
     }
 
@@ -705,13 +706,23 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
     msg.pt.x = GET_X_LPARAM(lParam);
     msg.pt.y = GET_Y_LPARAM(lParam);
 
+    // Run the native event filters.
     long filterResult = 0;
     QAbstractEventDispatcher* dispatcher = QAbstractEventDispatcher::instance();
     if (dispatcher && dispatcher->filterNativeEvent(d->m_eventType, &msg, &filterResult)) {
         *result = LRESULT(filterResult);
         return true;
     }
-    // Events without an associated QWindow or events we are not interested in.
+
+    QWindowsWindow *platformWindow = findPlatformWindow(hwnd);
+    if (platformWindow) {
+        filterResult = 0;
+        if (QWindowSystemInterface::handleNativeEvent(platformWindow->window(), d->m_eventType, &msg, &filterResult)) {
+            *result = LRESULT(filterResult);
+            return true;
+        }
+    }
+
     switch (et) {
     case QtWindows::InputMethodStartCompositionEvent:
         return QWindowsInputContext::instance()->startComposition(hwnd);
@@ -742,7 +753,6 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
         break;
     }
 
-    QWindowsWindow *platformWindow = findPlatformWindow(hwnd);
     // Before CreateWindowEx() returns, some events are sent,
     // for example WM_GETMINMAXINFO asking for size constraints for top levels.
     // Pass on to current creation context
@@ -766,6 +776,9 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
         }
     }
     if (platformWindow) {
+        // Suppress events sent during DestroyWindow() for native children.
+        if (platformWindow->testFlag(QWindowsWindow::WithinDestroy))
+            return false;
         if (QWindowsContext::verboseEvents > 1)
             qDebug().nospace() << "Event window: " << platformWindow->window();
     } else {
@@ -773,12 +786,6 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
                  __FUNCTION__, message,
                  QWindowsGuiEventDispatcher::windowsMessageName(message), hwnd);
         return false;
-    }
-
-    filterResult = 0;
-    if (QWindowSystemInterface::handleNativeEvent(platformWindow->window(), d->m_eventType, &msg, &filterResult)) {
-        *result = LRESULT(filterResult);
-        return true;
     }
 
     switch (et) {

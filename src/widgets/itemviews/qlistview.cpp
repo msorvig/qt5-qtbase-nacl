@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -654,7 +654,7 @@ QItemViewPaintPairs QListViewPrivate::draggablePaintPairs(const QModelIndexList 
     QRect &rect = *r;
     const QRect viewportRect = viewport->rect();
     QItemViewPaintPairs ret;
-    const QSet<QModelIndex> visibleIndexes = intersectingSet(viewportRect).toList().toSet();
+    const QSet<QModelIndex> visibleIndexes = intersectingSet(viewportRect.translated(q->horizontalOffset(), q->verticalOffset())).toList().toSet();
     for (int i = 0; i < indexes.count(); ++i) {
         const QModelIndex &index = indexes.at(i);
         if (visibleIndexes.contains(index)) {
@@ -900,14 +900,20 @@ void QListView::startDrag(Qt::DropActions supportedActions)
 QStyleOptionViewItem QListView::viewOptions() const
 {
     Q_D(const QListView);
-    QStyleOptionViewItem option = QAbstractItemView::viewOptions();
-    if (!d->iconSize.isValid()) { // otherwise it was already set in abstractitemview
-        int pm = (d->viewMode == ListMode
-                  ? style()->pixelMetric(QStyle::PM_ListViewIconSize, 0, this)
-                  : style()->pixelMetric(QStyle::PM_IconViewIconSize, 0, this));
+    return d->viewOptions();
+}
+
+QStyleOptionViewItem QListViewPrivate::viewOptions() const
+{
+    Q_Q(const QListView);
+    QStyleOptionViewItem option = QAbstractItemViewPrivate::viewOptions();
+    if (!iconSize.isValid()) { // otherwise it was already set in abstractitemview
+        int pm = (viewMode == QListView::ListMode
+                  ? q->style()->pixelMetric(QStyle::PM_ListViewIconSize, 0, q)
+                  : q->style()->pixelMetric(QStyle::PM_IconViewIconSize, 0, q));
         option.decorationSize = QSize(pm, pm);
     }
-    if (d->viewMode == IconMode) {
+    if (viewMode == QListView::IconMode) {
         option.showDecorationSelected = false;
         option.decorationPosition = QStyleOptionViewItem::Top;
         option.displayAlignment = Qt::AlignCenter;
@@ -926,7 +932,7 @@ void QListView::paintEvent(QPaintEvent *e)
     Q_D(QListView);
     if (!d->itemDelegate)
         return;
-    QStyleOptionViewItemV4 option = d->viewOptionsV4();
+    QStyleOptionViewItem option = d->viewOptions();
     QPainter painter(d->viewport);
 
     const QVector<QModelIndex> toBeRendered = d->intersectingSet(e->rect().translated(horizontalOffset(), verticalOffset()), false);
@@ -995,9 +1001,9 @@ void QListView::paintEvent(QPaintEvent *e)
                 }
             }
             if (alternateBase) {
-                option.features |= QStyleOptionViewItemV2::Alternate;
+                option.features |= QStyleOptionViewItem::Alternate;
             } else {
-                option.features &= ~QStyleOptionViewItemV2::Alternate;
+                option.features &= ~QStyleOptionViewItem::Alternate;
             }
 
             // draw background of the item (only alternate row). rest of the background
@@ -1455,7 +1461,7 @@ void QListView::updateGeometries()
         verticalScrollBar()->setRange(0, 0);
     } else {
         QModelIndex index = d->model->index(0, d->column, d->root);
-        QStyleOptionViewItemV4 option = d->viewOptionsV4();
+        QStyleOptionViewItem option = d->viewOptions();
         QSize step = d->itemSize(option, index);
         d->commonListView->updateHorizontalScrollBar(step);
         d->commonListView->updateVerticalScrollBar(step);
@@ -2108,10 +2114,16 @@ int QListModeViewBase::verticalScrollToValue(int index, QListView::ScrollHint hi
 {
     if (verticalScrollMode() == QAbstractItemView::ScrollPerItem) {
         int value;
-        if (scrollValueMap.isEmpty())
+        if (scrollValueMap.isEmpty()) {
             value = 0;
-        else
-            value = qBound(0, scrollValueMap.at(verticalScrollBar()->value()), flowPositions.count() - 1);
+        } else {
+            int scrollBarValue = verticalScrollBar()->value();
+            int numHidden = 0;
+            for (int i = 0; i < flowPositions.count() - 1 && i <= scrollBarValue; ++i)
+                if (isHidden(i))
+                    ++numHidden;
+            value = qBound(0, scrollValueMap.at(verticalScrollBar()->value()) - numHidden, flowPositions.count() - 1);
+        }
         if (above)
             hint = QListView::PositionAtTop;
         else if (below)
@@ -2256,7 +2268,7 @@ QListViewItem QListModeViewBase::indexToListViewItem(const QModelIndex &index) c
                                            0, segmentStartRows.count() - 1);
 
 
-    QStyleOptionViewItemV4 options = viewOptions();
+    QStyleOptionViewItem options = viewOptions();
     options.rect.setSize(contentsSize);
     QSize size = (uniformItemSizes() && cachedItemSize().isValid())
                  ? cachedItemSize() : itemSize(options, index);
@@ -2274,7 +2286,7 @@ QListViewItem QListModeViewBase::indexToListViewItem(const QModelIndex &index) c
                      : segmentPositions.at(segment + 1));
             size.setWidth(right - pos.x());
         } else { // make the items as wide as the viewport
-            size.setWidth(qMax(size.width(), viewport()->width()));
+            size.setWidth(qMax(size.width(), viewport()->width() - 2 * spacing()));
         }
     }
 
@@ -2321,7 +2333,7 @@ void QListModeViewBase::doStaticLayout(const QListViewLayoutInfo &info)
 {
     const bool useItemSize = !info.grid.isValid();
     const QPoint topLeft = initStaticLayout(info);
-    QStyleOptionViewItemV4 option = viewOptions();
+    QStyleOptionViewItem option = viewOptions();
     option.rect = info.bounds;
     option.rect.adjust(info.spacing, info.spacing, -info.spacing, -info.spacing);
 
@@ -2533,13 +2545,21 @@ int QListModeViewBase::perItemScrollToValue(int index, int scrollValue, int view
 {
     if (index < 0)
         return scrollValue;
+
+    QVector<int> visibleFlowPositions;
+    visibleFlowPositions.reserve(flowPositions.count() - 1);
+    for (int i = 0; i < flowPositions.count() - 1; i++) { // flowPositions count is +1 larger than actual row count
+        if (!isHidden(i))
+            visibleFlowPositions.append(flowPositions.at(i));
+    }
+
     if (!wrap) {
         int topIndex = index;
         const int bottomIndex = topIndex;
-        const int bottomCoordinate = flowPositions.at(index);
+        const int bottomCoordinate = visibleFlowPositions.at(index);
 
         while (topIndex > 0 &&
-            (bottomCoordinate - flowPositions.at(topIndex-1) + itemExtent) <= (viewportSize)) {
+               (bottomCoordinate - visibleFlowPositions.at(topIndex - 1) + itemExtent) <= (viewportSize)) {
             topIndex--;
         }
 
@@ -2559,7 +2579,7 @@ int QListModeViewBase::perItemScrollToValue(int index, int scrollValue, int view
                                            ? Qt::Horizontal : Qt::Vertical);
         if (flowOrientation == orientation) { // scrolling in the "flow" direction
             // ### wrapped scrolling in the flow direction
-            return flowPositions.at(index); // ### always pixel based for now
+            return visibleFlowPositions.at(index); // ### always pixel based for now
         } else if (!segmentStartRows.isEmpty()) { // we are scrolling in the "segment" direction
             int segment = qBinarySearch<int>(segmentStartRows, index, 0, segmentStartRows.count() - 1);
             int leftSegment = segment;
@@ -2635,7 +2655,7 @@ void QIconModeViewBase::paintDragDrop(QPainter *painter)
     if (!draggedItems.isEmpty() && viewport()->rect().contains(draggedItemsPos)) {
         //we need to draw the items that arre dragged
         painter->translate(draggedItemsDelta());
-        QStyleOptionViewItemV4 option = viewOptions();
+        QStyleOptionViewItem option = viewOptions();
         option.state &= ~QStyle::State_MouseOver;
         QVector<QModelIndex>::const_iterator it = draggedItems.constBegin();
         QListViewItem item = indexToListViewItem(*it);
@@ -2777,7 +2797,7 @@ void QIconModeViewBase::scrollContentsBy(int dx, int dy, bool scrollElasticBand)
 void QIconModeViewBase::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
 {
     if (column() >= topLeft.column() && column() <= bottomRight.column())  {
-        QStyleOptionViewItemV4 option = viewOptions();
+        QStyleOptionViewItem option = viewOptions();
         int bottom = qMin(items.count(), bottomRight.row() + 1);
         for (int row = topLeft.row(); row < bottom; ++row)
             items[row].resize(itemSize(option, modelIndex(row)));
@@ -2788,7 +2808,7 @@ bool QIconModeViewBase::doBatchedItemLayout(const QListViewLayoutInfo &info, int
 {
     if (info.last >= items.count()) {
         //first we create the items
-        QStyleOptionViewItemV4 option = viewOptions();
+        QStyleOptionViewItem option = viewOptions();
         for (int row = items.count(); row <= info.last; ++row) {
             QSize size = itemSize(option, modelIndex(row));
             QListViewItem item(QRect(0, 0, size.width(), size.height()), row); // default pos

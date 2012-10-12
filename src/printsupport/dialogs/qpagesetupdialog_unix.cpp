@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -50,7 +50,7 @@
 #include <ui_qpagesetupwidget.h>
 
 #include <QtPrintSupport/qprinter.h>
-#include <private/qabstractpagesetupdialog_p.h>
+#include <private/qpagesetupdialog_p.h>
 #include <private/qprinter_p.h>
 #include <private/qprintengine_pdf_p.h>
 
@@ -214,12 +214,13 @@ private:
 };
 
 
-class QPageSetupDialogPrivate : public QAbstractPageSetupDialogPrivate
+class QUnixPageSetupDialogPrivate : public QPageSetupDialogPrivate
 {
     Q_DECLARE_PUBLIC(QPageSetupDialog)
 
 public:
-    ~QPageSetupDialogPrivate();
+    QUnixPageSetupDialogPrivate(QPrinter *printer);
+    ~QUnixPageSetupDialogPrivate();
     void init();
 
     QPageSetupWidget *widget;
@@ -228,14 +229,24 @@ public:
 #endif
 };
 
-QPageSetupDialogPrivate::~QPageSetupDialogPrivate()
+QUnixPageSetupDialogPrivate::QUnixPageSetupDialogPrivate(QPrinter *printer) : QPageSetupDialogPrivate(printer)
+#if !defined(QT_NO_CUPS) && !defined(QT_NO_LIBRARY)
+    , cups(0)
+#endif
+{
+}
+
+QUnixPageSetupDialogPrivate::~QUnixPageSetupDialogPrivate()
 {
 #if !defined(QT_NO_CUPS) && !defined(QT_NO_LIBRARY)
-    delete cups;
+    if (cups) {
+        delete cups;
+        cups = 0;
+    }
 #endif
 }
 
-void QPageSetupDialogPrivate::init()
+void QUnixPageSetupDialogPrivate::init()
 {
     Q_Q(QPageSetupDialog);
 
@@ -584,30 +595,25 @@ void QPageSetupWidget::setRightMargin(double newValue)
 
 
 QPageSetupDialog::QPageSetupDialog(QPrinter *printer, QWidget *parent)
-    : QAbstractPageSetupDialog(*(new QPageSetupDialogPrivate), printer, parent)
+    : QDialog(*(new QUnixPageSetupDialogPrivate(printer)), parent)
 {
-    Q_D(QPageSetupDialog);
-    d->init();
+    setWindowTitle(QCoreApplication::translate("QPrintPreviewDialog", "Page Setup"));
 }
 
 
 QPageSetupDialog::QPageSetupDialog(QWidget *parent)
-    : QAbstractPageSetupDialog(*(new QPageSetupDialogPrivate), 0, parent)
+    : QDialog(*(new QUnixPageSetupDialogPrivate(0)), parent)
 {
-    Q_D(QPageSetupDialog);
-    d->init();
+    setWindowTitle(QCoreApplication::translate("QPrintPreviewDialog", "Page Setup"));
 }
 
-/*!
-    \internal
-*/
 int QPageSetupDialog::exec()
 {
     Q_D(QPageSetupDialog);
 
     int ret = QDialog::exec();
     if (ret == Accepted)
-        d->widget->setupPrinter();
+        static_cast <QUnixPageSetupDialogPrivate*>(d)->widget->setupPrinter();
     return ret;
 }
 

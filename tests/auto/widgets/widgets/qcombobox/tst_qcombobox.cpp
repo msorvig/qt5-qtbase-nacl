@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -158,6 +158,7 @@ private slots:
     void task_QTBUG_1071_changingFocusEmitsActivated();
     void maxVisibleItems();
     void task_QTBUG_10491_currentIndexAndModelColumn();
+    void highlightedSignal();
 
 protected slots:
     void onEditTextChanged( const QString &newString );
@@ -2563,6 +2564,34 @@ void tst_QComboBox::task_QTBUG_10491_currentIndexAndModelColumn()
     QComboBoxPrivate *d = static_cast<QComboBoxPrivate *>(QComboBoxPrivate::get(&comboBox));
     d->setCurrentIndex(model.index(2, 2));
     QCOMPARE(QModelIndex(d->currentIndex), model.index(2, comboBox.modelColumn()));
+}
+
+void tst_QComboBox::highlightedSignal()
+{
+    QComboBox comboBox;
+
+    QSignalSpy spy(&comboBox, SIGNAL(highlighted(int)));
+    QVERIFY(spy.isValid());
+
+    // Calling view() before setting the model causes the creation
+    // of a QComboBoxPrivateContainer containing an actual view, and connecting to
+    // the selectionModel to generate the highlighted signal. When setModel is called
+    // further down, that selectionModel is obsolete. We test that the highlighted
+    // signal is emitted anyway as the bug fix. (QTBUG-4454)
+    comboBox.view();
+    QItemSelectionModel *initialItemSelectionModel = comboBox.view()->selectionModel();
+
+
+    QStandardItemModel model;
+    for (int i = 0; i < 5; i++)
+        model.appendRow(new QStandardItem(QString::number(i)));
+    comboBox.setModel(&model);
+
+    comboBox.view()->selectionModel()->setCurrentIndex(model.index(0, 0), QItemSelectionModel::Current);
+
+    QVERIFY(initialItemSelectionModel != comboBox.view()->selectionModel());
+
+    QCOMPARE(spy.size(), 1);
 }
 
 QTEST_MAIN(tst_QComboBox)

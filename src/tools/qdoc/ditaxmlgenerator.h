@@ -6,33 +6,33 @@
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -44,7 +44,7 @@
 
 #include <qmap.h>
 #include <qregexp.h>
-#include <QXmlStreamWriter>
+#include <qxmlstream.h>
 #include "codemarker.h"
 #include "config.h"
 #include "generator.h"
@@ -301,7 +301,7 @@ public:
     virtual void terminateGenerator();
     virtual QString format();
     virtual bool canHandleFormat(const QString& format);
-    virtual void generateTree(Tree *tree);
+    virtual void generateTree();
     void generateCollisionPages();
 
     QString protectEnc(const QString& string);
@@ -310,32 +310,27 @@ public:
     static QString sinceTitle(int i) { return sinceTitles[i]; }
 
 protected:
-    virtual void startText(const Node* relative, CodeMarker* marker);
     virtual int generateAtom(const Atom* atom,
                              const Node* relative,
                              CodeMarker* marker);
     virtual void generateClassLikeNode(InnerNode* inner, CodeMarker* marker);
-    virtual void generateFakeNode(FakeNode* fake, CodeMarker* marker);
+    virtual void generateDocNode(DocNode* dn, CodeMarker* marker);
     virtual QString fileExtension() const;
     virtual QString guidForNode(const Node* node);
     virtual QString linkForNode(const Node* node, const Node* relative);
-    virtual QString refForAtom(Atom* atom, const Node* node);
 
     void writeXrefListItem(const QString& link, const QString& text);
     QString fullQualification(const Node* n);
 
     void writeCharacters(const QString& text);
-    void writeDerivations(const ClassNode* cn, CodeMarker* marker);
+    void writeDerivations(const ClassNode* cn);
     void writeLocation(const Node* n);
     void writeFunctions(const Section& s,
                         const InnerNode* parent,
                         CodeMarker* marker,
                         const QString& attribute = QString());
     void writeNestedClasses(const Section& s, const Node* n);
-    void replaceTypesWithLinks(const Node* n,
-                               const InnerNode* parent,
-                               CodeMarker* marker,
-                               QString& src);
+    void replaceTypesWithLinks(const Node* n, const InnerNode* parent, QString& src);
     void writeParameters(const FunctionNode* fn, const InnerNode* parent, CodeMarker* marker);
     void writeEnumerations(const Section& s,
                            CodeMarker* marker,
@@ -353,7 +348,7 @@ protected:
                      CodeMarker* marker,
                      const QString& attribute = QString());
     void writePropertyParameter(const QString& tag, const NodeList& nlist);
-    void writeRelatedLinks(const FakeNode* fake, CodeMarker* marker);
+    void writeRelatedLinks(const DocNode* dn);
     void writeLink(const Node* node, const QString& tex, const QString& role);
     void writeProlog(const InnerNode* inner);
     bool writeMetadataElement(const InnerNode* inner,
@@ -368,10 +363,6 @@ private:
     enum SubTitleSize { SmallSubTitle, LargeSubTitle };
 
     const QPair<QString,QString> anchorForNode(const Node* node);
-    const Node* findNodeForTarget(const QString& target,
-                                  const Node* relative,
-                                  CodeMarker* marker,
-                                  const Atom* atom = 0);
     void generateHeader(const Node* node,
                         const QString& name,
                         bool subpage = false);
@@ -381,29 +372,23 @@ private:
                                  Doc::Sections sectioningUnit,
                                  int numColumns,
                                  const Node* relative = 0);
-    void generateTableOfContents(const Node* node,
-                                 CodeMarker* marker,
-                                 QList<Section>* sections = 0);
     void generateLowStatusMembers(const InnerNode* inner,
                                   CodeMarker* marker,
                                   CodeMarker::Status status);
     QString generateLowStatusMemberFile(const InnerNode* inner,
                                         CodeMarker* marker,
                                         CodeMarker::Status status);
-    void generateClassHierarchy(const Node* relative,
-                                CodeMarker* marker,
-                                const NodeMap& classMap);
+    void generateClassHierarchy(const Node* relative, const NodeMap& classMap);
     void generateAnnotatedList(const Node* relative,
                                CodeMarker* marker,
                                const NodeMap& nodeMap);
     void generateCompactList(const Node* relative,
-                             CodeMarker* marker,
                              const NodeMap& classMap,
                              bool includeAlphabet,
                              QString commonPrefix = QString());
-    void generateFunctionIndex(const Node* relative, CodeMarker* marker);
+    void generateFunctionIndex(const Node* relative);
     void generateLegaleseList(const Node* relative, CodeMarker* marker);
-    void generateOverviewList(const Node* relative, CodeMarker* marker);
+    void generateOverviewList(const Node* relative);
 
     void generateQmlSummary(const Section& section,
                             const Node* relative,
@@ -437,38 +422,19 @@ private:
                                 const Node* relative,
                                 CodeMarker* marker,
                                 CodeMarker::SynopsisStyle style);
-    void generateSectionInheritedList(const Section& section,
-                                      const Node* relative,
-                                      CodeMarker* marker);
-    void writeText(const QString& markedCode,
-                   CodeMarker* marker,
-                   const Node* relative);
+    void generateSectionInheritedList(const Section& section, const Node* relative);
+    void writeText(const QString& markedCode, const Node* relative);
 
-    void generateFullName(const Node* apparentNode,
-                          const Node* relative,
-                          CodeMarker* marker,
-                          const Node* actualNode = 0);
-    void generateLink(const Atom* atom,
-                      const Node* relative,
-                      CodeMarker* marker);
+    void generateFullName(const Node* apparentNode, const Node* relative, const Node* actualNode = 0);
+    void generateLink(const Atom* atom, CodeMarker* marker);
     void generateStatus(const Node* node, CodeMarker* marker);
 
     QString registerRef(const QString& ref);
     virtual QString fileBase(const Node *node) const;
     QString fileName(const Node *node);
-    void findAllClasses(const InnerNode *node);
-    void findAllFunctions(const InnerNode *node);
-    void findAllLegaleseTexts(const InnerNode *node);
-    void findAllNamespaces(const InnerNode *node);
     static int hOffset(const Node *node);
     static bool isThreeColumnEnumValueTable(const Atom *atom);
-    QString getLink(const Atom *atom,
-                    const Node *relative,
-                    CodeMarker *marker,
-                    const Node **node);
-    virtual void generateIndex(const QString& fileBase,
-                               const QString& url,
-                               const QString& title);
+    QString getLink(const Atom *atom, const Node *relative, const Node **node);
 #ifdef GENERATE_MAC_REFS
     void generateMacRef(const Node* node, CodeMarker* marker);
 #endif
@@ -485,7 +451,7 @@ private:
     QXmlStreamWriter& xmlWriter();
     void writeApiDesc(const Node* node, CodeMarker* marker, const QString& title);
     void addLink(const QString& href, const QStringRef& text, DitaTag t = DT_xref);
-    void writeDitaMap(Tree* tree);
+    void writeDitaMap();
     void writeDitaMap(const DitaMapNode* node);
     void writeStartTag(DitaTag t);
     bool writeEndTag(DitaTag t=DT_NONE);
@@ -510,29 +476,21 @@ private:
       These flags indicate which elements the generator
       is currently outputting.
      */
-    bool inContents;
     bool inDetailedDescription;
     bool inLegaleseText;
-    bool inLink;
     bool inObsoleteLink;
-    bool inSectionHeading;
-    bool inTableHeader;
     bool inTableBody;
 
     bool noLinks;
     bool obsoleteLinks;
     bool offlineDocs;
-    bool threeColumnEnumValueTable;
 
     int codeIndent;
-    int numTableRows;
     int divNestingLevel;
     int sectionNestingLevel;
     int tableColumnCount;
     int currentColumn;
 
-    QString link;
-    QStringList sectionNumber;
     QRegExp funcLeftParen;
     QString style;
     QString postHeader;
@@ -551,17 +509,6 @@ private:
     QMap<QString, QString> refMap;
     QMap<QString, QString> name2guidMap;
     GuidMaps guidMaps;
-    QMap<QString, NodeMap > moduleClassMap;
-    QMap<QString, NodeMap > moduleNamespaceMap;
-    NodeMap nonCompatClasses;
-    NodeMap mainClasses;
-    NodeMap compatClasses;
-    NodeMap obsoleteClasses;
-    NodeMap namespaceIndex;
-    NodeMap serviceClasses;
-    NodeMap qmlClasses;
-    QMap<QString, NodeMap > funcIndex;
-    QMap<Text, const Node*> legaleseTexts;
     static int id;
     static QString ditaTags[];
     QStack<QXmlStreamWriter*> xmlWriterStack;

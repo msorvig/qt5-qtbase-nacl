@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the examples of the Qt Toolkit.
 **
@@ -17,10 +17,10 @@
 **     notice, this list of conditions and the following disclaimer in
 **     the documentation and/or other materials provided with the
 **     distribution.
-**   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-**     the names of its contributors may be used to endorse or promote
-**     products derived from this software without specific prior written
-**     permission.
+**   * Neither the name of Digia Plc and its Subsidiary(-ies) nor the names
+**     of its contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
+**
 **
 ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -73,10 +73,13 @@ void Window::initialize()
     if (parent())
         setGeometry(QRect(160, 120, 320, 240));
     else {
-        setGeometry(QRect(10, 10, 640, 480));
+        setWindowFlags(windowFlags() | Qt::WindowTitleHint | Qt::WindowSystemMenuHint
+                       | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
+        const QSize baseSize = QSize(640, 480);
+        setGeometry(QRect(geometry().topLeft(), baseSize));
 
         setSizeIncrement(QSize(10, 10));
-        setBaseSize(QSize(640, 480));
+        setBaseSize(baseSize);
         setMinimumSize(QSize(240, 160));
         setMaximumSize(QSize(800, 600));
     }

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -111,24 +111,21 @@ public:
             return text;
         }
 
-    static QString valueToText(const QVariant &value, const QStyleOptionViewItemV4 &option);
+    static QString valueToText(const QVariant &value, const QStyleOptionViewItem &option);
 
     void _q_commitDataAndCloseEditor(QWidget *editor);
 
     QItemEditorFactory *f;
     bool clipPainting;
 
-    QRect textLayoutBounds(const QStyleOptionViewItemV2 &options) const;
+    QRect textLayoutBounds(const QStyleOptionViewItem &options) const;
     QSizeF doTextLayout(int lineWidth) const;
     mutable QTextLayout textLayout;
     mutable QTextOption textOption;
 
     const QWidget *widget(const QStyleOptionViewItem &option) const
     {
-        if (const QStyleOptionViewItemV3 *v3 = qstyleoption_cast<const QStyleOptionViewItemV3 *>(&option))
-            return v3->widget;
-
-        return 0;
+        return option.widget;
     }
 
     // ### temporary hack until we have QStandardItemDelegate
@@ -146,10 +143,10 @@ void QItemDelegatePrivate::_q_commitDataAndCloseEditor(QWidget *editor)
     emit q->closeEditor(editor, QAbstractItemDelegate::SubmitModelCache);
 }
 
-QRect QItemDelegatePrivate::textLayoutBounds(const QStyleOptionViewItemV2 &option) const
+QRect QItemDelegatePrivate::textLayoutBounds(const QStyleOptionViewItem &option) const
 {
     QRect rect = option.rect;
-    const bool wrapText = option.features & QStyleOptionViewItemV2::WrapText;
+    const bool wrapText = option.features & QStyleOptionViewItem::WrapText;
     switch (option.decorationPosition) {
     case QStyleOptionViewItem::Left:
     case QStyleOptionViewItem::Right:
@@ -353,7 +350,7 @@ void QItemDelegate::setClipping(bool clip)
     d->clipPainting = clip;
 }
 
-QString QItemDelegatePrivate::valueToText(const QVariant &value, const QStyleOptionViewItemV4 &option)
+QString QItemDelegatePrivate::valueToText(const QVariant &value, const QStyleOptionViewItem &option)
 {
     QString text;
     switch (value.userType()) {
@@ -418,14 +415,7 @@ void QItemDelegate::paint(QPainter *painter,
     Q_D(const QItemDelegate);
     Q_ASSERT(index.isValid());
 
-    QStyleOptionViewItemV4 opt = setOptions(index, option);
-
-    const QStyleOptionViewItemV2 *v2 = qstyleoption_cast<const QStyleOptionViewItemV2 *>(&option);
-    opt.features = v2 ? v2->features
-                    : QStyleOptionViewItemV2::ViewItemFeatures(QStyleOptionViewItemV2::None);
-    const QStyleOptionViewItemV3 *v3 = qstyleoption_cast<const QStyleOptionViewItemV3 *>(&option);
-    opt.locale = v3 ? v3->locale : QLocale();
-    opt.widget = v3 ? v3->widget : 0;
+    QStyleOptionViewItem opt = setOptions(index, option);
 
     // prepare
     painter->save();
@@ -674,13 +664,13 @@ void QItemDelegate::drawDisplay(QPainter *painter, const QStyleOptionViewItem &o
         painter->restore();
     }
 
-    const QStyleOptionViewItemV4 opt = option;
+    const QStyleOptionViewItem opt = option;
 
     const QWidget *widget = d->widget(option);
     QStyle *style = widget ? widget->style() : QApplication::style();
     const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, widget) + 1;
     QRect textRect = rect.adjusted(textMargin, 0, -textMargin, 0); // remove width padding
-    const bool wrapText = opt.features & QStyleOptionViewItemV2::WrapText;
+    const bool wrapText = opt.features & QStyleOptionViewItem::WrapText;
     d->textOption.setWrapMode(wrapText ? QTextOption::WordWrap : QTextOption::ManualWrap);
     d->textOption.setTextDirection(option.direction);
     d->textOption.setAlignment(QStyle::visualAlignment(option.direction, option.displayAlignment));

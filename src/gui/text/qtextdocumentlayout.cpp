@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -60,6 +60,8 @@
 #include <limits.h>
 #include <qbasictimer.h>
 #include "private/qfunctions_p.h"
+
+#include <algorithm>
 
 // #define LAYOUT_DEBUG
 
@@ -399,6 +401,26 @@ Q_STATIC_GLOBAL_OPERATOR bool operator<(const QCheckPoint &checkPoint, int pos)
     return checkPoint.positionInFrame < pos;
 }
 
+#if defined(Q_CC_MSVC) && _MSC_VER < 1600
+//The STL implementation of MSVC 2008 requires the definitions
+
+Q_STATIC_GLOBAL_OPERATOR bool operator<(const QCheckPoint &checkPoint1, const QCheckPoint &checkPoint2)
+{
+    return checkPoint1.y < checkPoint2.y;
+}
+
+Q_STATIC_GLOBAL_OPERATOR bool operator<(QFixed y, const QCheckPoint &checkPoint)
+{
+    return y < checkPoint.y;
+}
+
+Q_STATIC_GLOBAL_OPERATOR bool operator<(int pos, const QCheckPoint &checkPoint)
+{
+    return pos < checkPoint.positionInFrame;
+}
+
+#endif
+
 static void fillBackground(QPainter *p, const QRectF &rect, QBrush brush, const QPointF &origin, QRectF gradientRect = QRectF())
 {
     p->save();
@@ -534,7 +556,7 @@ QTextFrame::Iterator QTextDocumentLayoutPrivate::frameIteratorForYPosition(QFixe
         || y < 0 || y > data(rootFrame)->size.height)
         return rootFrame->begin();
 
-    QVector<QCheckPoint>::ConstIterator checkPoint = qLowerBound(checkPoints.begin(), checkPoints.end(), y);
+    QVector<QCheckPoint>::ConstIterator checkPoint = std::lower_bound(checkPoints.begin(), checkPoints.end(), y);
     if (checkPoint == checkPoints.end())
         return rootFrame->begin();
 
@@ -706,14 +728,14 @@ QTextDocumentLayoutPrivate::hitTest(QTextTable *table, const QFixedPoint &point,
 {
     QTextTableData *td = static_cast<QTextTableData *>(data(table));
 
-    QVector<QFixed>::ConstIterator rowIt = qLowerBound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), point.y);
+    QVector<QFixed>::ConstIterator rowIt = std::lower_bound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), point.y);
     if (rowIt == td->rowPositions.constEnd()) {
         rowIt = td->rowPositions.constEnd() - 1;
     } else if (rowIt != td->rowPositions.constBegin()) {
         --rowIt;
     }
 
-    QVector<QFixed>::ConstIterator colIt = qLowerBound(td->columnPositions.constBegin(), td->columnPositions.constEnd(), point.x);
+    QVector<QFixed>::ConstIterator colIt = std::lower_bound(td->columnPositions.constBegin(), td->columnPositions.constEnd(), point.x);
     if (colIt == td->columnPositions.constEnd()) {
         colIt = td->columnPositions.constEnd() - 1;
     } else if (colIt != td->columnPositions.constBegin()) {
@@ -1014,13 +1036,13 @@ void QTextDocumentLayoutPrivate::drawFrame(const QPointF &offset, QPainter *pain
         int lastRow = rows;
 
         if (context.clip.isValid()) {
-            QVector<QFixed>::ConstIterator rowIt = qLowerBound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), QFixed::fromReal(context.clip.top() - off.y()));
+            QVector<QFixed>::ConstIterator rowIt = std::lower_bound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), QFixed::fromReal(context.clip.top() - off.y()));
             if (rowIt != td->rowPositions.constEnd() && rowIt != td->rowPositions.constBegin()) {
                 --rowIt;
                 firstRow = rowIt - td->rowPositions.constBegin();
             }
 
-            rowIt = qUpperBound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), QFixed::fromReal(context.clip.bottom() - off.y()));
+            rowIt = std::upper_bound(td->rowPositions.constBegin(), td->rowPositions.constEnd(), QFixed::fromReal(context.clip.bottom() - off.y()));
             if (rowIt != td->rowPositions.constEnd()) {
                 ++rowIt;
                 lastRow = rowIt - td->rowPositions.constBegin();
@@ -1177,7 +1199,7 @@ void QTextDocumentLayoutPrivate::drawFlow(const QPointF &offset, QPainter *paint
 
     QVector<QCheckPoint>::ConstIterator lastVisibleCheckPoint = checkPoints.end();
     if (inRootFrame && context.clip.isValid()) {
-        lastVisibleCheckPoint = qLowerBound(checkPoints.begin(), checkPoints.end(), QFixed::fromReal(context.clip.bottom()));
+        lastVisibleCheckPoint = std::lower_bound(checkPoints.begin(), checkPoints.end(), QFixed::fromReal(context.clip.bottom()));
     }
 
     QTextBlock previousBlock;
@@ -2190,7 +2212,7 @@ void QTextDocumentLayoutPrivate::layoutFlow(QTextFrame::Iterator it, QTextLayout
         bool redoCheckPoints = layoutStruct->fullLayout || checkPoints.isEmpty();
 
         if (!redoCheckPoints) {
-            QVector<QCheckPoint>::Iterator checkPoint = qLowerBound(checkPoints.begin(), checkPoints.end(), layoutFrom);
+            QVector<QCheckPoint>::Iterator checkPoint = std::lower_bound(checkPoints.begin(), checkPoints.end(), layoutFrom);
             if (checkPoint != checkPoints.end()) {
                 if (checkPoint != checkPoints.begin())
                     --checkPoint;

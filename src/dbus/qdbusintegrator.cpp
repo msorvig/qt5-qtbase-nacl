@@ -1,43 +1,45 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtDBus module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+
+#include "qdbusintegrator_p.h"
 
 #include <qcoreapplication.h>
 #include <qdebug.h>
@@ -50,6 +52,7 @@
 
 #include "qdbusargument.h"
 #include "qdbusconnection_p.h"
+#include "qdbusconnectionmanager_p.h"
 #include "qdbusinterface_p.h"
 #include "qdbusmessage.h"
 #include "qdbusmetatype.h"
@@ -61,9 +64,10 @@
 #include "qdbusmessage_p.h"
 #include "qdbuscontext_p.h"
 #include "qdbuspendingcall_p.h"
-#include "qdbusintegrator_p.h"
 
 #include "qdbusthreaddebug_p.h"
+
+#include <algorithm>
 
 #ifndef QT_NO_DBUS
 
@@ -385,16 +389,21 @@ static void qDBusNewConnection(DBusServer *server, DBusConnection *connection, v
 
     // keep the connection alive
     q_dbus_connection_ref(connection);
-    QDBusConnectionPrivate *d = static_cast<QDBusConnectionPrivate *>(data);
+    QDBusConnectionPrivate *serverConnection = static_cast<QDBusConnectionPrivate *>(data);
+
+    QDBusConnectionPrivate *newConnection = new QDBusConnectionPrivate(serverConnection->parent());
+    QMutexLocker locker(&QDBusConnectionManager::instance()->mutex);
+    QDBusConnectionManager::instance()->setConnection(QLatin1String("QDBusServer-") + QString::number(reinterpret_cast<qulonglong>(newConnection)), newConnection);
+    serverConnection->serverConnectionNames << newConnection->name;
 
     // setPeer does the error handling for us
     QDBusErrorInternal error;
-    d->setPeer(connection, error);
+    newConnection->setPeer(connection, error);
 
-    QDBusConnection retval = QDBusConnectionPrivate::q(d);
+    QDBusConnection retval = QDBusConnectionPrivate::q(newConnection);
 
     // make QDBusServer emit the newConnection signal
-    d->serverConnection(retval);
+    serverConnection->serverConnection(retval);
 }
 
 } // extern "C"
@@ -453,7 +462,7 @@ static bool findObject(const QDBusConnectionPrivate::ObjectTreeNode *root,
         QStringRef pathComponent(&fullpath, start, end - start);
 
         QDBusConnectionPrivate::ObjectTreeNode::DataList::ConstIterator it =
-            qLowerBound(node->children.constBegin(), node->children.constEnd(), pathComponent);
+            std::lower_bound(node->children.constBegin(), node->children.constEnd(), pathComponent);
         if (it != node->children.constEnd() && it->name == pathComponent)
             // match
             node = it;
@@ -658,7 +667,7 @@ static int findSlot(const QMetaObject *mo, const QByteArray &name, int flags,
         metaTypes[0] = returnType;
         bool hasMessage = false;
         if (inputCount > 0 &&
-            metaTypes.at(inputCount) == QDBusMetaTypeId::message) {
+            metaTypes.at(inputCount) == QDBusMetaTypeId::message()) {
             // "no input parameters" is allowed as long as the message meta type is there
             hasMessage = true;
             --inputCount;
@@ -729,7 +738,7 @@ QDBusCallDeliveryEvent* QDBusConnectionPrivate::prepareReply(QDBusConnectionPriv
     Q_UNUSED(object);
 
     int n = metaTypes.count() - 1;
-    if (metaTypes[n] == QDBusMetaTypeId::message)
+    if (metaTypes[n] == QDBusMetaTypeId::message())
         --n;
 
     if (msg.arguments().count() < n)
@@ -829,7 +838,7 @@ bool QDBusConnectionPrivate::activateCall(QObject* object, int flags, const QDBu
             // try with no parameters, but with a QDBusMessage
             slotData.slotIdx = ::findSlot(mo, memberName, flags, QString(), slotData.metaTypes);
             if (slotData.metaTypes.count() != 2 ||
-                slotData.metaTypes.at(1) != QDBusMetaTypeId::message) {
+                slotData.metaTypes.at(1) != QDBusMetaTypeId::message()) {
                 // not found
                 // save the negative lookup
                 slotData.slotIdx = -1;
@@ -880,7 +889,7 @@ void QDBusConnectionPrivate::deliverCall(QObject *object, int /*flags*/, const Q
     int pCount = qMin(msg.arguments().count(), metaTypes.count() - 1);
     for (i = 1; i <= pCount; ++i) {
         int id = metaTypes[i];
-        if (id == QDBusMetaTypeId::message)
+        if (id == QDBusMetaTypeId::message())
             break;
 
         const QVariant &arg = msg.arguments().at(i - 1);
@@ -909,7 +918,7 @@ void QDBusConnectionPrivate::deliverCall(QObject *object, int /*flags*/, const Q
         }
     }
 
-    if (metaTypes.count() > i && metaTypes[i] == QDBusMetaTypeId::message) {
+    if (metaTypes.count() > i && metaTypes[i] == QDBusMetaTypeId::message()) {
         params.append(const_cast<void*>(static_cast<const void*>(&msg)));
         ++i;
     }
@@ -1048,6 +1057,7 @@ void QDBusConnectionPrivate::closeConnection()
                 ;
         }
     }
+    qDBusDebug() << this << "Disconnected";
 }
 
 void QDBusConnectionPrivate::checkThread()
@@ -1288,7 +1298,7 @@ bool QDBusConnectionPrivate::prepareHook(QDBusConnectionPrivate::SignalHook &hoo
     if (buildSignature) {
         hook.signature.clear();
         for (int i = 1; i < hook.params.count(); ++i)
-            if (hook.params.at(i) != QDBusMetaTypeId::message)
+            if (hook.params.at(i) != QDBusMetaTypeId::message())
                 hook.signature += QLatin1String( QDBusMetaType::typeToSignature( hook.params.at(i) ) );
     }
 
@@ -1412,8 +1422,8 @@ void QDBusConnectionPrivate::activateObject(ObjectTreeNode &node, const QDBusMes
         } else {
             // check if we have an interface matching the name that was asked:
             QDBusAdaptorConnector::AdaptorMap::ConstIterator it;
-            it = qLowerBound(connector->adaptors.constBegin(), connector->adaptors.constEnd(),
-                             msg.interface());
+            it = std::lower_bound(connector->adaptors.constBegin(), connector->adaptors.constEnd(),
+                                  msg.interface());
             if (it != connector->adaptors.constEnd() && msg.interface() == QLatin1String(it->interface)) {
                 if (!activateCall(it->adaptor, newflags, msg))
                     sendError(msg, QDBusError::UnknownMethod);
@@ -1774,7 +1784,14 @@ void QDBusConnectionPrivate::waitForFinished(QDBusPendingCallPrivate *pcall)
             // QDBusConnectionPrivate::processFinishedCall() is called automatically
         }
         pcall->mutex.lock();
+        pcall->waitForFinishedCondition.wakeAll();
     }
+}
+
+static inline bool waitingForFinishedIsSet(QDBusPendingCallPrivate *call)
+{
+    const QMutexLocker locker(&call->mutex);
+    return call->waitingForFinished;
 }
 
 void QDBusConnectionPrivate::processFinishedCall(QDBusPendingCallPrivate *call)
@@ -1826,7 +1843,7 @@ void QDBusConnectionPrivate::processFinishedCall(QDBusPendingCallPrivate *call)
         emit connection->callWithCallbackFailed(QDBusError(msg), call->sentMessage);
 
     if (call->autoDelete) {
-        Q_ASSERT(!call->waitingForFinished); // can't wait on a call with autoDelete!
+        Q_ASSERT(!waitingForFinishedIsSet(call)); // can't wait on a call with autoDelete!
         delete call;
     }
 }

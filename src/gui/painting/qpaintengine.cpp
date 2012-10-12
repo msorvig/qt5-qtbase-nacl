@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -152,14 +152,16 @@ QFont QTextItem::font() const
   \brief The QPaintEngine class provides an abstract definition of how
   QPainter draws to a given device on a given platform.
 
-  Qt 4.0 provides several premade implementations of QPaintEngine for the
-  different painter backends we support. We provide one paint engine for each
-  window system and painting framework we support. This includes X11 on
-  Unix/Linux and CoreGraphics on Mac OS X. In addition we provide QPaintEngine
-  implementations for OpenGL (accessible through QOpenGLWidget) and PostScript
-  (accessible through QPSPrinter on X11). Additionally there is a raster-based
-  paint engine that is a fallback for when an engine does not support a certain
-  capability.
+  Qt provides several premade implementations of QPaintEngine for the
+  different painter backends we support. The primary paint engine
+  provided is the raster paint engine, which contains a software
+  rasterizer which supports the full feature set on all supported platforms.
+  This is the default for painting on QWidget-based classes in e.g. on Windows,
+  X11 and Mac OS X, it is the backend for painting on QImage and it is
+  used as a fallback for paint engines that do not support a certain
+  capability. In addition we provide QPaintEngine implementations for
+  OpenGL (accessible through QGLWidget) and printing (which allows using
+  QPainter to draw on a QPrinter object).
 
   If one wants to use QPainter to draw to a different backend,
   one must subclass QPaintEngine and reimplement all its virtual
@@ -168,11 +170,6 @@ QFont QTextItem::font() const
   QPaintDevice::paintEngine().
 
   QPaintEngine is created and owned by the QPaintDevice that created it.
-
-  The big advantage of the QPaintEngine approach opposed to
-  Qt 3's QPainter/QPaintDevice::cmd() approach is that it is now
-  possible to adapt to multiple technologies on each platform and take
-  advantage of each to the fullest.
 
   \sa QPainter, QPaintDevice::paintEngine(), {Paint System}
 */
@@ -923,7 +920,7 @@ QPoint QPaintEngine::coordinateOffset() const
 
     Sets the system clip for this engine. The system clip defines the
     basis area that the engine has to draw in. All clips that are
-    set will be be an intersection with the system clip.
+    set will be an intersection with the system clip.
 
     Reset the systemclip to no clip by setting an empty region.
 */

@@ -1,45 +1,45 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 #include <qtconcurrentthreadengine.h>
-#include <qtconcurrentexception.h>
+#include <qexception.h>
 #include <QThread>
 #include <QtTest/QtTest>
 
@@ -278,26 +278,40 @@ public:
 
 void tst_QtConcurrentThreadEngine::threadCount()
 {
-    QSKIP("QTBUG-23333: This test is unstable");
+   //QTBUG-23333: This test is unstable
 
     const int repeats = 10;
     for (int i = 0; i < repeats; ++i) {
         ThreadCountUser t;
         t.startBlocking();
-        QCOMPARE(threads.count(), QThreadPool::globalInstance()->maxThreadCount() + 1); // +1 for the main thread.
+        int count = threads.count();
+        int count_expected = QThreadPool::globalInstance()->maxThreadCount() + 1; // +1 for the main thread.
+        if (count != count_expected)
+            QEXPECT_FAIL("", "QTBUG-23333", Abort);
+        QCOMPARE(count, count_expected);
 
         (new ThreadCountUser())->startAsynchronously().waitForFinished();
-        QCOMPARE(threads.count(), QThreadPool::globalInstance()->maxThreadCount());
+        count = threads.count();
+        count_expected = QThreadPool::globalInstance()->maxThreadCount();
+        if (count != count_expected)
+            QEXPECT_FAIL("", "QTBUG-23333", Abort);
+        QCOMPARE(count, count_expected);
     }
 
     // Set the finish flag immediately, this should give us one thread only.
     for (int i = 0; i < repeats; ++i) {
         ThreadCountUser t(true /*finishImmediately*/);
         t.startBlocking();
-        QCOMPARE(threads.count(), 1);
+        int count = threads.count();
+        if (count != 1)
+            QEXPECT_FAIL("", "QTBUG-23333", Abort);
+        QCOMPARE(count, 1);
 
         (new ThreadCountUser(true /*finishImmediately*/))->startAsynchronously().waitForFinished();
-        QCOMPARE(threads.count(), 1);
+        count = threads.count();
+        if (count != 1)
+            QEXPECT_FAIL("", "QTBUG-23333", Abort);
+        QCOMPARE(count, 1);
     }
 }
 
@@ -411,7 +425,7 @@ public:
     ThreadFunctionResult threadFunction()
     {
         QTest::qSleep(50);
-        throw QtConcurrent::Exception();
+        throw QException();
         return ThreadFinished;
     }
     QThread *blockThread;
@@ -443,7 +457,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
             QtConcurrentExceptionThrower *e = new QtConcurrentExceptionThrower();
             QFuture<void> f = e->startAsynchronously();
             f.waitForFinished();
-        } catch (const Exception &) {
+        } catch (const QException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");
@@ -456,7 +470,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
         try  {
             QtConcurrentExceptionThrower e(QThread::currentThread());
             e.startBlocking();
-        } catch (const Exception &) {
+        } catch (const QException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");
@@ -468,7 +482,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
         try  {
             QtConcurrentExceptionThrower e(0);
             e.startBlocking();
-        } catch (const Exception &) {
+        } catch (const QException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");
@@ -481,7 +495,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
             UnrelatedExceptionThrower *e = new UnrelatedExceptionThrower();
             QFuture<void> f = e->startAsynchronously();
             f.waitForFinished();
-        } catch (const QtConcurrent::UnhandledException &) {
+        } catch (const QUnhandledException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");
@@ -494,7 +508,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
         try  {
             UnrelatedExceptionThrower e(QThread::currentThread());
             e.startBlocking();
-        } catch (const QtConcurrent::UnhandledException &) {
+        } catch (const QUnhandledException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");
@@ -506,7 +520,7 @@ void tst_QtConcurrentThreadEngine::exceptions()
         try  {
             UnrelatedExceptionThrower e(0);
             e.startBlocking();
-        } catch (const QtConcurrent::UnhandledException &) {
+        } catch (const QUnhandledException &) {
             caught = true;
         }
         QVERIFY2(caught, "did not get exception");

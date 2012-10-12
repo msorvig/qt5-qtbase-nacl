@@ -1,38 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author James Turner <james.turner@kdab.com>
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -43,6 +43,8 @@
 
 #include "qcocoahelpers.h"
 #include "qcocoaautoreleasepool.h"
+
+#include <QtCore/QtDebug>
 
 @interface QT_MANGLE_NAMESPACE(QCocoaMenuDelegate) : NSObject <NSMenuDelegate> {
     QCocoaMenu *m_menu;
@@ -107,6 +109,15 @@ QCocoaMenu::QCocoaMenu() :
     [m_nativeItem setSubmenu:m_nativeMenu];
 }
 
+QCocoaMenu::~QCocoaMenu()
+{
+    QCocoaAutoReleasePool pool;
+    [m_nativeItem setSubmenu:nil];
+    [m_nativeMenu release];
+    [m_delegate release];
+    [m_nativeItem release];
+}
+
 void QCocoaMenu::setText(const QString &text)
 {
     QCocoaAutoReleasePool pool;
@@ -117,6 +128,7 @@ void QCocoaMenu::setText(const QString &text)
 
 void QCocoaMenu::insertMenuItem(QPlatformMenuItem *menuItem, QPlatformMenuItem *before)
 {
+    QCocoaAutoReleasePool pool;
     QCocoaMenuItem *cocoaItem = static_cast<QCocoaMenuItem *>(menuItem);
     QCocoaMenuItem *beforeItem = static_cast<QCocoaMenuItem *>(before);
 
@@ -124,7 +136,10 @@ void QCocoaMenu::insertMenuItem(QPlatformMenuItem *menuItem, QPlatformMenuItem *
     if (beforeItem) {
         int index = m_menuItems.indexOf(beforeItem);
         // if a before item is supplied, it should be in the menu
-        Q_ASSERT(index >= 0);
+        if (index < 0) {
+            qWarning() << Q_FUNC_INFO << "Before menu item not found";
+            return;
+        }
         m_menuItems.insert(index, cocoaItem);
     } else {
         m_menuItems.append(cocoaItem);
@@ -142,6 +157,10 @@ void QCocoaMenu::insertNative(QCocoaMenuItem *item, QCocoaMenuItem *beforeItem)
     if (item->isMerged())
         return;
 
+    if ([item->nsItem() menu]) {
+        qWarning() << Q_FUNC_INFO << "Menu item is already in a menu, remove it from the other menu first before inserting";
+        return;
+    }
     // if the item we're inserting before is merged, skip along until
     // we find a non-merged real item to insert ahead of.
     while (beforeItem && beforeItem->isMerged()) {
@@ -149,7 +168,10 @@ void QCocoaMenu::insertNative(QCocoaMenuItem *item, QCocoaMenuItem *beforeItem)
     }
 
     if (beforeItem) {
-        Q_ASSERT(!beforeItem->isMerged());
+        if (beforeItem->isMerged()) {
+            qWarning() << Q_FUNC_INFO << "No non-merged before menu item found";
+            return;
+        }
         NSUInteger nativeIndex = [m_nativeMenu indexOfItem:beforeItem->nsItem()];
         [m_nativeMenu insertItem: item->nsItem() atIndex: nativeIndex];
     } else {
@@ -159,10 +181,18 @@ void QCocoaMenu::insertNative(QCocoaMenuItem *item, QCocoaMenuItem *beforeItem)
 
 void QCocoaMenu::removeMenuItem(QPlatformMenuItem *menuItem)
 {
+    QCocoaAutoReleasePool pool;
     QCocoaMenuItem *cocoaItem = static_cast<QCocoaMenuItem *>(menuItem);
-    Q_ASSERT(m_menuItems.contains(cocoaItem));
+    if (!m_menuItems.contains(cocoaItem)) {
+        qWarning() << Q_FUNC_INFO << "Menu does not contain the item to be removed";
+        return;
+    }
     m_menuItems.removeOne(cocoaItem);
     if (!cocoaItem->isMerged()) {
+        if (m_nativeMenu != [cocoaItem->nsItem() menu]) {
+            qWarning() << Q_FUNC_INFO << "Item to remove does not belong to this menu";
+            return;
+        }
         [m_nativeMenu removeItem: cocoaItem->nsItem()];
     }
 }
@@ -177,8 +207,12 @@ QCocoaMenuItem *QCocoaMenu::itemOrNull(int index) const
 
 void QCocoaMenu::syncMenuItem(QPlatformMenuItem *menuItem)
 {
+    QCocoaAutoReleasePool pool;
     QCocoaMenuItem *cocoaItem = static_cast<QCocoaMenuItem *>(menuItem);
-    Q_ASSERT(m_menuItems.contains(cocoaItem));
+    if (!m_menuItems.contains(cocoaItem)) {
+        qWarning() << Q_FUNC_INFO << "Item does not belong to this menu";
+        return;
+    }
 
     bool wasMerged = cocoaItem->isMerged();
     NSMenuItem *oldItem = [m_nativeMenu itemWithTag:(NSInteger) cocoaItem];

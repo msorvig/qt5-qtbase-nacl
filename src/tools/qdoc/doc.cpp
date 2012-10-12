@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -355,7 +355,7 @@ class DocPrivate : public Shared
 public:
     DocPrivate(const Location& start = Location::null,
                const Location& end = Location::null,
-               const QString& source = "");
+               const QString& source = QString());
     ~DocPrivate();
 
     void addAlso(const Text& also);
@@ -473,7 +473,7 @@ private:
     void startSection(Doc::Sections unit, int cmd);
     void endSection(int unit, int endCmd);
     void parseAlso();
-    void append(Atom::Type type, const QString& string = "");
+    void append(Atom::Type type, const QString& string = QString());
     void append(Atom::Type type, const QString& p1, const QString& p2);
     void appendChar(QChar ch);
     void appendWord(const QString &word);
@@ -482,7 +482,7 @@ private:
     void startNewPara();
     void enterPara(Atom::Type leftType = Atom::ParaLeft,
                    Atom::Type rightType = Atom::ParaRight,
-                   const QString& string = "");
+                   const QString& string = QString());
     void leavePara();
     void leaveValue();
     void leaveValueList();
@@ -1149,7 +1149,7 @@ void DocParser::parse(const QString& source,
                     Doc::quoteFromFile(location(), quoter, fileName);
                     if (!quoting) {
                         append(Atom::Code,
-                               quoter.quoteTo(location(), cmdStr, ""));
+                               quoter.quoteTo(location(), cmdStr, QString()));
                         quoter.reset();
                     }
                     else {
@@ -2918,8 +2918,6 @@ Text Doc::trimmedBriefText(const QString &className) const
     if (atom) {
         QString briefStr;
         QString whats;
-        bool standardWording = true;
-
         /*
           This code is really ugly. The entire \brief business
           should be rethought.
@@ -2937,21 +2935,9 @@ Text Doc::trimmedBriefText(const QString &className) const
         else {
             if (!w.isEmpty() && w.first() == "The")
                 w.removeFirst();
-            else {
-                location().warning(
-                            tr("Nonstandard wording in '\\%1' text for '%2' (expected 'The')")
-                            .arg(COMMAND_BRIEF).arg(className));
-                standardWording = false;
-            }
 
             if (!w.isEmpty() && (w.first() == className || w.first() == classNameOnly))
                 w.removeFirst();
-            else {
-                location().warning(
-                            tr("Nonstandard wording in '\\%1' text for '%2' (expected '%3')")
-                            .arg(COMMAND_BRIEF).arg(className).arg(className));
-                standardWording = false;
-            }
 
             if (!w.isEmpty() && ((w.first() == "class") ||
                                  (w.first() == "function") ||
@@ -2960,14 +2946,6 @@ Text Doc::trimmedBriefText(const QString &className) const
                                  (w.first() == "namespace") ||
                                  (w.first() == "header")))
                 w.removeFirst();
-            else {
-                location().warning(
-                            tr("Nonstandard wording in '\\%1' text for '%2' ("
-                               "expected 'class', 'function', 'macro', 'widget', "
-                               "'namespace' or 'header')")
-                            .arg(COMMAND_BRIEF).arg(className));
-                standardWording = false;
-            }
 
             if (!w.isEmpty() && (w.first() == "is" || w.first() == "provides"))
                 w.removeFirst();
@@ -2976,23 +2954,16 @@ Text Doc::trimmedBriefText(const QString &className) const
                 w.removeFirst();
         }
 
-        whats = w.join(" ");
+        whats = w.join(' ');
 
         if (whats.endsWith(QLatin1Char('.')))
             whats.truncate(whats.length() - 1);
 
-        if (whats.isEmpty()) {
-            location().warning(
-                        tr("Nonstandard wording in '\\%1' text for '%2' (expected more text)")
-                        .arg(COMMAND_BRIEF).arg(className));
-            standardWording = false;
-        }
-        else
+        if (!whats.isEmpty())
             whats[0] = whats[0].toUpper();
 
         // ### move this once \brief is abolished for properties
-        if (standardWording)
-            resultText << whats;
+        resultText << whats;
     }
     return resultText;
 }

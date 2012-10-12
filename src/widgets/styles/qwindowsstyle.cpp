@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -261,7 +261,7 @@ bool QWindowsStyle::eventFilter(QObject *o, QEvent *e)
     This style is Qt's default GUI style on Windows.
 
     \image qwindowsstyle.png
-    \sa QWindowsXPStyle, QMacStyle, QPlastiqueStyle, QCDEStyle, QMotifStyle
+    \sa QWindowsXPStyle, QMacStyle, QPlastiqueStyle
 */
 
 /*!
@@ -376,6 +376,9 @@ int QWindowsStyle::pixelMetric(PixelMetric pm, const QStyleOption *opt, const QW
     case PM_MenuHMargin:
     case PM_MenuVMargin:
         ret = 1;
+        break;
+    case PM_DockWidgetSeparatorExtent:
+        ret = int(QStyleHelper::dpiScaled(4.));
         break;
 #ifndef QT_NO_TABBAR
     case PM_TabBarTabShiftHorizontal:
@@ -1699,31 +1702,9 @@ void QWindowsStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, 
          qDrawWinPanel(p, opt->rect, popupPal, opt->state & State_Sunken);
         break; }
 #ifndef QT_NO_DOCKWIDGET
-    case PE_IndicatorDockWidgetResizeHandle: {
-        QPen oldPen = p->pen();
-        p->setPen(opt->palette.light().color());
-        if (opt->state & State_Horizontal) {
-            p->drawLine(opt->rect.left(),          opt->rect.top(),
-                        opt->rect.right(), opt->rect.top());
-            p->setPen(opt->palette.dark().color());
-            p->drawLine(opt->rect.left(),          opt->rect.bottom() - 1,
-                        opt->rect.right(), opt->rect.bottom() - 1);
-            p->setPen(opt->palette.shadow().color());
-            p->drawLine(opt->rect.left(),          opt->rect.bottom(),
-                        opt->rect.right(), opt->rect.bottom());
-        } else {
-            p->drawLine(opt->rect.left(), opt->rect.top(),
-                        opt->rect.left(), opt->rect.bottom());
-            p->setPen(opt->palette.dark().color());
-            p->drawLine(opt->rect.right() - 1, opt->rect.top(),
-                        opt->rect.right() - 1, opt->rect.bottom());
-            p->setPen(opt->palette.shadow().color());
-            p->drawLine(opt->rect.right(), opt->rect.top(),
-                        opt->rect.right(), opt->rect.bottom());
-        }
-        p->setPen(oldPen);
-        break; }
-case PE_FrameDockWidget:
+    case PE_IndicatorDockWidgetResizeHandle:
+        break;
+    case PE_FrameDockWidget:
         if (qstyleoption_cast<const QStyleOptionFrame *>(opt)) {
             proxy()->drawPrimitive(QStyle::PE_FrameWindow, opt, p, w);
         }
@@ -2286,8 +2267,11 @@ void QWindowsStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPai
 #ifndef QT_NO_TOOLBAR
     case CE_ToolBar:
         if (const QStyleOptionToolBar *toolbar = qstyleoption_cast<const QStyleOptionToolBar *>(opt)) {
-            QRect rect = opt->rect;
+            // Reserve the beveled appearance only for mainwindow toolbars
+            if (!(widget && qobject_cast<const QMainWindow*> (widget->parentWidget())))
+                break;
 
+            QRect rect = opt->rect;
             bool paintLeftBorder = true;
             bool paintRightBorder = true;
             bool paintBottomBorder = true;
@@ -2513,11 +2497,6 @@ void QWindowsStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPai
                     }
                     p->fillRect(r.adjusted(0, 0, 0, -3), fillBrush);
                 }
-                p->setPen(dwOpt->palette.color(QPalette::Light));
-                if (!widget || !widget->isWindow()) {
-                    p->drawLine(r.topLeft(), r.topRight());
-                    p->setPen(dwOpt->palette.color(QPalette::Dark));
-                    p->drawLine(r.bottomLeft(), r.bottomRight());            }
             }
             if (!dwOpt->title.isEmpty()) {
                 QFont oldFont = p->font();
@@ -3079,10 +3058,10 @@ QSize QWindowsStyle::sizeFromContents(ContentsType ct, const QStyleOption *opt,
 }
 
 /*!
-    \internal
+    \reimp
 */
-QIcon QWindowsStyle::standardIconImplementation(StandardPixmap standardIcon, const QStyleOption *option,
-                                                const QWidget *widget) const
+QIcon QWindowsStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption *option,
+                                  const QWidget *widget) const
 {
     QIcon icon;
     QPixmap pixmap;
@@ -3209,7 +3188,7 @@ QIcon QWindowsStyle::standardIconImplementation(StandardPixmap standardIcon, con
 #endif
 
     if (icon.isNull())
-        icon = QCommonStyle::standardIconImplementation(standardIcon, option, widget);
+        icon = QCommonStyle::standardIcon(standardIcon, option, widget);
     return icon;
 }
 

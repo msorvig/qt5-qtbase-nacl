@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -91,11 +91,8 @@ class tst_QSpinBox : public QObject
     Q_OBJECT
 public:
     tst_QSpinBox();
-    virtual ~tst_QSpinBox();
 public slots:
-    void initTestCase();
     void init();
-    void cleanupTestCase();
 private slots:
     void getSetCheck();
     void setValue_data();
@@ -146,7 +143,6 @@ public slots:
 private:
     QStringList actualTexts;
     QList<int> actualValues;
-    QWidget *testFocusWidget;
 };
 
 typedef QList<int> IntList;
@@ -249,30 +245,11 @@ void tst_QSpinBox::getSetCheck()
 
 tst_QSpinBox::tst_QSpinBox()
 {
-
-}
-
-tst_QSpinBox::~tst_QSpinBox()
-{
-
-}
-
-void tst_QSpinBox::initTestCase()
-{
-    testFocusWidget = new QWidget(0);
-    testFocusWidget->resize(200, 100);
-    testFocusWidget->show();
 }
 
 void tst_QSpinBox::init()
 {
     QLocale::setDefault(QLocale(QLocale::C));
-}
-
-void tst_QSpinBox::cleanupTestCase()
-{
-    delete testFocusWidget;
-    testFocusWidget = 0;
 }
 
 void tst_QSpinBox::setValue_data()
@@ -738,15 +715,20 @@ void tst_QSpinBox::locale()
 
 void tst_QSpinBox::editingFinished()
 {
-    QVBoxLayout *layout = new QVBoxLayout(testFocusWidget);
-    QSpinBox *box = new QSpinBox(testFocusWidget);
+    QWidget testFocusWidget;
+    testFocusWidget.setObjectName(QLatin1String("tst_qspinbox"));
+    testFocusWidget.setWindowTitle(objectName());
+    testFocusWidget.resize(200, 100);
+
+    QVBoxLayout *layout = new QVBoxLayout(&testFocusWidget);
+    QSpinBox *box = new QSpinBox(&testFocusWidget);
     layout->addWidget(box);
-    QSpinBox *box2 = new QSpinBox(testFocusWidget);
+    QSpinBox *box2 = new QSpinBox(&testFocusWidget);
     layout->addWidget(box2);
 
-    testFocusWidget->show();
-    QApplication::setActiveWindow(testFocusWidget);
-    QVERIFY(QTest::qWaitForWindowActive(testFocusWidget));
+    testFocusWidget.show();
+    QApplication::setActiveWindow(&testFocusWidget);
+    QVERIFY(QTest::qWaitForWindowActive(&testFocusWidget));
     box->activateWindow();
     box->setFocus();
 
@@ -788,18 +770,18 @@ void tst_QSpinBox::editingFinished()
     QCOMPARE(editingFinishedSpy1.count(), 4);
     QCOMPARE(editingFinishedSpy2.count(), 3);
 
-    testFocusWidget->hide();
+    testFocusWidget.hide();
     QCOMPARE(editingFinishedSpy1.count(), 4);
     QCOMPARE(editingFinishedSpy2.count(), 4);
     QTest::qWait(100);
 
     //task203285
     editingFinishedSpy1.clear();
-    testFocusWidget->show();
+    testFocusWidget.show();
     QTest::qWait(100);
     box->setKeyboardTracking(false);
-    qApp->setActiveWindow(testFocusWidget);
-    testFocusWidget->activateWindow();
+    qApp->setActiveWindow(&testFocusWidget);
+    testFocusWidget.activateWindow();
     box->setFocus();
     QTRY_VERIFY(box->hasFocus());
     box->setValue(0);
@@ -809,8 +791,6 @@ void tst_QSpinBox::editingFinished()
     QTRY_VERIFY(qApp->focusWidget() != box);
     QCOMPARE(box->text(), QLatin1String("20"));
     QCOMPARE(editingFinishedSpy1.count(), 1);
-
-    testFocusWidget->hide();
 }
 
 void tst_QSpinBox::removeAll()

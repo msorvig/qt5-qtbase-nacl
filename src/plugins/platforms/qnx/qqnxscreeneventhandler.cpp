@@ -1,38 +1,38 @@
 /***************************************************************************
 **
 ** Copyright (C) 2011 - 2012 Research In Motion
-** Contact: http://www.qt-project.org/
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -57,8 +57,9 @@
 
 QT_BEGIN_NAMESPACE
 
-QQnxScreenEventHandler::QQnxScreenEventHandler()
-    : m_lastButtonState(Qt::NoButton)
+QQnxScreenEventHandler::QQnxScreenEventHandler(QQnxIntegration *integration)
+    : m_qnxIntegration(integration)
+    , m_lastButtonState(Qt::NoButton)
     , m_lastMouseWindow(0)
     , m_touchDevice(0)
 {
@@ -120,9 +121,13 @@ bool QQnxScreenEventHandler::handleEvent(screen_event_t event, int qnxType)
         handleCloseEvent(event);
         break;
 
+    case SCREEN_EVENT_DISPLAY:
+        handleDisplayEvent(event);
+        break;
+
     default:
         // event ignored
-        qScreenEventDebug() << Q_FUNC_INFO << "unknown event";
+        qScreenEventDebug() << Q_FUNC_INFO << "unknown event" << qnxType;
         return false;
     }
 
@@ -453,6 +458,34 @@ void QQnxScreenEventHandler::handleCreateEvent(screen_event_t event)
         qFatal("QQnx: failed to query window property, errno=%d", errno);
 
     Q_EMIT newWindowCreated(window);
+}
+
+void QQnxScreenEventHandler::handleDisplayEvent(screen_event_t event)
+{
+    screen_display_t nativeDisplay = NULL;
+    if (screen_get_event_property_pv(event, SCREEN_PROPERTY_DISPLAY, (void **)&nativeDisplay) != 0) {
+        qWarning("QQnx: failed to query display property, errno=%d", errno);
+        return;
+    }
+
+    int isAttached = 0;
+    if (screen_get_event_property_iv(event, SCREEN_PROPERTY_ATTACHED, &isAttached) != 0) {
+        qWarning("QQnx: failed to query display attached property, errno=%d", errno);
+        return;
+    }
+
+    qScreenEventDebug() << Q_FUNC_INFO << "display attachment is now:" << isAttached;
+    QQnxScreen *screen = m_qnxIntegration->screenForNative(nativeDisplay);
+    if (!screen) {
+        if (isAttached) {
+            qScreenEventDebug() << "creating new QQnxScreen for newly attached display";
+            m_qnxIntegration->createDisplay(nativeDisplay, false /* not primary, we assume */);
+        }
+    } else if (!isAttached) {
+        // libscreen display is deactivated, let's remove the QQnxScreen / QScreen
+        qScreenEventDebug() << "removing display";
+        m_qnxIntegration->removeDisplay(screen);
+    }
 }
 
 #include "moc_qqnxscreeneventhandler.cpp"

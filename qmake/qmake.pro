@@ -6,7 +6,8 @@
 option(host_build)
 CONFIG += console bootstrap
 CONFIG -= qt shared app_bundle uic
-DEFINES += QT_BUILD_QMAKE QT_BOOTSTRAPPED
+DEFINES += QT_BUILD_QMAKE QT_BOOTSTRAPPED \
+    PROEVALUATOR_FULL PROEVALUATOR_DEBUG
 DESTDIR = ../bin/
 
 OBJECTS_DIR = .
@@ -19,8 +20,11 @@ VPATH += $$QT_SOURCE_TREE/src/corelib/global \
          $$QT_SOURCE_TREE/src/corelib/codecs \
          $$QT_SOURCE_TREE/src/corelib/plugin \
          $$QT_SOURCE_TREE/src/corelib/xml \
-         $$QT_SOURCE_TREE/src/corelib/io
+         $$QT_SOURCE_TREE/src/corelib/io \
+         $$QT_SOURCE_TREE/tools/shared/windows
+
 INCLUDEPATH += . \
+           library \
            generators \
            generators/unix \
            generators/win32 \
@@ -30,6 +34,7 @@ INCLUDEPATH += . \
            $$QT_SOURCE_TREE/include/QtCore \
            $$QT_SOURCE_TREE/include/QtCore/$$QT_VERSION \
            $$QT_SOURCE_TREE/include/QtCore/$$QT_VERSION/QtCore \
+           $$QT_SOURCE_TREE/tools/shared \
            $$QT_SOURCE_TREE/qmake
 
 include(qmake.pri)

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -167,10 +167,19 @@ public:
     inline const_iterator end() const { return ptr + s; }
     inline const_iterator cend() const { return ptr + s; }
     inline const_iterator constEnd() const { return ptr + s; }
-    iterator insert(iterator before, int n, const T &x);
-    inline iterator insert(iterator before, const T &x) { return insert(before, 1, x); }
-    iterator erase(iterator begin, iterator end);
-    inline iterator erase(iterator pos) { return erase(pos, pos+1); }
+    iterator insert(const_iterator before, int n, const T &x);
+    inline iterator insert(const_iterator before, const T &x) { return insert(before, 1, x); }
+    iterator erase(const_iterator begin, const_iterator end);
+    inline iterator erase(const_iterator pos) { return erase(pos, pos+1); }
+
+    // STL compatibility:
+    inline bool empty() const { return isEmpty(); }
+    inline void push_back(const T &t) { append(t); }
+    inline void pop_back() { removeLast(); }
+    inline T &front() { return first(); }
+    inline const T &front() const { return first(); }
+    inline T &back() { return last(); }
+    inline const T &back() const { return last(); }
 
 private:
     friend class QPodList<T, Prealloc>;
@@ -243,35 +252,36 @@ Q_OUTOFLINE_TEMPLATE void QVarLengthArray<T, Prealloc>::realloc(int asize, int a
 
     const int copySize = qMin(asize, osize);
     if (aalloc != a) {
-        ptr = reinterpret_cast<T *>(malloc(aalloc * sizeof(T)));
-        Q_CHECK_PTR(ptr);
-        if (ptr) {
-            s = 0;
+        if (aalloc > Prealloc) {
+            T* newPtr = reinterpret_cast<T *>(malloc(aalloc * sizeof(T)));
+            Q_CHECK_PTR(newPtr); // could throw
+            // by design: in case of QT_NO_EXCEPTIONS malloc must not fail or it crashes here
+            ptr = newPtr;
             a = aalloc;
-
-            if (QTypeInfo<T>::isStatic) {
-                QT_TRY {
-                    // copy all the old elements
-                    while (s < copySize) {
-                        new (ptr+s) T(*(oldPtr+s));
-                        (oldPtr+s)->~T();
-                        s++;
-                    }
-                } QT_CATCH(...) {
-                    // clean up all the old objects and then free the old ptr
-                    int sClean = s;
-                    while (sClean < osize)
-                        (oldPtr+(sClean++))->~T();
-                    if (oldPtr != reinterpret_cast<T *>(array) && oldPtr != ptr)
-                        free(oldPtr);
-                    QT_RETHROW;
+        } else {
+            ptr = reinterpret_cast<T *>(array);
+            a = Prealloc;
+        }
+        s = 0;
+        if (QTypeInfo<T>::isStatic) {
+            QT_TRY {
+                // copy all the old elements
+                while (s < copySize) {
+                    new (ptr+s) T(*(oldPtr+s));
+                    (oldPtr+s)->~T();
+                    s++;
                 }
-            } else {
-                memcpy(ptr, oldPtr, copySize * sizeof(T));
+            } QT_CATCH(...) {
+                // clean up all the old objects and then free the old ptr
+                int sClean = s;
+                while (sClean < osize)
+                    (oldPtr+(sClean++))->~T();
+                if (oldPtr != reinterpret_cast<T *>(array) && oldPtr != ptr)
+                    free(oldPtr);
+                QT_RETHROW;
             }
         } else {
-            ptr = oldPtr;
-            return;
+            memcpy(ptr, oldPtr, copySize * sizeof(T));
         }
     }
     s = copySize;
@@ -338,7 +348,7 @@ inline void QVarLengthArray<T, Prealloc>::replace(int i, const T &t)
 
 
 template <class T, int Prealloc>
-Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthArray<T, Prealloc>::insert(iterator before, size_type n, const T &t)
+Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthArray<T, Prealloc>::insert(const_iterator before, size_type n, const T &t)
 {
     int offset = int(before - ptr);
     if (n != 0) {
@@ -365,7 +375,7 @@ Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthA
 }
 
 template <class T, int Prealloc>
-Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthArray<T, Prealloc>::erase(iterator abegin, iterator aend)
+Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthArray<T, Prealloc>::erase(const_iterator abegin, const_iterator aend)
 {
     int f = int(abegin - ptr);
     int l = int(aend - ptr);

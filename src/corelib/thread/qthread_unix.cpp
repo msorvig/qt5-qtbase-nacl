@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -256,8 +256,8 @@ void QThreadPrivate::createEventDispatcher(QThreadData *data)
     data->eventDispatcher = new QEventDispatcherBlackberry;
 #else
 #if !defined(QT_NO_GLIB)
-    if (qgetenv("QT_NO_GLIB").isEmpty()
-        && qgetenv("QT_NO_THREADED_GLIB").isEmpty()
+    if (qEnvironmentVariableIsEmpty("QT_NO_GLIB")
+        && qEnvironmentVariableIsEmpty("QT_NO_THREADED_GLIB")
         && QEventDispatcherGlib::versionSupported())
         data->eventDispatcher = new QEventDispatcherGlib;
     else
@@ -269,6 +269,21 @@ void QThreadPrivate::createEventDispatcher(QThreadData *data)
 }
 
 #ifndef QT_NO_THREAD
+
+#if (defined(Q_OS_LINUX) || defined(Q_OS_MAC) || defined(Q_OS_QNX))
+static void setCurrentThreadName(pthread_t threadId, const char *name)
+{
+#  if defined(Q_OS_LINUX) && !defined(QT_LINUXBASE)
+    Q_UNUSED(threadId);
+    prctl(PR_SET_NAME, (unsigned long)name, 0, 0, 0);
+#  elif defined(Q_OS_MAC)
+    Q_UNUSED(threadId);
+    pthread_setname_np(name);
+#  elif defined(Q_OS_QNX)
+    pthread_setname_np(threadId, name);
+#  endif
+}
+#endif
 
 void *QThreadPrivate::start(void *arg)
 {
@@ -301,18 +316,13 @@ void *QThreadPrivate::start(void *arg)
 
 #if (defined(Q_OS_LINUX) || defined(Q_OS_MAC) || defined(Q_OS_QNX))
     // sets the name of the current thread.
-    QByteArray objectName = thr->objectName().toLocal8Bit();
+    QString objectName = thr->objectName();
 
-    if (objectName.isEmpty())
-        objectName = thr->metaObject()->className();
+    if (Q_LIKELY(objectName.isEmpty()))
+        setCurrentThreadName(thr->d_func()->thread_id, thr->metaObject()->className());
+    else
+        setCurrentThreadName(thr->d_func()->thread_id, objectName.toLocal8Bit());
 
-#if defined(Q_OS_LINUX) && !defined(QT_LINUXBASE)
-    prctl(PR_SET_NAME, (unsigned long)objectName.constData(), 0, 0, 0);
-#elif defined(Q_OS_MAC)
-    pthread_setname_np(objectName.constData());
-#elif defined(Q_OS_QNX)
-    pthread_setname_np(thr->d_func()->thread_id, objectName.constData());
-#endif
 #endif
 
     emit thr->started();
@@ -371,7 +381,7 @@ void QThreadPrivate::finish(void *arg)
  ** QThread
  *************************************************************************/
 
-Qt::HANDLE QThread::currentThreadId()
+Qt::HANDLE QThread::currentThreadId() Q_DECL_NOTHROW
 {
     // requires a C cast here otherwise we run into trouble on AIX
     return (Qt::HANDLE)pthread_self();
@@ -382,7 +392,7 @@ Qt::HANDLE QThread::currentThreadId()
 #  define _SC_NPROCESSORS_ONLN 84
 #endif
 
-int QThread::idealThreadCount()
+int QThread::idealThreadCount() Q_DECL_NOTHROW
 {
     int cores = -1;
 
@@ -444,58 +454,27 @@ void QThread::yieldCurrentThread()
     sched_yield();
 }
 
-/*  \internal
-    helper function to do thread sleeps, since usleep()/nanosleep()
-    aren't reliable enough (in terms of behavior and availability)
-*/
-static void thread_sleep(struct timespec *ti)
+static timespec makeTimespec(time_t secs, long nsecs)
 {
-    pthread_mutex_t mtx;
-    pthread_cond_t cnd;
-
-    pthread_mutex_init(&mtx, 0);
-    pthread_cond_init(&cnd, 0);
-
-    pthread_mutex_lock(&mtx);
-    (void) pthread_cond_timedwait(&cnd, &mtx, ti);
-    pthread_mutex_unlock(&mtx);
-
-    pthread_cond_destroy(&cnd);
-    pthread_mutex_destroy(&mtx);
+    struct timespec ts;
+    ts.tv_sec = secs;
+    ts.tv_nsec = nsecs;
+    return ts;
 }
 
 void QThread::sleep(unsigned long secs)
 {
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    struct timespec ti;
-    ti.tv_sec = tv.tv_sec + secs;
-    ti.tv_nsec = (tv.tv_usec * 1000);
-    thread_sleep(&ti);
+    qt_nanosleep(makeTimespec(secs, 0));
 }
 
 void QThread::msleep(unsigned long msecs)
 {
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    struct timespec ti;
-
-    ti.tv_nsec = (tv.tv_usec + (msecs % 1000) * 1000) * 1000;
-    ti.tv_sec = tv.tv_sec + (msecs / 1000) + (ti.tv_nsec / 1000000000);
-    ti.tv_nsec %= 1000000000;
-    thread_sleep(&ti);
+    qt_nanosleep(makeTimespec(msecs / 1000, msecs % 1000 * 1000 * 1000));
 }
 
 void QThread::usleep(unsigned long usecs)
 {
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    struct timespec ti;
-
-    ti.tv_nsec = (tv.tv_usec + (usecs % 1000000)) * 1000;
-    ti.tv_sec = tv.tv_sec + (usecs / 1000000) + (ti.tv_nsec / 1000000000);
-    ti.tv_nsec %= 1000000000;
-    thread_sleep(&ti);
+    qt_nanosleep(makeTimespec(usecs / 1000 / 1000, usecs % (1000*1000) * 1000));
 }
 
 #ifdef QT_HAS_THREAD_PRIORITY_SCHEDULING

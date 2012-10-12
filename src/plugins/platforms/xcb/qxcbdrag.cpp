@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -414,9 +414,9 @@ void QXcbDrag::move(const QMouseEvent *me)
         xcb_get_property_reply_t *reply = xcb_get_property_reply(xcb_connection(), cookie, 0);
         if (!reply || reply->type == XCB_NONE)
             target = 0;
-        target_version = xcb_get_property_value_length(reply) == 1 ? *(uint32_t *)xcb_get_property_value(reply) : 1;
-        if (target_version > xdnd_version)
-            target_version = xdnd_version;
+
+        target_version = *(uint32_t *)xcb_get_property_value(reply);
+        target_version = qMin(xdnd_version, target_version ? target_version : 1);
 
         free(reply);
     }
@@ -484,6 +484,12 @@ void QXcbDrag::move(const QMouseEvent *me)
 void QXcbDrag::drop(const QMouseEvent *event)
 {
     QBasicDrag::drop(event);
+
+    if (heartbeat != -1) {
+        killTimer(heartbeat);
+        heartbeat = -1;
+    }
+
     if (!current_target)
         return;
 
@@ -1086,7 +1092,7 @@ void QXcbDrag::handleSelectionRequest(const xcb_selection_request_event_t *event
     notify.property = XCB_NONE;
     notify.time = event->time;
 
-    // which transaction do we use? (note: -2 means use current manager->object)
+    // which transaction do we use? (note: -2 means use current currentDrag())
     int at = -1;
 
     // figure out which data the requestor is really interested in
@@ -1095,11 +1101,11 @@ void QXcbDrag::handleSelectionRequest(const xcb_selection_request_event_t *event
         at = -2;
     } else {
         // if someone has requested data in response to XdndDrop, find the corresponding transaction. the
-        // spec says to call XConvertSelection() using the timestamp from the XdndDrop
+        // spec says to call xcb_convert_selection() using the timestamp from the XdndDrop
         at = findTransactionByTime(event->time);
         if (at == -1) {
-            // no dice, perhaps the client was nice enough to use the same window id in XConvertSelection()
-            // that we sent the XdndDrop event to.
+            // no dice, perhaps the client was nice enough to use the same window id in
+            // xcb_convert_selection() that we sent the XdndDrop event to.
             at = findTransactionByWindow(event->requestor);
         }
 //        if (at == -1 && event->time == XCB_CURRENT_TIME) {
@@ -1118,9 +1124,11 @@ void QXcbDrag::handleSelectionRequest(const xcb_selection_request_event_t *event
     QDrag *transactionDrag = 0;
     if (at >= 0) {
         restartDropExpiryTimer();
-
         transactionDrag = transactions.at(at).drag;
+    } else if (at == -2) {
+        transactionDrag = currentDrag();
     }
+
     if (transactionDrag) {
         xcb_atom_t atomFormat = event->target;
         int dataFormat = 0;
@@ -1231,7 +1239,7 @@ QVariant QXcbDropData::xdndObtainData(const QByteArray &format, QVariant::Type r
         return result; // should never happen?
 
     xcb_atom_t xdnd_selection = c->atom(QXcbAtom::XdndSelection);
-    result = c->clipboard()->getSelection(xdnd_selection, a, xdnd_selection);
+    result = c->clipboard()->getSelection(xdnd_selection, a, xdnd_selection, drag->targetTime());
 
     return mimeConvertToFormat(c, a, result, QLatin1String(format), requestedType, encoding);
 }

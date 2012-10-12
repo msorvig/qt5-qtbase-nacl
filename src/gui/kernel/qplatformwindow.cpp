@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -139,7 +139,8 @@ void QPlatformWindow::setVisible(bool visible)
 {
     Q_UNUSED(visible);
     QRect rect(QPoint(), geometry().size());
-    QWindowSystemInterface::handleSynchronousExposeEvent(window(), rect);
+    QWindowSystemInterface::handleExposeEvent(window(), rect);
+    QWindowSystemInterface::flushWindowSystemEvents();
 }
 /*!
     Requests setting the window flags of this surface
@@ -172,6 +173,43 @@ bool QPlatformWindow::isExposed() const
 bool QPlatformWindow::isActive() const
 {
     return false;
+}
+
+/*!
+    Returns true if the window is a descendant of an embedded non-Qt window.
+    Example of an embedded non-Qt window is the parent window of an in-process QAxServer.
+
+    If \a parentWindow is nonzero, only check if the window is embedded in the
+    specified \a parentWindow.
+*/
+bool QPlatformWindow::isEmbedded(const QPlatformWindow *parentWindow) const
+{
+    Q_UNUSED(parentWindow);
+    return false;
+}
+
+/*!
+    Translates the window coordinate \a pos to global screen
+    coordinates using native methods. This is required for embedded windows,
+    where the topmost QWindow coordinates are not global screen coordinates.
+
+    Returns \a pos if there is no platform specific implementation.
+*/
+QPoint QPlatformWindow::mapToGlobal(const QPoint &pos) const
+{
+    return pos;
+}
+
+/*!
+    Translates the global screen coordinate \a pos to window
+    coordinates using native methods. This is required for embedded windows,
+    where the topmost QWindow coordinates are not global screen coordinates.
+
+    Returns \a pos if there is no platform specific implementation.
+*/
+QPoint QPlatformWindow::mapFromGlobal(const QPoint &pos) const
+{
+    return pos;
 }
 
 /*!
@@ -214,6 +252,11 @@ void QPlatformWindow::setParent(const QPlatformWindow *parent)
   Reimplement to set the window title to \a title
 */
 void QPlatformWindow::setWindowTitle(const QString &title) { Q_UNUSED(title); }
+
+/*!
+  Reimplement to set the window file path to \a filePath
+*/
+void QPlatformWindow::setWindowFilePath(const QString &filePath) { Q_UNUSED(filePath); }
 
 /*!
   Reimplement to set the window icon to \a icon
@@ -418,6 +461,37 @@ bool QPlatformWindow::frameStrutEventsEnabled() const
 
     The only way to retrieve a QPlatformOpenGLContext in QPA is by calling the glContext() function
     on QPlatformWindow.
+
+    \section1 Implementation Aspects
+
+    \list 1
+        \li Mouse grab: Qt expects windows to automatically grab the mouse if the user presses
+            a button until the button is released.
+            Automatic grab should be released if some window is explicitly grabbed.
+        \li Enter/Leave events: Enter and leave events should be sent independently of
+            explicit mouse grabs (\c{setMouseGrabEnabled()}). That is, if the mouse leaves
+            a window that has explicit mouse grab, a leave event should be sent and other
+            windows should get enter/leave events as well as the mouse traverses them.
+            For automatic mouse grab, however, a leave event should be sent when the
+            button is released.
+        \li Window positioning: When calling \c{QWindow::setFramePos()}, the flag
+            \c{QWindowPrivate::positionPolicy} is set to \c{QWindowPrivate::WindowFrameInclusive}.
+            This means the position includes the window frame, whose size is at this point
+            unknown and the geometry's topleft point is the position of the window frame.
+    \endlist
+
+    Apart from the auto-tests (\c{tests/auto/gui/kernel/qwindow},
+    \c{tests/auto/gui/kernel/qguiapplication} and \c{tests/auto/widgets/kernel/qwidget}),
+    there are a number of manual tests and examples that can help testing a platform plugin:
+
+    \list 1
+        \li \c{examples/qpa/windows}: Basic \c{QWindow} creation.
+        \li \c{examples/opengl/hellowindow}: Basic Open GL windows.
+        \li \c{tests/manual/windowflags}: Tests setting the window flags.
+        \li \c{tests/manual/windowgeometry} Tests setting the window geometry.
+        \li \c{tests/manual/windowmodality} Tests setting the window modality.
+        \li \c{tests/manual/widgetgrab} Tests mouse grab and dialogs.
+    \endlist
 
     \sa QBackingStore, QWindow
 */

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -363,7 +363,8 @@ void QMapDataBase::freeData(QMapDataBase *d)
 
 /*!
     \class QMap
-    \brief The QMap class is a template class that provides a skip-list-based dictionary.
+    \inmodule QtCore
+    \brief The QMap class is a template class that provides a red-black-tree-based dictionary.
 
     \ingroup tools
     \ingroup shared
@@ -668,13 +669,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
     \sa count(), QMultiMap::contains()
 */
 
-/*! \fn const T QMap::value(const Key &key) const
-
-*/
-
 /*! \fn const T QMap::value(const Key &key, const T &defaultValue) const
-
-    \overload
 
     Returns the value associated with the key \a key.
 
@@ -921,7 +916,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
 
     \snippet code/src_corelib_tools_qmap.cpp 16
 
-    \sa qLowerBound(), upperBound(), find()
+    \sa upperBound(), find()
 */
 
 /*! \fn QMap::const_iterator QMap::lowerBound(const Key &key) const
@@ -939,7 +934,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
     Example:
     \snippet code/src_corelib_tools_qmap.cpp 17
 
-    \sa qUpperBound(), lowerBound(), find()
+    \sa lowerBound(), find()
 */
 
 /*! \fn QMap::const_iterator QMap::upperBound(const Key &key) const
@@ -1019,7 +1014,16 @@ void QMapDataBase::freeData(QMapDataBase *d)
     returning false.
 */
 
+/*!
+  \fn QPair<iterator, iterator> QMap::equal_range(const Key &key)
+
+  Returns a pair of iterators delimiting the range of values that
+  are stored under \a key.
+*/
+
+
 /*! \class QMap::iterator
+    \inmodule QtCore
     \brief The QMap::iterator class provides an STL-style non-const iterator for QMap and QMultiMap.
 
     QMap features both \l{STL-style iterators} and \l{Java-style
@@ -1083,11 +1087,6 @@ void QMapDataBase::freeData(QMapDataBase *d)
     \sa QMap::const_iterator, QMutableMapIterator
 */
 
-/*! \fn QMap::iterator::operator QMapData::Node *() const
-
-    \internal
-*/
-
 /*! \typedef QMap::iterator::difference_type
 
     \internal
@@ -1125,7 +1124,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
     \sa QMap::begin(), QMap::end()
 */
 
-/*! \fn QMap::iterator::iterator(QMapData::Node *node)
+/*! \fn QMap::iterator::iterator(Node *)
 
     \internal
 */
@@ -1267,6 +1266,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
 */
 
 /*! \class QMap::const_iterator
+    \inmodule QtCore
     \brief The QMap::const_iterator class provides an STL-style const iterator for QMap and QMultiMap.
 
     QMap features both \l{STL-style iterators} and \l{Java-style
@@ -1303,11 +1303,6 @@ void QMapDataBase::freeData(QMapDataBase *d)
     will become dangling iterators.
 
     \sa QMap::iterator, QMapIterator
-*/
-
-/*! \fn QMap::const_iterator::operator QMapData::Node *() const
-
-    \internal
 */
 
 /*! \typedef QMap::const_iterator::difference_type
@@ -1347,7 +1342,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
     \sa QMap::constBegin(), QMap::constEnd()
 */
 
-/*! \fn QMap::const_iterator::const_iterator(QMapData::Node *node)
+/*! \fn QMap::const_iterator::const_iterator(const Node *)
 
     \internal
 */
@@ -1506,6 +1501,7 @@ void QMapDataBase::freeData(QMapDataBase *d)
 */
 
 /*! \class QMultiMap
+    \inmodule QtCore
     \brief The QMultiMap class is a convenience QMap subclass that provides multi-valued maps.
 
     \ingroup tools

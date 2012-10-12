@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -226,6 +226,7 @@ private slots:
     void QTBUG6753_selectOnSelection();
     void testDelegateDestroyEditor();
     void testClickedSignal();
+    void testChangeEditorState();
 };
 
 class MyAbstractItemDelegate : public QAbstractItemDelegate
@@ -1532,6 +1533,61 @@ void tst_QAbstractItemView::testClickedSignal()
     // be emitted.
     QCOMPARE(clickedSpy.count(), 1);
 
+}
+
+class StateChangeDelegate : public QItemDelegate {
+  Q_OBJECT
+
+public:
+  explicit StateChangeDelegate(QObject* parent = 0) :
+    QItemDelegate(parent)
+  {}
+
+  void setEditorData(QWidget *editor, const QModelIndex &index) const Q_DECL_OVERRIDE {
+      static bool w = true;
+      editor->setEnabled(w);
+      w = !w;
+  }
+};
+
+class StateChangeModel : public QStandardItemModel {
+  Q_OBJECT
+
+public:
+  explicit StateChangeModel(QObject *parent = 0) :
+    QStandardItemModel(parent)
+  {}
+
+  void emitDataChanged() {
+    emit dataChanged(index(0, 0), index(0, 1));
+  }
+};
+
+
+void tst_QAbstractItemView::testChangeEditorState()
+{
+    // Test for QTBUG-25370
+    StateChangeModel model;
+    {
+      QStandardItem* item = new QStandardItem("a");
+      model.setItem(0, 0, item);
+    }
+    {
+      QStandardItem* item = new QStandardItem("b");
+      model.setItem(0, 1, item);
+    }
+
+    QTableView view;
+    view.setEditTriggers(QAbstractItemView::CurrentChanged);
+    view.setItemDelegate(new StateChangeDelegate);
+    view.setModel(&model);
+    view.show();
+    QApplication::setActiveWindow(&view);
+    QVERIFY(QTest::qWaitForWindowActive(&view));
+    QCOMPARE(static_cast<QWidget *>(&view), QApplication::activeWindow());
+
+    model.emitDataChanged();
+    // No segfault - the test passes.
 }
 
 QTEST_MAIN(tst_QAbstractItemView)

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -52,7 +52,7 @@
 #endif
 
 #include <stdlib.h> // mkdtemp
-#if defined(Q_OS_QNX) || defined(Q_OS_WIN) || defined(Q_OS_LINUX_ANDROID)
+#if defined(Q_OS_QNX) || defined(Q_OS_WIN)
 #include <private/qfilesystemengine_p.h>
 #endif
 
@@ -94,7 +94,7 @@ static QString defaultTemplateName()
     return QDir::tempPath() + QLatin1Char('/') + baseName + QLatin1String("-XXXXXX");
 }
 
-#if defined(Q_OS_QNX ) || defined(Q_OS_WIN) || defined(Q_OS_LINUX_ANDROID)
+#if defined(Q_OS_QNX ) || defined(Q_OS_WIN)
 static char *mkdtemp(char *templateName)
 {
     static const char letters[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -138,6 +138,8 @@ static char *mkdtemp(char *templateName)
     }
     return 0;
 }
+#elif defined(Q_OS_LINUX_ANDROID)
+extern char *mkdtemp(char *);
 #endif
 
 void QTemporaryDirPrivate::create(const QString &templateName)
@@ -155,6 +157,7 @@ void QTemporaryDirPrivate::create(const QString &templateName)
 
 /*!
     \class QTemporaryDir
+    \inmodule QtCore
     \reentrant
     \brief The QTemporaryDir class creates a unique directory for temporary use.
 
@@ -286,6 +289,8 @@ void QTemporaryDir::setAutoRemove(bool b)
 
 /*!
     Removes the temporary directory, including all its contents.
+
+    Returns true if removing was successful.
 */
 bool QTemporaryDir::remove()
 {

@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -71,6 +71,14 @@ QT_BEGIN_NAMESPACE
 
     A window that is supplied a parent becomes a native child window of
     their parent window.
+
+    An application will typically use QWidget or QQuickView for its UI, and not
+    QWindow directly. Still, it is possible to render directly to a QWindow
+    with QBackingStore or QOpenGLContext, when wanting to keep dependencies to
+    a minimum or when wanting to use OpenGL directly. The
+    \l{gui/rasterwindow}{Raster Window} and \l{gui/openglwindow}{OpenGL Window}
+    examples are useful reference examples for how to render to a QWindow using
+    either approach.
 
     \section1 Resource management
 
@@ -126,7 +134,7 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    Creates a window as a top level on the given screen.
+    Creates a window as a top level on the \a targetScreen.
 
     The window is not shown until setVisible(true), show(), or similar is called.
 
@@ -152,7 +160,8 @@ QWindow::QWindow(QScreen *targetScreen)
 /*!
     Creates a window as a child of the given \a parent window.
 
-    The window will be embedded inside the parent window, its coordinates relative to the parent.
+    The window will be embedded inside the parent window, its coordinates
+    relative to the parent.
 
     The screen is inherited from the parent.
 
@@ -168,9 +177,22 @@ QWindow::QWindow(QWindow *parent)
         d->screen = parent->screen();
     if (!d->screen)
         d->screen = QGuiApplication::primaryScreen();
+    connect(d->screen, SIGNAL(destroyed(QObject*)), this, SLOT(screenDestroyed(QObject*)));
     QGuiApplicationPrivate::window_list.prepend(this);
 }
 
+/*!
+    Creates a window as a child of the given \a parent window with the \a dd
+    private implementation.
+
+    The window will be embedded inside the parent window, its coordinates
+    relative to the parent.
+
+    The screen is inherited from the parent.
+
+    \internal
+    \sa setParent()
+*/
 QWindow::QWindow(QWindowPrivate &dd, QWindow *parent)
     : QObject(dd, parent)
     , QSurface(QSurface::Window)
@@ -181,6 +203,7 @@ QWindow::QWindow(QWindowPrivate &dd, QWindow *parent)
         d->screen = parent->screen();
     if (!d->screen)
         d->screen = QGuiApplication::primaryScreen();
+    connect(d->screen, SIGNAL(destroyed(QObject*)), this, SLOT(screenDestroyed(QObject*)));
     QGuiApplicationPrivate::window_list.prepend(this);
 }
 
@@ -341,9 +364,10 @@ QWindow *QWindow::parent() const
 }
 
 /*!
-    Sets the parent Window. This will lead to the windowing system managing the clip of the window, so it will be clipped to the parent window.
+    Sets the \a parent Window. This will lead to the windowing system managing
+    the clip of the window, so it will be clipped to the \a parent window.
 
-    Setting parent to be 0 will make the window become a top level window.
+    Setting \a parent to be 0 will make the window become a top level window.
 */
 
 void QWindow::setParent(QWindow *parent)
@@ -421,8 +445,16 @@ void QWindow::setWindowModality(Qt::WindowModality modality)
 /*!
     Sets the window's surface \a format.
 
-    The format determines properties such as color depth, alpha,
-    depth and stencil buffer size, etc.
+    The format determines properties such as color depth, alpha, depth and
+    stencil buffer size, etc. For example, to give a window a transparent
+    background (provided that the window system supports compositing, and
+    provided that other content in the window does not make it opaque again):
+
+    \code
+    QSurfaceFormat format;
+    format.setAlphaBufferSize(8);
+    window.setFormat(format);
+    \endcode
 
     The surface format will be resolved in the create() function. Calling
     this function after create() has been called will not re-resolve the
@@ -541,10 +573,32 @@ QString QWindow::windowTitle() const
 }
 
 /*!
-    Sets the window icon to the given \a icon.
+    \property QWindow::windowFilePath
+    \brief the file name this window is representing.
 
-    The window icon might be used by the windowing system for example to decorate the window,
-    or in the task switcher.
+    This property might be used by the windowing system to display the file
+    path of the document this window is representing in the tile bar.
+*/
+void QWindow::setWindowFilePath(const QString &filePath)
+{
+    Q_D(QWindow);
+    d->windowFilePath = filePath;
+    if (d->platformWindow)
+        d->platformWindow->setWindowFilePath(filePath);
+}
+
+QString QWindow::windowFilePath() const
+{
+    Q_D(const QWindow);
+    return d->windowFilePath;
+}
+
+/*!
+    \property QWindow::windowIcon
+    \brief the window's icon in the windowing system
+
+    The window icon might be used by the windowing system for example to
+    decorate the window, and/or in the task switcher.
 */
 void QWindow::setWindowIcon(const QIcon &icon)
 {
@@ -702,14 +756,14 @@ Qt::ScreenOrientation QWindow::contentOrientation() const
 }
 
 /*!
-  Requests the given window orientation.
+  Requests the given window \a orientation.
 
-  The window orientation specifies how the window should be rotated
+  The window \a orientation specifies how the window should be rotated
   by the window manager in order to be displayed. Input events will
-  be correctly mapped to the given orientation.
+  be correctly mapped to the given \a orientation.
 
   The return value is false if the system doesn't support the given
-  orientation (for example when requesting a portrait orientation
+  \a orientation (for example when requesting a portrait orientation
   on a device that only handles landscape buffers, typically a desktop
   system).
 
@@ -777,9 +831,10 @@ void QWindow::setWindowState(Qt::WindowState state)
 }
 
 /*!
-    Sets the transient parent
+    Sets the transient \a parent
 
-    This is a hint to the window manager that this window is a dialog or pop-up on behalf of the given window.
+    This is a hint to the window manager that this window is a dialog or pop-up
+    on behalf of the given window.
 
     \sa transientParent(), parent()
 */
@@ -813,8 +868,8 @@ QWindow *QWindow::transientParent() const
 */
 
 /*!
-    Returns true if the window is an ancestor of the given child. If mode is
-    IncludeTransients transient parents are also considered ancestors.
+    Returns true if the window is an ancestor of the given \a child. If \a mode
+    is IncludeTransients, then transient parents are also considered ancestors.
 */
 bool QWindow::isAncestorOf(const QWindow *child, AncestorMode mode) const
 {
@@ -906,7 +961,7 @@ void QWindow::setMaximumSize(const QSize &size)
 }
 
 /*!
-    Sets the base size of the window.
+    Sets the base \a size of the window.
 
     The base size is used to calculate a proper window size if the
     window defines sizeIncrement().
@@ -924,7 +979,7 @@ void QWindow::setBaseSize(const QSize &size)
 }
 
 /*!
-    Sets the size increment of the window.
+    Sets the size increment (\a size) of the window.
 
     When the user resizes the window, the size will move in steps of
     sizeIncrement().width() pixels horizontally and
@@ -948,13 +1003,14 @@ void QWindow::setSizeIncrement(const QSize &size)
 }
 
 /*!
-    Sets the geometry of the window, excluding its window frame, to \a rect.
+    \fn void QWindow::setGeometry(int posx, int posy, int w, int h)
 
-    To make sure the window is visible, make sure the geometry is within
-    the virtual geometry of its screen.
+    Sets the geometry of the window, excluding its window frame, to a
+    rectangle constructed from \a posx, \a posy, \a w and \a h.
 
-    \sa geometry(), screen(), QScreen::virtualGeometry()
+    \sa geometry
 */
+
 void QWindow::setGeometry(const QRect &rect)
 {
     Q_D(QWindow);
@@ -1058,7 +1114,7 @@ QPoint QWindow::framePos() const
 }
 
 /*!
-    Sets the upper left position of the window including its window frame.
+    Sets the upper left position of the window (\a point) including its window frame.
 
     \sa setGeometry(), frameGeometry()
 */
@@ -1074,10 +1130,35 @@ void QWindow::setFramePos(const QPoint &point)
 }
 
 /*!
-    Sets the size of the window to be \a newSize.
+    \property QWindow::pos
+    \brief the position of the window on the desktop
 
-    \sa setGeometry()
+    \sa geometry
 */
+
+/*!
+    \property QWindow::size
+    \brief the size of the window excluding any window frame
+
+    \sa geometry
+*/
+
+/*!
+    \property QWindow::geometry
+    \brief the geometry of the window excluding any window frame
+
+    To make sure the window is visible, make sure the geometry is within
+    the virtual geometry of its screen.
+
+    See the \l{Window Geometry} documentation for an overview of geometry
+    issues with windows.
+
+    By default, this property contains a value that depends on the user's
+    platform and screen geometry.
+
+    \sa size, pos
+*/
+
 void QWindow::resize(const QSize &newSize)
 {
     Q_D(QWindow);
@@ -1136,11 +1217,12 @@ QPlatformSurface *QWindow::surfaceHandle() const
 }
 
 /*!
-    Set whether keyboard grab should be enabled or not.
+    Set whether keyboard grab should be enabled or not (\a grab).
 
-    If the return value is true, the window receives all key events until setKeyboardGrabEnabled(false) is
-    called; other windows get no key events at all. Mouse events are not affected.
-    Use setMouseGrabEnabled() if you want to grab that.
+    If the return value is true, the window receives all key events until
+    setKeyboardGrabEnabled(false) is called; other windows get no key events at
+    all. Mouse events are not affected. Use setMouseGrabEnabled() if you want
+    to grab that.
 
     \sa setMouseGrabEnabled()
 */
@@ -1153,7 +1235,7 @@ bool QWindow::setKeyboardGrabEnabled(bool grab)
 }
 
 /*!
-    Sets whether mouse grab should be enabled or not.
+    Sets whether mouse grab should be enabled or not (\a grab).
 
     If the return value is true, the window receives all mouse events until setMouseGrabEnabled(false) is
     called; other windows get no mouse events at all. Keyboard events are not affected.
@@ -1186,7 +1268,7 @@ QScreen *QWindow::screen() const
 /*!
     Sets the screen on which the window should be shown.
 
-    If the window has been created, it will be recreated on the new screen.
+    If the window has been created, it will be recreated on the \a newScreen.
 
     Note that if the screen is part of a virtual desktop of multiple screens,
     the window can appear on any of the screens returned by QScreen::virtualSiblings().
@@ -1224,7 +1306,7 @@ void QWindow::screenDestroyed(QObject *object)
 /*!
     \fn QWindow::screenChanged(QScreen *screen)
 
-    This signal is emitted when a window's screen changes, either
+    This signal is emitted when a window's \a screen changes, either
     by being set explicitly with setScreen(), or automatically when
     the window's screen is removed.
 */
@@ -1242,7 +1324,9 @@ QAccessibleInterface *QWindow::accessibleRoot() const
 /*!
     \fn QWindow::focusObjectChanged(QObject *focusObject)
 
-    This signal is emitted when final receiver of events tied to focus is changed.
+    This signal is emitted when final receiver of events tied to focus is
+    changed to \a focusObject.
+
     \sa focusObject()
 */
 
@@ -1343,8 +1427,9 @@ void QWindow::showNormal()
 /*!
     Close the window.
 
-    This closes the window, effectively calling destroy(), and
-    potentially quitting the application
+    This closes the window, effectively calling destroy(), and potentially
+    quitting the application. Returns true on success, false if it has a parent
+    window (in which case the top level window should be closed instead).
 
     \sa destroy(), QGuiApplication::quitOnLastWindowClosed()
 */
@@ -1366,7 +1451,7 @@ bool QWindow::close()
 }
 
 /*!
-    The expose event is sent by the window system whenever the window's
+    The expose event (\a ev) is sent by the window system whenever the window's
     exposure on screen changes.
 
     The application can start rendering into the window with QBackingStore
@@ -1390,7 +1475,7 @@ void QWindow::exposeEvent(QExposeEvent *ev)
 }
 
 /*!
-    Override this to handle mouse events.
+    Override this to handle mouse events (\a ev).
 */
 void QWindow::moveEvent(QMoveEvent *ev)
 {
@@ -1398,7 +1483,7 @@ void QWindow::moveEvent(QMoveEvent *ev)
 }
 
 /*!
-    Override this to handle resize events.
+    Override this to handle resize events (\a ev).
 
     The resize event is called whenever the window is resized in the windowing system,
     either directly through the windowing system acknowledging a setGeometry() or resize() request,
@@ -1410,7 +1495,7 @@ void QWindow::resizeEvent(QResizeEvent *ev)
 }
 
 /*!
-    Override this to handle show events.
+    Override this to handle show events (\a ev).
 
     The function is called when the window has requested becoming visible.
 
@@ -1423,7 +1508,7 @@ void QWindow::showEvent(QShowEvent *ev)
 }
 
 /*!
-    Override this to handle hide evens.
+    Override this to handle hide events (\a ev).
 
     The function is called when the window has requested being hidden in the
     windowing system.
@@ -1434,7 +1519,8 @@ void QWindow::hideEvent(QHideEvent *ev)
 }
 
 /*!
-    Override this to handle any event sent to the window.
+    Override this to handle any event (\a ev) sent to the window.
+    Return \c true if the event was recognized and processed.
 
     Remember to call the base class version if you wish for mouse events,
     key events, resize events, etc to be dispatched as usual.
@@ -1542,9 +1628,9 @@ bool QWindow::event(QEvent *ev)
 }
 
 /*!
-    Override this to handle key press events.
+    Override this to handle key press events (\a ev).
 
-    \sa keyReleaseEvent
+    \sa keyReleaseEvent()
 */
 void QWindow::keyPressEvent(QKeyEvent *ev)
 {
@@ -1552,9 +1638,9 @@ void QWindow::keyPressEvent(QKeyEvent *ev)
 }
 
 /*!
-    Override this to handle key release events.
+    Override this to handle key release events (\a ev).
 
-    \sa keyPressEvent
+    \sa keyPressEvent()
 */
 void QWindow::keyReleaseEvent(QKeyEvent *ev)
 {
@@ -1562,11 +1648,11 @@ void QWindow::keyReleaseEvent(QKeyEvent *ev)
 }
 
 /*!
-    Override this to handle focus in events.
+    Override this to handle focus in events (\a ev).
 
     Focus in events are sent when the window receives keyboard focus.
 
-    \sa focusOutEvent
+    \sa focusOutEvent()
 */
 void QWindow::focusInEvent(QFocusEvent *ev)
 {
@@ -1574,11 +1660,11 @@ void QWindow::focusInEvent(QFocusEvent *ev)
 }
 
 /*!
-    Override this to handle focus out events.
+    Override this to handle focus out events (\a ev).
 
     Focus out events are sent when the window loses keyboard focus.
 
-    \sa focusInEvent
+    \sa focusInEvent()
 */
 void QWindow::focusOutEvent(QFocusEvent *ev)
 {
@@ -1586,7 +1672,7 @@ void QWindow::focusOutEvent(QFocusEvent *ev)
 }
 
 /*!
-    Override this to handle mouse press events.
+    Override this to handle mouse press events (\a ev).
 
     \sa mouseReleaseEvent()
 */
@@ -1596,7 +1682,7 @@ void QWindow::mousePressEvent(QMouseEvent *ev)
 }
 
 /*!
-    Override this to handle mouse release events.
+    Override this to handle mouse release events (\a ev).
 
     \sa mousePressEvent()
 */
@@ -1606,7 +1692,7 @@ void QWindow::mouseReleaseEvent(QMouseEvent *ev)
 }
 
 /*!
-    Override this to handle mouse double click events.
+    Override this to handle mouse double click events (\a ev).
 
     \sa mousePressEvent(), QStyleHints::mouseDoubleClickInterval()
 */
@@ -1616,7 +1702,7 @@ void QWindow::mouseDoubleClickEvent(QMouseEvent *ev)
 }
 
 /*!
-    Override this to handle mouse move events.
+    Override this to handle mouse move events (\a ev).
 */
 void QWindow::mouseMoveEvent(QMouseEvent *ev)
 {
@@ -1625,7 +1711,7 @@ void QWindow::mouseMoveEvent(QMouseEvent *ev)
 
 #ifndef QT_NO_WHEELEVENT
 /*!
-    Override this to handle mouse wheel or other wheel events.
+    Override this to handle mouse wheel or other wheel events (\a ev).
 */
 void QWindow::wheelEvent(QWheelEvent *ev)
 {
@@ -1634,7 +1720,7 @@ void QWindow::wheelEvent(QWheelEvent *ev)
 #endif //QT_NO_WHEELEVENT
 
 /*!
-    Override this to handle touch events.
+    Override this to handle touch events (\a ev).
 */
 void QWindow::touchEvent(QTouchEvent *ev)
 {
@@ -1643,7 +1729,7 @@ void QWindow::touchEvent(QTouchEvent *ev)
 
 #ifndef QT_NO_TABLETEVENT
 /*!
-    Override this to handle tablet press, move, and release events.
+    Override this to handle tablet press, move, and release events (\a ev).
 
     Proximity enter and leave events are not sent to windows, they are
     delivered to the application instance.
@@ -1656,8 +1742,11 @@ void QWindow::tabletEvent(QTabletEvent *ev)
 
 /*!
     Override this to handle platform dependent events.
+    Will be given \a eventType, \a message and \a result.
 
     This might make your application non-portable.
+
+    Should return true only if the event was handled.
 */
 bool QWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
@@ -1678,7 +1767,11 @@ bool QWindow::nativeEvent(const QByteArray &eventType, void *message, long *resu
 */
 QPoint QWindow::mapToGlobal(const QPoint &pos) const
 {
-    return pos + d_func()->globalPosition();
+    Q_D(const QWindow);
+    if (d->platformWindow && d->platformWindow->isEmbedded(0))
+        return d->platformWindow->mapToGlobal(pos);
+    else
+        return pos + d_func()->globalPosition();
 }
 
 
@@ -1692,7 +1785,11 @@ QPoint QWindow::mapToGlobal(const QPoint &pos) const
 */
 QPoint QWindow::mapFromGlobal(const QPoint &pos) const
 {
-    return pos - d_func()->globalPosition();
+    Q_D(const QWindow);
+    if (d->platformWindow && d->platformWindow->isEmbedded(0))
+        return d->platformWindow->mapFromGlobal(pos);
+    else
+        return pos - d_func()->globalPosition();
 }
 
 

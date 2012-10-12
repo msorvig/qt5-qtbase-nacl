@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -2297,7 +2297,8 @@ void QGraphicsItemPrivate::setVisibleHelper(bool newVisible, bool explicitly, bo
     }
 
     // Update children with explicitly = false.
-    const bool updateChildren = update && !(flags & QGraphicsItem::ItemClipsChildrenToShape);
+    const bool updateChildren = update && !((flags & QGraphicsItem::ItemClipsChildrenToShape)
+                                            && !(flags & QGraphicsItem::ItemHasNoContents));
     foreach (QGraphicsItem *child, children) {
         if (!newVisible || !child->d_ptr->explicitlyHidden)
             child->d_ptr->setVisibleHelper(newVisible, false, updateChildren);
@@ -2605,7 +2606,8 @@ void QGraphicsItem::setSelected(bool selected)
     Returns this item's local opacity, which is between 0.0 (transparent) and
     1.0 (opaque). This value is combined with parent and ancestor values into
     the effectiveOpacity(). The effective opacity decides how the item is
-    rendered.
+    rendered and also affects its visibility when queried by functions such as
+    QGraphicsView::items().
 
     The opacity property decides the state of the painter passed to the
     paint() function. If the item is cached, i.e., ItemCoordinateCache or
@@ -2711,7 +2713,8 @@ QGraphicsEffect *QGraphicsItem::graphicsEffect() const
 /*!
     Sets \a effect as the item's effect. If there already is an effect installed
     on this item, QGraphicsItem will delete the existing effect before installing
-    the new \a effect.
+    the new \a effect. You can delete an existing effect by calling
+    setGraphicsEffect(0).
 
     If \a effect is the installed on a different item, setGraphicsEffect() will remove
     the effect from the item and install it on this item.
@@ -4495,12 +4498,11 @@ void QGraphicsItem::resetTransform()
 
     The default implementation does nothing.
 
-    For individual item animation, an alternative to this function is to
-    either use QGraphicsItemAnimation, or to multiple-inherit from QObject and
-    QGraphicsItem, and animate your item using QObject::startTimer() and
-    QObject::timerEvent().
+    This function is intended for animations. An alternative is to
+    multiple-inherit from QObject and QGraphicsItem and use the \l{The Animation
+    Framework}{Animation Framework}.
 
-    \sa QGraphicsItemAnimation, QTimeLine
+    \sa QGraphicsScene::advance(), QTimeLine
 */
 void QGraphicsItem::advance(int phase)
 {
@@ -4576,7 +4578,7 @@ void QGraphicsItem::setZValue(qreal z)
 void QGraphicsItemPrivate::ensureSequentialSiblingIndex()
 {
     if (!sequentialOrdering) {
-        qSort(children.begin(), children.end(), insertionOrder);
+        std::sort(children.begin(), children.end(), insertionOrder);
         sequentialOrdering = 1;
         needSortChildren = 1;
     }
@@ -5056,6 +5058,7 @@ bool QGraphicsItem::isObscured(const QRectF &rect) const
 
 /*!
     \fn bool QGraphicsItem::isObscured(qreal x, qreal y, qreal w, qreal h) const
+    \overload
     \since 4.3
 
     This convenience function is equivalent to calling isObscured(QRectF(\a x, \a y, \a w, \a h)).
@@ -7792,7 +7795,7 @@ void QGraphicsItemPrivate::resetHeight()
 
   Describes the items x position.
 
-  \sa QGraphicsItem::setX(), setPos(), xChanged()
+  \sa QGraphicsItem::setX(), setPos()
 */
 
 /*!
@@ -7809,7 +7812,7 @@ void QGraphicsItemPrivate::resetHeight()
 
   Describes the items y position.
 
-  \sa QGraphicsItem::setY(), setPos(), yChanged()
+  \sa QGraphicsItem::setY(), setPos()
 */
 
 /*!
@@ -7826,7 +7829,7 @@ void QGraphicsItemPrivate::resetHeight()
 
   Describes the items z value.
 
-  \sa QGraphicsItem::setZValue(), zValue(), zChanged()
+  \sa QGraphicsItem::setZValue(), zValue()
 */
 
 /*!
@@ -7882,7 +7885,6 @@ void QGraphicsItemPrivate::resetHeight()
   By default, this property is true.
 
   \sa QGraphicsItem::isEnabled(), QGraphicsItem::setEnabled()
-  \sa QGraphicsObject::enabledChanged()
 */
 
 /*!
@@ -7901,7 +7903,7 @@ void QGraphicsItemPrivate::resetHeight()
 
   By default, this property is true.
 
-  \sa QGraphicsItem::isVisible(), QGraphicsItem::setVisible(), visibleChanged()
+  \sa QGraphicsItem::isVisible(), QGraphicsItem::setVisible()
 */
 
 /*!
@@ -10621,7 +10623,7 @@ QGraphicsSimpleTextItem::~QGraphicsSimpleTextItem()
 
 /*!
     Sets the item's text to \a text. The text will be displayed as
-    plain text. Newline characters ('\n') as well as characters of
+    plain text. Newline characters ('\\n') as well as characters of
     type QChar::LineSeparator will cause item to break the text into
     multiple lines.
 */

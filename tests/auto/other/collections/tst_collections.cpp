@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -1013,12 +1013,9 @@ void tst_Collections::vector()
     QVERIFY(v1 + v2 == v3);
 
     QVector<int> emptyVector;
+    // emptyVector.remove(3, -3); // Q_ASSERT_X() triggered with "index out of range" message.
     QCOMPARE(emptyVector.size(), 0);
-#if 0
-    // this should trigger an assert
-    emptyVector.remove(3, -3);
-    QCOMPARE(emptyVector.size(), 0);
-#endif
+
     emptyVector.remove(0, 0);
     QCOMPARE(emptyVector.size(), 0);
 
@@ -1318,19 +1315,22 @@ void tst_Collections::byteArray()
     QVERIFY(hello.mid(hello.size()-2) == "lo");
     QVERIFY(hello.mid(hello.size()-200) == "hello");
 
-    QByteArray null;
-    QByteArray nonNull = "";
-    QVERIFY(null.left(10).isNull());
-    QVERIFY(null.mid(0).isNull());
+    QByteArray nullByteArray;
+    QByteArray nonNullByteArray = "";
+    QVERIFY(nullByteArray.left(10).isNull());
+    QVERIFY(nullByteArray.mid(0).isNull());
 
-#if 0
-    QVERIFY(null == QByteArray::null);
-    QVERIFY(QByteArray::null  == null);
-    QVERIFY(nonNull != QByteArray::null);
-    QVERIFY(QByteArray::null != nonNull);
-    QVERIFY(null == nonNull);
-    QVERIFY(QByteArray::null == QByteArray::null);
-#endif
+    QVERIFY(nullByteArray.isEmpty() == nonNullByteArray.isEmpty());
+    QVERIFY(nullByteArray.size() == nonNullByteArray.size());
+
+    QVERIFY(nullByteArray == QByteArray()); // QByteArray() is both null and empty.
+    QVERIFY(QByteArray()  == nullByteArray);
+
+    QVERIFY(nonNullByteArray == QByteArray("")); // QByteArray("") is empty, but not null.
+    QVERIFY(QByteArray("") == nonNullByteArray);
+
+    QVERIFY(nullByteArray == nonNullByteArray);
+    QVERIFY(QByteArray() == QByteArray(""));
 
     QByteArray str = "Hello";
     QByteArray cstr(str.data(), str.size());
@@ -2170,13 +2170,11 @@ void tst_Collections::qstring()
     s = s.arg("foo").arg(7);
     QVERIFY(s == "(foo)(7)");
 
-
-#if 0
     s = "stl rocks";
-    std::string stl_string = s;
-    s = stl_string;
+    std::string stl_string = s.toStdString(); // TODO: std::string stl_string = s does not work.
     QVERIFY(s == "stl rocks");
-#endif
+    s = QString::fromStdString(stl_string); // TODO: s = stl_string does not work.
+    QVERIFY(s == "stl rocks");
 
     {
 	QString str("Bananas");

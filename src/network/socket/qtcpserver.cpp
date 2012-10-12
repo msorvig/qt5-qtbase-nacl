@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -90,13 +90,22 @@
     \sa hasPendingConnections(), nextPendingConnection()
 */
 
+/*! \fn void QTcpServer::acceptError(QAbstractSocket::SocketError socketError)
+    \since 5.0
+
+    This signal is emitted when accepting a new connection results in an error.
+    The \a socketError parameter describes the type of error that occurred.
+
+    \sa pauseAccepting(), resumeAccepting()
+*/
+
+#include "qtcpserver.h"
 #include "private/qobject_p.h"
 #include "qalgorithms.h"
 #include "qhostaddress.h"
 #include "qlist.h"
 #include "qpointer.h"
 #include "qabstractsocketengine_p.h"
-#include "qtcpserver.h"
 #include "qtcpsocket.h"
 #include "qnetworkproxy.h"
 
@@ -209,8 +218,15 @@ void QTcpServerPrivate::readNotification()
         }
 
         int descriptor = socketEngine->accept();
-        if (descriptor == -1)
+        if (descriptor == -1) {
+            if (socketEngine->error() != QAbstractSocket::TemporaryError) {
+                q->pauseAccepting();
+                serverSocketError = socketEngine->error();
+                serverSocketErrorString = socketEngine->errorString();
+                emit q->acceptError(serverSocketError);
+            }
             break;
+        }
 #if defined (QTCPSERVER_DEBUG)
         qDebug("QTcpServerPrivate::_q_processIncomingConnection() accepted socket %i", descriptor);
 #endif
@@ -648,6 +664,30 @@ QAbstractSocket::SocketError QTcpServer::serverError() const
 QString QTcpServer::errorString() const
 {
     return d_func()->serverSocketErrorString;
+}
+
+/*!
+    \since 5.0
+
+    Pauses accepting new connections. Queued connections will remain in queue.
+
+    \sa resumeAccepting()
+*/
+void QTcpServer::pauseAccepting()
+{
+    d_func()->socketEngine->setReadNotificationEnabled(false);
+}
+
+/*!
+    \since 5.0
+
+    Resumes accepting new connections.
+
+    \sa pauseAccepting()
+*/
+void QTcpServer::resumeAccepting()
+{
+    d_func()->socketEngine->setReadNotificationEnabled(true);
 }
 
 #ifndef QT_NO_NETWORKPROXY

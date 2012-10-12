@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -52,9 +52,6 @@
 #include <math.h>
 
 #include <QtWidgets/QLabel>
-#if !defined(QT_NO_STYLE_MOTIF)
-#include <QtWidgets/QMotifStyle>
-#endif
 #if !defined(QT_NO_STYLE_WINDOWS)
 #include <QtWidgets/QWindowsStyle>
 #endif
@@ -425,8 +422,6 @@ void tst_QGraphicsView::interactive()
     scene.addItem(item);
 
     QGraphicsView view(&scene);
-    if (PlatformQuirks::isAutoMaximizing())
-        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     view.setFixedSize(300, 300);
     QCOMPARE(item->events.size(), 0);
     view.show();
@@ -1288,9 +1283,6 @@ void tst_QGraphicsView::fitInView()
     view.setFixedSize(400, 200);
 #endif
 
-    if (PlatformQuirks::isAutoMaximizing())
-        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
-
     view.show();
     view.fitInView(scene.itemsBoundingRect(), Qt::IgnoreAspectRatio);
     qApp->processEvents();
@@ -1518,8 +1510,6 @@ void tst_QGraphicsView::itemsInRect_cosmeticAdjust()
     QGraphicsView view(&scene);
     view.setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, !adjustForAntialiasing);
     view.setRenderHint(QPainter::Antialiasing, adjustForAntialiasing);
-    if (PlatformQuirks::isAutoMaximizing())
-        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     view.setFrameStyle(0);
     view.resize(300, 300);
     view.show();
@@ -1720,7 +1710,7 @@ void tst_QGraphicsView::mapToScene()
 #ifdef Q_PROCESSOR_ARM
     const int step = 20;
 #else
-    const int step = 1;
+    const int step = 5;
 #endif
 
     for (int x = 0; x < view.width(); x += step) {
@@ -2328,8 +2318,6 @@ void tst_QGraphicsView::viewportUpdateMode()
     QDesktopWidget desktop;
     view.setFixedSize(QSize(500, 500).boundedTo(desktop.availableGeometry().size())); // 500 is too big for all common smartphones
     view.setScene(&scene);
-    if(PlatformQuirks::isAutoMaximizing())
-        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     QCOMPARE(view.viewportUpdateMode(), QGraphicsView::MinimalViewportUpdate);
 
     // Show the view, and initialize our test.
@@ -2745,6 +2733,23 @@ void tst_QGraphicsView::scrollBarRanges_data()
     _scrollBarRanges_data();
 }
 
+// Simulates motif scrollbar for range tests
+class FauxMotifStyle : public QCommonStyle {
+public:
+    int styleHint(StyleHint hint, const QStyleOption *option,
+                  const QWidget *widget, QStyleHintReturn *returnData) const {
+        if (hint == QStyle::SH_ScrollView_FrameOnlyAroundContents)
+            return true;
+        return QCommonStyle::styleHint(hint, option, widget, returnData);
+    }
+
+    int pixelMetric(PixelMetric m, const QStyleOption *opt, const QWidget *widget) const {
+        if (m == QStyle::PM_ScrollView_ScrollBarSpacing)
+            return 4;
+        return QCommonStyle::pixelMetric(m, opt, widget);
+    }
+};
+
 void tst_QGraphicsView::scrollBarRanges()
 {
     QFETCH(QSize, viewportSize);
@@ -2767,10 +2772,10 @@ void tst_QGraphicsView::scrollBarRanges()
     view.setFrameStyle(useStyledPanel ? QFrame::StyledPanel : QFrame::NoFrame);
 
     if (useMotif) {
-#if !defined(QT_NO_STYLE_MOTIF)
-        view.setStyle(new QMotifStyle);
+#if !defined(QT_NO_STYLE_WINDOWS)
+        view.setStyle(new FauxMotifStyle);
 #else
-        QSKIP("No Motif style compiled.");
+        QSKIP("No Windows style compiled.");
 #endif
     } else {
 #if defined(Q_OS_WINCE)
@@ -4489,8 +4494,6 @@ void tst_QGraphicsView::QTBUG_5859_exposedRect()
     scene.addItem(&item);
 
     QGraphicsView view(&scene);
-    if (PlatformQuirks::isAutoMaximizing())
-        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     view.scale(4.15, 4.15);
     view.show();
     qApp->setActiveWindow(&view);

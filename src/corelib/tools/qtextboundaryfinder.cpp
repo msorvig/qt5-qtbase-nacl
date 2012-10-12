@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -49,12 +49,12 @@ QT_BEGIN_NAMESPACE
 class QTextBoundaryFinderPrivate
 {
 public:
-    HB_CharAttributes attributes[1];
+    QCharAttributes attributes[1];
 };
 
-static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int length, HB_CharAttributes *attributes)
+static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int length, QCharAttributes *attributes)
 {
-    QVarLengthArray<HB_ScriptItem> scriptItems;
+    QVarLengthArray<QUnicodeTools::ScriptItem> scriptItems;
 
     const ushort *string = reinterpret_cast<const ushort *>(chars);
     const ushort *unicode = string;
@@ -72,11 +72,9 @@ static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int
             script = QUnicodeTables::Common;
         if (script != lastScript) {
             if (uc != start) {
-                HB_ScriptItem item;
-                item.pos = start - string;
-                item.length = uc - start;
-                item.script = (HB_Script)lastScript;
-                item.bidiLevel = 0; // ### what's the proper value?
+                QUnicodeTools::ScriptItem item;
+                item.position = start - string;
+                item.script = lastScript;
                 scriptItems.append(item);
                 start = uc;
             }
@@ -85,15 +83,13 @@ static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int
         ++uc;
     }
     if (uc != start) {
-        HB_ScriptItem item;
-        item.pos = start - string;
-        item.length = uc - start;
-        item.script = (HB_Script)lastScript;
-        item.bidiLevel = 0; // ### what's the proper value?
+        QUnicodeTools::ScriptItem item;
+        item.position = start - string;
+        item.script = lastScript;
         scriptItems.append(item);
     }
 
-    QUnicodeTools::CharAttributeOptions options = QUnicodeTools::WhiteSpaces;
+    QUnicodeTools::CharAttributeOptions options = 0;
     switch (type) {
     case QTextBoundaryFinder::Grapheme: options |= QUnicodeTools::GraphemeBreaks; break;
     case QTextBoundaryFinder::Word: options |= QUnicodeTools::WordBreaks; break;
@@ -106,6 +102,7 @@ static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int
 
 /*! 
     \class QTextBoundaryFinder
+    \inmodule QtCore
 
     \brief The QTextBoundaryFinder class provides a way of finding Unicode text boundaries in a string.
 
@@ -165,6 +162,8 @@ static void init(QTextBoundaryFinder::BoundaryType type, const QChar *chars, int
   \value NotAtBoundary  The boundary finder is not at a boundary position.
   \value StartWord  The boundary finder is at the start of a word.
   \value EndWord  The boundary finder is at the end of a word.
+  \value MandatoryBreak  Since 5.0. The boundary finder is at the end of line
+                         (can occur for a Line boundary type only).
   \value SoftHyphen  The boundary finder is at the soft hyphen
                      (can occur for a Line boundary type only).
 */
@@ -192,9 +191,9 @@ QTextBoundaryFinder::QTextBoundaryFinder(const QTextBoundaryFinder &other)
     , pos(other.pos)
     , freePrivate(true)
 {
-    d = (QTextBoundaryFinderPrivate *) malloc(length*sizeof(HB_CharAttributes));
+    d = (QTextBoundaryFinderPrivate *) malloc((length + 1) * sizeof(QCharAttributes));
     Q_CHECK_PTR(d);
-    memcpy(d, other.d, length*sizeof(HB_CharAttributes));
+    memcpy(d, other.d, (length + 1) * sizeof(QCharAttributes));
 }
 
 /*!
@@ -205,18 +204,27 @@ QTextBoundaryFinder &QTextBoundaryFinder::operator=(const QTextBoundaryFinder &o
     if (&other == this)
         return *this;
 
+    if (other.d) {
+        uint newCapacity = (length + 1) * sizeof(QCharAttributes);
+        QTextBoundaryFinderPrivate *newD = (QTextBoundaryFinderPrivate *) realloc(freePrivate ? d : 0, newCapacity);
+        Q_CHECK_PTR(newD);
+        freePrivate = true;
+        d = newD;
+    }
+
     t = other.t;
     s = other.s;
     chars = other.chars;
     length = other.length;
     pos = other.pos;
 
-    QTextBoundaryFinderPrivate *newD = (QTextBoundaryFinderPrivate *)
-        realloc(freePrivate ? d : 0, length*sizeof(HB_CharAttributes));
-    Q_CHECK_PTR(newD);
-    freePrivate = true;
-    d = newD;
-    memcpy(d, other.d, length*sizeof(HB_CharAttributes));
+    if (other.d) {
+        memcpy(d, other.d, (length + 1) * sizeof(QCharAttributes));
+    } else {
+        if (freePrivate)
+            free(d);
+        d = 0;
+    }
 
     return *this;
 }
@@ -241,7 +249,7 @@ QTextBoundaryFinder::QTextBoundaryFinder(BoundaryType type, const QString &strin
     , pos(0)
     , freePrivate(true)
 {
-    d = (QTextBoundaryFinderPrivate *) malloc(length*sizeof(HB_CharAttributes));
+    d = (QTextBoundaryFinderPrivate *) malloc((length + 1) * sizeof(QCharAttributes));
     Q_CHECK_PTR(d);
     init(t, chars, length, d->attributes);
 }
@@ -252,7 +260,8 @@ QTextBoundaryFinder::QTextBoundaryFinder(BoundaryType type, const QString &strin
 
   \a buffer is an optional working buffer of size \a bufferSize you can pass to
   the QTextBoundaryFinder. If the buffer is large enough to hold the working
-  data required, it will use this instead of allocating its own buffer.
+  data required (bufferSize >= length + 1), it will use this
+  instead of allocating its own buffer.
 
   \warning QTextBoundaryFinder does not create a copy of \a chars. It is the
   application programmer's responsibility to ensure the array is allocated for
@@ -265,11 +274,11 @@ QTextBoundaryFinder::QTextBoundaryFinder(BoundaryType type, const QChar *chars, 
     , length(length)
     , pos(0)
 {
-    if (buffer && (uint)bufferSize >= length*sizeof(HB_CharAttributes)) {
+    if (buffer && (uint)bufferSize >= (length + 1) * sizeof(QCharAttributes)) {
         d = (QTextBoundaryFinderPrivate *)buffer;
         freePrivate = false;
     } else {
-        d = (QTextBoundaryFinderPrivate *) malloc(length*sizeof(HB_CharAttributes));
+        d = (QTextBoundaryFinderPrivate *) malloc((length + 1) * sizeof(QCharAttributes));
         Q_CHECK_PTR(d);
         freePrivate = true;
     }
@@ -367,11 +376,11 @@ int QTextBoundaryFinder::toNextBoundary()
     
     switch(t) {
     case Grapheme:
-        while (pos < length && !d->attributes[pos].charStop)
+        while (pos < length && !d->attributes[pos].graphemeBoundary)
             ++pos;
         break;
     case Word:
-        while (pos < length && !d->attributes[pos].wordBoundary)
+        while (pos < length && !d->attributes[pos].wordBreak)
             ++pos;
         break;
     case Sentence:
@@ -379,7 +388,7 @@ int QTextBoundaryFinder::toNextBoundary()
             ++pos;
         break;
     case Line:
-        while (pos < length && d->attributes[pos].lineBreakType == HB_NoBreak)
+        while (pos < length && !d->attributes[pos].lineBreak)
             ++pos;
         break;
     }
@@ -409,11 +418,11 @@ int QTextBoundaryFinder::toPreviousBoundary()
 
     switch(t) {
     case Grapheme:
-        while (pos > 0 && !d->attributes[pos].charStop)
+        while (pos > 0 && !d->attributes[pos].graphemeBoundary)
             --pos;
         break;
     case Word:
-        while (pos > 0 && !d->attributes[pos].wordBoundary)
+        while (pos > 0 && !d->attributes[pos].wordBreak)
             --pos;
         break;
     case Sentence:
@@ -421,7 +430,7 @@ int QTextBoundaryFinder::toPreviousBoundary()
             --pos;
         break;
     case Line:
-        while (pos > 0 && d->attributes[pos].lineBreakType == HB_NoBreak)
+        while (pos > 0 && !d->attributes[pos].lineBreak)
             --pos;
         break;
     }
@@ -442,11 +451,11 @@ bool QTextBoundaryFinder::isAtBoundary() const
 
     switch(t) {
     case Grapheme:
-        return d->attributes[pos].charStop;
+        return d->attributes[pos].graphemeBoundary;
     case Word:
-        return d->attributes[pos].wordBoundary;
+        return d->attributes[pos].wordBreak;
     case Line:
-        return pos == 0 || d->attributes[pos].lineBreakType != HB_NoBreak;
+        return pos == 0 || d->attributes[pos].lineBreak;
     case Sentence:
         return d->attributes[pos].sentenceBoundary;
     }
@@ -458,34 +467,33 @@ bool QTextBoundaryFinder::isAtBoundary() const
 */
 QTextBoundaryFinder::BoundaryReasons QTextBoundaryFinder::boundaryReasons() const
 {
-    if (!d)
-        return NotAtBoundary;
-    if (! isAtBoundary())
-        return NotAtBoundary;
-    if (t == Line && pos < length && d->attributes[pos].lineBreakType == HB_SoftHyphen)
-        return SoftHyphen;
-    if (pos == 0) {
-        if (d->attributes[pos].whiteSpace)
-            return NotAtBoundary;
-        return StartWord;
-    }
-    if (pos == length) {
-        if (d->attributes[length-1].whiteSpace)
-            return NotAtBoundary;
-        return EndWord;
+    BoundaryReasons reasons = NotAtBoundary;
+    if (!d || !isAtBoundary())
+        return reasons;
+
+    switch (t) {
+    case Word:
+        if (d->attributes[pos].wordStart)
+            reasons |= StartWord;
+        if (d->attributes[pos].wordEnd)
+            reasons |= EndWord;
+        break;
+    case Line:
+        // ### TR#14 LB2 prohibits break at sot
+        if (d->attributes[pos].mandatoryBreak || pos == 0)
+            reasons |= MandatoryBreak;
+        else if (pos > 0 && chars[pos - 1].unicode() == QChar::SoftHyphen)
+            reasons |= SoftHyphen;
+        // fall through
+    case Grapheme:
+    case Sentence:
+        reasons |= StartWord | EndWord;
+        break;
+    default:
+        break;
     }
 
-    const bool nextIsSpace = d->attributes[pos].whiteSpace;
-    const bool prevIsSpace = d->attributes[pos - 1].whiteSpace;
-
-    if (prevIsSpace && !nextIsSpace)
-        return StartWord;
-    else if (!prevIsSpace && nextIsSpace)
-        return EndWord;
-    else if (!prevIsSpace && !nextIsSpace)
-        return BoundaryReasons(StartWord | EndWord);
-    else
-        return NotAtBoundary;
+    return reasons;
 }
 
 QT_END_NAMESPACE

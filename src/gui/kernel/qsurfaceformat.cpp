@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -160,6 +160,17 @@ public:
 */
 
 /*!
+    \enum QSurfaceFormat::RenderableType
+
+    This enum specifies the rendering backend for the surface.
+
+    \value DefaultRenderableType The default, unspecified rendering method
+    \value OpenGL Desktop OpenGL rendering
+    \value OpenGLES OpenGL ES 2.0 rendering
+    \value OpenVG Open Vector Graphics rendering
+*/
+
+/*!
     \enum QSurfaceFormat::OpenGLContextProfile
 
     This enum is used to specify the OpenGL context profile, in
@@ -279,7 +290,7 @@ void QSurfaceFormat::setStereo(bool enable)
     Returns the number of samples per pixel when multisampling is
     enabled. By default, multisampling is disabled.
 
-    \sa setSampleBuffers(), sampleBuffers(), setSamples()
+    \sa setSamples()
 */
 int QSurfaceFormat::samples() const
 {
@@ -290,7 +301,7 @@ int QSurfaceFormat::samples() const
     Set the preferred number of samples per pixel when multisampling
     is enabled to \a numSamples. By default, multisampling is disabled.
 
-    \sa setSampleBuffers(), sampleBuffers(), samples()
+    \sa samples()
 */
 void QSurfaceFormat::setSamples(int numSamples)
 {
@@ -340,7 +351,7 @@ void QSurfaceFormat::setDepthBufferSize(int size)
 /*!
     Returns the depth buffer size.
 
-    \sa depth(), setDepth(), setDepthBufferSize()
+    \sa setDepthBufferSize(), setDepth(), depth()
 */
 int QSurfaceFormat::depthBufferSize() const
 {
@@ -348,9 +359,9 @@ int QSurfaceFormat::depthBufferSize() const
 }
 
 /*!
-    Set the swap behaviour of the surface.
+    Set the swap \a behavior of the surface.
 
-    The swap behaviour specifies whether single, double, or triple
+    The swap behavior specifies whether single, double, or triple
     buffering is desired. The default, SwapBehavior::DefaultSwapBehavior,
     gives the default swap behavior of the platform.
 */
@@ -439,7 +450,7 @@ int QSurfaceFormat::alphaBufferSize() const
 }
 
 /*!
-    Set the desired size in bits of the red channel of the color buffer.
+    Set the desired \a size in bits of the red channel of the color buffer.
 */
 void QSurfaceFormat::setRedBufferSize(int size)
 {
@@ -450,7 +461,7 @@ void QSurfaceFormat::setRedBufferSize(int size)
 }
 
 /*!
-    Set the desired size in bits of the green channel of the color buffer.
+    Set the desired \a size in bits of the green channel of the color buffer.
 */
 void QSurfaceFormat::setGreenBufferSize(int size)
 {
@@ -461,7 +472,7 @@ void QSurfaceFormat::setGreenBufferSize(int size)
 }
 
 /*!
-    Set the desired size in bits of the blue channel of the color buffer.
+    Set the desired \a size in bits of the blue channel of the color buffer.
 */
 void QSurfaceFormat::setBlueBufferSize(int size)
 {
@@ -472,7 +483,7 @@ void QSurfaceFormat::setBlueBufferSize(int size)
 }
 
 /*!
-    Set the desired size in bits of the alpha channel of the color buffer.
+    Set the desired \a size in bits of the alpha channel of the color buffer.
 */
 void QSurfaceFormat::setAlphaBufferSize(int size)
 {
@@ -483,7 +494,7 @@ void QSurfaceFormat::setAlphaBufferSize(int size)
 }
 
 /*!
-    Sets the desired renderable type.
+    Sets the desired renderable \a type.
 
     Chooses between desktop OpenGL, OpenGL ES, and OpenVG.
 */
@@ -506,7 +517,7 @@ QSurfaceFormat::RenderableType QSurfaceFormat::renderableType() const
 }
 
 /*!
-    Sets the desired OpenGL context profile.
+    Sets the desired OpenGL context \a profile.
 
     This setting is ignored if the requested OpenGL version is
     less than 3.2.
@@ -531,7 +542,7 @@ QSurfaceFormat::OpenGLContextProfile QSurfaceFormat::profile() const
 }
 
 /*!
-    Sets the desired major OpenGL version.
+    Sets the desired \a major OpenGL version.
 */
 void QSurfaceFormat::setMajorVersion(int major)
 {
@@ -552,7 +563,7 @@ int QSurfaceFormat::majorVersion() const
 }
 
 /*!
-    Sets the desired minor OpenGL version.
+    Sets the desired \a minor OpenGL version.
 
     The default version is 2.0.
 */
@@ -574,7 +585,7 @@ int QSurfaceFormat::minorVersion() const
 
 /*!
     Returns true if all the options of the two QSurfaceFormat objects
-    are equal.
+    \a a and \a b are equal.
 
     \relates QSurfaceFormat
 */

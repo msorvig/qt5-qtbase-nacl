@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -272,6 +272,78 @@ static void _scrollBarRanges_data_1(int offset)
     QTest::newRow("6 x2 Always ScrollBars") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
                                             << Qt::ScrollBarAlwaysOn << Qt::ScrollBarAlwaysOn
                                             << -200 << (50 + 16) << -200 << (100 + 16) << false << false;
+    QTest::newRow("1 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << 16 << 0 << 0 << false << false;
+    QTest::newRow("2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << (50 + 16) << 0 << 0 << false << false;
+    QTest::newRow("3 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << (50 + 16) << 0 << 100 << false << false;
+    QTest::newRow("4 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << -100 << (-100 + 16) << 0 << 0 << false << false;
+    QTest::newRow("5 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << -100 << (16-50) << 0 << 0 << false << false;
+    QTest::newRow("6 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << -100 << (16-50) << -100 << 0 << false << false;
+    QTest::newRow("7 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 151, 101) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << 17 << 0 << 1 << false << false;
+    QTest::newRow("8 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 101) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << (17+50) << 0 << 1 << false << false;
+    QTest::newRow("9 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 201) << QTransform()
+                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                     << 0 << 67 << 0 << 101 << false << false;
+    QTest::newRow("10 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 151, 101) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << -101 << (-100 + 16) << -101 << -100 << false << false;
+    QTest::newRow("11 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 101) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << -101 << (16-50) << -101 << -100 << false << false;
+    QTest::newRow("12 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 201) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << -101 << (16-50) << -101 << 0 << false << false;
+    QTest::newRow("13 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 166, 116) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << 0 << 32 << 0 << 16 << false << false;
+    QTest::newRow("14 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 116) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << 0 << (50 + 32) << 0 << 16 << false << false;
+    QTest::newRow("15 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 216) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << 0 << (50 + 32) << 0 << (100 + 16) << false << false;
+    QTest::newRow("16 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 166, 116) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << (-100 - 16) << (-100 + 16) << (-100 - 16) << -100 << false << false;
+    QTest::newRow("17 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 116) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << (-100 - 16) << (16-50) << (-100 - 16) << -100 << false << false;
+    QTest::newRow("18 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 216) << QTransform()
+                                      << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                      << (-100 - 16) << (16-50) << (-100 - 16) << 0 << false << false;
+    QTest::newRow("1 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << 0 << (150 + 16) << 0 << 100 << false << false;
+    QTest::newRow("2 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << 0 << (250 + 16) << 0 << 100 << false << false;
+    QTest::newRow("3 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << 0 << (250 + 16) << 0 << 300 << false << false;
+    QTest::newRow("4 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << -200 << (-50 + 16) << -200 << -100 << false << false;
+    QTest::newRow("5 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << -200 << (50 + 16) << -200 << -100 << false << false;
+    QTest::newRow("6 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
+                                        << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                        << -200 << (50 + 16) << -200 << 100 << false << false;
 }
 
 static void _scrollBarRangesMotif_data_1(int offset)
@@ -493,6 +565,78 @@ static void _scrollBarRangesMotif_data_1(int offset)
     QTest::newRow("Motif, 6 x2 Always ScrollBars") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
                                                    << Qt::ScrollBarAlwaysOn << Qt::ScrollBarAlwaysOn
                                                    << -200 << (50 + 16) << -200 << (100 + 16) << true << false;
+    QTest::newRow("Motif, 1 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << 16 << 0 << 0 << true << false;
+    QTest::newRow("Motif, 2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << (50 + 16) << 0 << 0 << true << false;
+    QTest::newRow("Motif, 3 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << (50 + 16) << 0 << 100 << true << false;
+    QTest::newRow("Motif, 4 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << -100 << (-100 + 16) << 0 << 0 << true << false;
+    QTest::newRow("Motif, 5 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << -100 << (16-50) << 0 << 0 << true << false;
+    QTest::newRow("Motif, 6 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << -100 << (16-50) << -100 << 0 << true << false;
+    QTest::newRow("Motif, 7 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 151, 101) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << 17 << 0 << 1 << true << false;
+    QTest::newRow("Motif, 8 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 101) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << (17+50) << 0 << 1 << true << false;
+    QTest::newRow("Motif, 9 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 201) << QTransform()
+                                            << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                            << 0 << 67 << 0 << 101 << true << false;
+    QTest::newRow("Motif, 10 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 151, 101) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -101 << (-100 + 16) << -101 << -100 << true << false;
+    QTest::newRow("Motif, 11 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 101) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -101 << (16-50) << -101 << -100 << true << false;
+    QTest::newRow("Motif, 12 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 201) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -101 << (16-50) << -101 << 0 << true << false;
+    QTest::newRow("Motif, 13 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 166, 116) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << 32 << 0 << 16 << true << false;
+    QTest::newRow("Motif, 14 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 116) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << (50 + 32) << 0 << 16 << true << false;
+    QTest::newRow("Motif, 15 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 216) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << (50 + 32) << 0 << (100 + 16) << true << false;
+    QTest::newRow("Motif, 16 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 166, 116) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << (-100 - 16) << (-100 + 16) << (-100 - 16) << -100 << true << false;
+    QTest::newRow("Motif, 17 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 116) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << (-100 - 16) << (16-50) << (-100 - 16) << -100 << true << false;
+    QTest::newRow("Motif, 18 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 216) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << (-100 - 16) << (16-50) << (-100 - 16) << 0 << true << false;
+    QTest::newRow("Motif, 1 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << 0 << (150 + 16) << 0 << 100 << true << false;
+    QTest::newRow("Motif, 2 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << 0 << (250 + 16) << 0 << 100 << true << false;
+    QTest::newRow("Motif, 3 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << 0 << (250 + 16) << 0 << 300 << true << false;
+    QTest::newRow("Motif, 4 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << -200 << (-50 + 16) << -200 << -100 << true << false;
+    QTest::newRow("Motif, 5 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << -200 << (50 + 16) << -200 << -100 << true << false;
+    QTest::newRow("Motif, 6 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
+                                               << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                               << -200 << (50 + 16) << -200 << 100 << true << false;
 }
 
 static void _scrollBarRanges_data_2(int offset)
@@ -714,6 +858,78 @@ static void _scrollBarRanges_data_2(int offset)
     QTest::newRow("Styled, 6 x2 Always ScrollBars") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
                                                     << Qt::ScrollBarAlwaysOn << Qt::ScrollBarAlwaysOn
                                                     << -200 << (50 + 16) << -200 << (100 + 16) << false << true;
+    QTest::newRow("Styled, 1 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << 16 << 0 << 0 << false << true;
+    QTest::newRow("Styled, 2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << (50 + 16) << 0 << 0 << false << true;
+    QTest::newRow("Styled, 3 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << (50 + 16) << 0 << 100 << false << true;
+    QTest::newRow("Styled, 4 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -100 << (-100 + 16) << 0 << 0 << false << true;
+    QTest::newRow("Styled, 5 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -100 << (16-50) << 0 << 0 << false << true;
+    QTest::newRow("Styled, 6 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << -100 << (16-50) << -100 << 0 << false << true;
+    QTest::newRow("Styled, 7 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 151, 101) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << 17 << 0 << 1 << false << true;
+    QTest::newRow("Styled, 8 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 101) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << (17+50) << 0 << 1 << false << true;
+    QTest::newRow("Styled, 9 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 201) << QTransform()
+                                             << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                             << 0 << 67 << 0 << 101 << false << true;
+    QTest::newRow("Styled, 10 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 151, 101) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << -101 << (-100 + 16) << -101 << -100 << false << true;
+    QTest::newRow("Styled, 11 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 101) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << -101 << (16-50) << -101 << -100 << false << true;
+    QTest::newRow("Styled, 12 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 201) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << -101 << (16-50) << -101 << 0 << false << true;
+    QTest::newRow("Styled, 13 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 166, 116) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << 0 << 32 << 0 << 16 << false << true;
+    QTest::newRow("Styled, 14 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 116) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << 0 << (50 + 32) << 0 << 16 << false << true;
+    QTest::newRow("Styled, 15 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 216) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << 0 << (50 + 32) << 0 << (100 + 16) << false << true;
+    QTest::newRow("Styled, 16 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 166, 116) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << (-100 - 16) << (-100 + 16) << (-100 - 16) << -100 << false << true;
+    QTest::newRow("Styled, 17 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 116) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << (-100 - 16) << (16-50) << (-100 - 16) << -100 << false << true;
+    QTest::newRow("Styled, 18 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 216) << QTransform()
+                                              << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                              << (-100 - 16) << (16-50) << (-100 - 16) << 0 << false << true;
+    QTest::newRow("Styled, 1 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << 0 << (150 + 16) << 0 << 100 << false << true;
+    QTest::newRow("Styled, 2 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << 0 << (250 + 16) << 0 << 100 << false << true;
+    QTest::newRow("Styled, 3 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << 0 << (250 + 16) << 0 << 300 << false << true;
+    QTest::newRow("Styled, 4 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << -200 << (-50 + 16) << -200 << -100 << false << true;
+    QTest::newRow("Styled, 5 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << -200 << (50 + 16) << -200 << -100 << false << true;
+    QTest::newRow("Styled, 6 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
+                                                << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                << -200 << (50 + 16) << -200 << 100 << false << true;
 }
 
 static void _scrollBarRangesMotif_data_2(int offset)
@@ -935,6 +1151,78 @@ static void _scrollBarRangesMotif_data_2(int offset)
     QTest::newRow("Motif, Styled, 6 x2 Always ScrollBars") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
                                                            << Qt::ScrollBarAlwaysOn << Qt::ScrollBarAlwaysOn
                                                            << -200 << (50 + 16 + 4) << -200 << (100 + 16 + 4) << true << true;
+    QTest::newRow("Motif, Styled, 1 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (16 + 4) << 0 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (50 + 16 + 4) << 0 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 3 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (50 + 16 + 4) << 0 << 100 << true << true;
+    QTest::newRow("Motif, Styled, 4 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << -100 << (-100 + 16 + 4) << 0 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 5 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << -100 << (16 + 4 -50) << 0 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 6 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << -100 << (16 + 4 -50) << -100 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 7 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 151, 101) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (17 + 4) << 0 << 1 << true << true;
+    QTest::newRow("Motif, Styled, 8 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 101) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (17 + 4 + 50) << 0 << 1 << true << true;
+    QTest::newRow("Motif, Styled, 9 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 201, 201) << QTransform()
+                                                    << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                    << 0 << (117 + 4 - 50) << 0 << 101 << true << true;
+    QTest::newRow("Motif, Styled, 10 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 151, 101) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << -101 << (-100 + 16 + 4) << -101 << -100 << true << true;
+    QTest::newRow("Motif, Styled, 11 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 101) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << -101 << (16 + 4 - 50) << -101 << -100 << true << true;
+    QTest::newRow("Motif, Styled, 12 Vertical Only") << QSize(150, 100) << QRectF(-101, -101, 201, 201) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << -101 << (16 + 4 - 50) << -101 << 0 << true << true;
+    QTest::newRow("Motif, Styled, 13 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 166, 116) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << 0 << (32 + 4) << 0 << 16 << true << true;
+    QTest::newRow("Motif, Styled, 14 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 116) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << 0 << (50 + 32 + 4) << 0 << 16 << true << true;
+    QTest::newRow("Motif, Styled, 15 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 216, 216) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << 0 << (50 + 32 + 4) << 0 << (100 + 16) << true << true;
+    QTest::newRow("Motif, Styled, 16 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 166, 116) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << (-100 - 16) << (-100 + 16 + 4) << (-100 - 16) << -100 << true << true;
+    QTest::newRow("Motif, Styled, 17 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 116) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << (-100 - 16) << (16 + 4 - 50) << (-100 - 16) << -100 << true << true;
+    QTest::newRow("Motif, Styled, 18 Vertical Only") << QSize(150, 100) << QRectF(-116, -116, 216, 216) << QTransform()
+                                                     << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                     << (-100 - 16) << (16 + 4 - 50) << (-100 - 16) << 0 << true << true;
+    QTest::newRow("Motif, Styled, 1 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 150, 100) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << 0 << (150 + 16 + 4) << 0 << 100 << true << true;
+    QTest::newRow("Motif, Styled, 2 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 100) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << 0 << (250 + 16 + 4) << 0 << 100 << true << true;
+    QTest::newRow("Motif, Styled, 3 x2 Vertical Only") << QSize(150, 100) << QRectF(0, 0, 200, 200) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << 0 << (250 + 16 + 4) << 0 << 300 << true << true;
+    QTest::newRow("Motif, Styled, 4 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 150, 100) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << -200 << (-50 + 16 + 4) << -200 << -100 << true << true;
+    QTest::newRow("Motif, Styled, 5 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 100) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << -200 << (50 + 16 + 4) << -200 << -100 << true << true;
+    QTest::newRow("Motif, Styled, 6 x2 Vertical Only") << QSize(150, 100) << QRectF(-100, -100, 200, 200) << QTransform().scale(2, 2)
+                                                       << Qt::ScrollBarAlwaysOff << Qt::ScrollBarAlwaysOn
+                                                       << -200 << (50 + 16 + 4) << -200 << 100 << true << true;
 }
 
 void _scrollBarRanges_data()

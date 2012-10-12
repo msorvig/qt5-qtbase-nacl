@@ -1,38 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/
+** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** GNU Lesser General Public License Usage
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this
-** file. Please review the following information to ensure the GNU Lesser
-** General Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Digia.  For licensing terms and
+** conditions see http://qt.digia.com/licensing.  For further information
+** use the contact form at http://qt.digia.com/contact-us.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Digia gives you certain additional
+** rights.  These rights are described in the Digia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU General
-** Public License version 3.0 as published by the Free Software Foundation
-** and appearing in the file LICENSE.GPL included in the packaging of this
-** file. Please review the following information to ensure the GNU General
-** Public License version 3.0 requirements will be met:
-** http://www.gnu.org/copyleft/gpl.html.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**
-**
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
 **
 ** $QT_END_LICENSE$
@@ -2012,9 +2012,29 @@ void tst_QString::insert()
 
 void tst_QString::append()
 {
-    QString a;
-    a = "<>ABCABCABCABC";
-    QCOMPARE(a.append(">"),(QString)"<>ABCABCABCABC>");
+    {
+        QString a;
+        a = "<>ABCABCABCABC";
+        QCOMPARE(a.append(">"),QString("<>ABCABCABCABC>"));
+    }
+
+    {
+        QString a;
+        static const QChar unicode[] = { 'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!' };
+        a.append(unicode, sizeof unicode / sizeof *unicode);
+        QCOMPARE(a, QLatin1String("Hello, World!"));
+        static const QChar nl('\n');
+        a.append(&nl, 1);
+        QCOMPARE(a, QLatin1String("Hello, World!\n"));
+        a.append(unicode, sizeof unicode / sizeof *unicode);
+        QCOMPARE(a, QLatin1String("Hello, World!\nHello, World!"));
+        a.append(unicode, 0); // no-op
+        QCOMPARE(a, QLatin1String("Hello, World!\nHello, World!"));
+        a.append(unicode, -1); // no-op
+        QCOMPARE(a, QLatin1String("Hello, World!\nHello, World!"));
+        a.append(0, 1); // no-op
+        QCOMPARE(a, QLatin1String("Hello, World!\nHello, World!"));
+    }
 }
 
 void tst_QString::append_bytearray_data()
@@ -2209,8 +2229,6 @@ void tst_QString::replace_uint_uint()
     QFETCH( int, index );
     QFETCH( int, len );
     QFETCH( QString, after );
-
-    QEXPECT_FAIL("overflow", "QTBUG-22967: integer overflow if (index + len) > INT_MAX", Abort);
 
     QString s1 = string;
     s1.replace( (uint) index, (int) len, after );
@@ -5319,11 +5337,15 @@ void tst_QString::compareRef()
 void tst_QString::arg_locale()
 {
     QLocale l(QLocale::English, QLocale::UnitedKingdom);
+    QString str("*%L1*%L2*");
+
+    QCOMPARE(str.arg(123456).arg(1234.56), QString::fromLatin1("*123,456*1,234.56*"));
+    QLocale::setDefault(l);
+
     l.setNumberOptions(QLocale::OmitGroupSeparator);
     QLocale::setDefault(l);
-    QString str("*%L1*%L2*");
-    str = str.arg(123456).arg(1234.56);
-    QCOMPARE(str, QString::fromLatin1("*123456*1234.56*"));
+    QCOMPARE(str.arg(123456).arg(1234.56), QString::fromLatin1("*123456*1234.56*"));
+
     QLocale::setDefault(QLocale::C);
 }
 
