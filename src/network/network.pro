@@ -17,15 +17,17 @@ QMAKE_DOCS = $$PWD/doc/qtnetwork.qdocconf
 
 load(qt_module)
 
-include(access/access.pri)
-include(bearer/bearer.pri)
-include(kernel/kernel.pri)
-include(socket/socket.pri)
-#include(ssl/ssl.pri)
+!nacl {
+    include(access/access.pri)
+    include(bearer/bearer.pri)
+    include(kernel/kernel.pri)
+    include(socket/socket.pri)
+    include(ssl/ssl.pri)
+}
 
 QMAKE_LIBS += $$QMAKE_LIBS_NETWORK
 
 nacl {
-    LIBS += -lppapi_cpp
+#    LIBS_PRIVATE += -lppapi -lppapi_cpp 
 }
 

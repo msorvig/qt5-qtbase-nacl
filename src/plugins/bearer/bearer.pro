@@ -12,4 +12,4 @@ win32:!wince*:SUBDIRS += nativewifi
 macx:contains(QT_CONFIG, corewlan):SUBDIRS += corewlan
 macx:SUBDIRS += generic
 
-isEmpty(SUBDIRS):SUBDIRS = generic
+!nacl: isEmpty(SUBDIRS):SUBDIRS = generic
