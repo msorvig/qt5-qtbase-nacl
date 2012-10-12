@@ -46,7 +46,7 @@
 #include <mach/mach_time.h>
 #include <unistd.h>
 #elif defined(Q_OS_UNIX)
-#if defined(Q_OS_HURD)
+#if defined(Q_OS_HURD) || defined (Q_OS_NACL)
 #include <sys/time.h>
 #endif
 #include <time.h>
@@ -79,7 +79,7 @@ static qint64 getticks()
 
 static qint64 getticks()
 {
-#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
+#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0) && !defined(Q_OS_NACL)
     clockid_t clockId;
 
 #ifndef _POSIX_THREAD_CPUTIME

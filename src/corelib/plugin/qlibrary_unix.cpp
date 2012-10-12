@@ -106,7 +106,7 @@ bool QLibraryPrivate::load_sys()
     }
     pthread_join(tid, 0);
 */
-    pHnd = dlopen(fileName.toAscii().constData(), RTLD_LAZY);
+    pHnd = dlopen(fileName.toLocal8Bit().constData(), RTLD_LAZY);
     if (pHnd) {
         qualifiedFileName = attempt;
         errorString.clear();

@@ -1988,12 +1988,12 @@ QStringList getBackTrace()
         
         if (demangled)
         {
-            ret.append(QString::fromAscii(demangled));
+            ret.append(QString::fromLocal8Bit(demangled));
             delete demangled;
         }
         else
             //append the raw symbol
-            ret.append(QString::fromAscii(symbols[i]));
+            ret.append(QString::fromLocal8Bit(symbols[i]));
     }
 #endif
     //we now need to release the memory of the symbols array. Since it was allocated using
