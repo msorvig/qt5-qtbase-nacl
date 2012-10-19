@@ -87,6 +87,11 @@ void QPepperPlatformWindow::setVisible(bool visible)
 //    qDebug() << "QPepperPlatformWindow::setVisible done";
 }
 
+void QPepperPlatformWindow::setWindowState(Qt::WindowState state)
+{
+    Q_UNUSED(state);
+}
+
 void QPepperPlatformWindow::raise()
 {
     if (m_useCompositor)
@@ -103,6 +108,8 @@ void QPepperPlatformWindow::setGeometry(const QRect &rect)
 {
 //    qDebug() << "QPepperPlatformWindow::setGeometry" << rect;
     QPlatformWindow::setGeometry(rect);
+    QWindowSystemInterface::handleGeometryChange(window(), rect);
+    QWindowSystemInterface::flushWindowSystemEvents();
 }
 
 void QPepperPlatformWindow::setParent(const QPlatformWindow *parent)

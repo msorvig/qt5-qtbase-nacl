@@ -60,6 +60,7 @@ public:
 
     WId winId() const;
     void setVisible(bool visible);
+    void setWindowState(Qt::WindowState state);
     void raise();
     void lower();
     void setGeometry(const QRect &rect);

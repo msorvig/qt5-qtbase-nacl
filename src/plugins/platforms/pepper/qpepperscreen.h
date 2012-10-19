@@ -53,6 +53,7 @@ public:
     QRect geometry() const;
     int depth() const { return m_depth; }
     QImage::Format format() const { return m_format; }
+    void resizeMaximizedWindows();
 
 public:
     int m_depth;

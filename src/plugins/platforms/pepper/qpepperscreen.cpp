@@ -67,9 +67,14 @@ QRect QPepperScreen::geometry() const
         localGeometry = QRect(QPoint(0, 0), globalGeometry.size());
     }
 
-//    qDebug() << "QPepperScreen::geometry()" << localGeometry;
+    //qDebug() << "QPepperScreen::geometry()" << localGeometry;
 
     return localGeometry;
+}
+
+void QPepperScreen::resizeMaximizedWindows()
+{
+    QPlatformScreen::resizeMaximizedWindows();
 }
 
 QT_END_NAMESPACE

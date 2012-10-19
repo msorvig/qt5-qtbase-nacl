@@ -198,7 +198,9 @@ void QPepperIntegration::setRasterFrameBuffer(QImage *m_frameBuffer)
     m_compositor->setRasterFrameBuffer(m_frameBuffer);
     m_compositor->composit();
 
+    m_screen->resizeMaximizedWindows();
     QWindowSystemInterface::handleScreenGeometryChange(m_screen->screen(), toQRect(m_pepperInstance->m_currentGeometry));
+    QWindowSystemInterface::flushWindowSystemEvents();
 
     // Let Qt process events;
     m_pepperEventDispatcher->processEventsContinue();
