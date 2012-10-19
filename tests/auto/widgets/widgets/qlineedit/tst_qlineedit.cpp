@@ -74,6 +74,7 @@
 #include "../../../shared/platforminputcontext.h"
 #include <private/qinputmethod_p.h>
 
+#include "../../../qtest-config.h"
 
 QT_BEGIN_NAMESPACE
 class QPainter;
@@ -240,7 +241,7 @@ private slots:
 
     void noTextEditedOnClear();
 
-#ifndef QT_NO_CURSOR
+#ifndef QTEST_NO_CURSOR
     void cursor();
 #endif
 
@@ -359,9 +360,9 @@ void tst_QLineEdit::initTestCase()
 {
     testWidget = new QLineEdit(0);
     testWidget->setObjectName("testWidget");
-    connect(testWidget, SIGNAL(cursorPositionChanged(int, int)), this, SLOT(onCursorPositionChanged(int, int)));
-    connect(testWidget, SIGNAL(textChanged(const QString&)), this, SLOT(onTextChanged(const QString&)));
-    connect(testWidget, SIGNAL(textEdited(const QString&)), this, SLOT(onTextEdited(const QString&)));
+    connect(testWidget, SIGNAL(cursorPositionChanged(int,int)), this, SLOT(onCursorPositionChanged(int,int)));
+    connect(testWidget, SIGNAL(textChanged(QString)), this, SLOT(onTextChanged(QString)));
+    connect(testWidget, SIGNAL(textEdited(QString)), this, SLOT(onTextEdited(QString)));
     connect(testWidget, SIGNAL(returnPressed()), this, SLOT(onReturnPressed()));
     connect(testWidget, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
     connect(testWidget, SIGNAL(editingFinished()), this, SLOT(editingFinished()));
@@ -3182,7 +3183,7 @@ void tst_QLineEdit::inlineCompletion()
 void tst_QLineEdit::noTextEditedOnClear()
 {
     testWidget->setText("Test");
-    QSignalSpy textEditedSpy(testWidget, SIGNAL(textEdited(const QString &)));
+    QSignalSpy textEditedSpy(testWidget, SIGNAL(textEdited(QString)));
     testWidget->clear();
     QCOMPARE(textEditedSpy.count(), 0);
 }
@@ -3260,7 +3261,7 @@ void tst_QLineEdit::textMargin()
     QTRY_COMPARE(testWidget.cursorPosition(), cursorPosition);
 }
 
-#ifndef QT_NO_CURSOR
+#ifndef QTEST_NO_CURSOR
 void tst_QLineEdit::cursor()
 {
     testWidget->setReadOnly(false);

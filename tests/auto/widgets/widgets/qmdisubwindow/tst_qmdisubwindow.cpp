@@ -63,6 +63,8 @@
 #include <QMacStyle>
 #endif
 
+#include "../../../qtest-config.h"
+
 QT_BEGIN_NAMESPACE
 #if !defined(Q_WS_WIN)
 extern bool qt_tab_all_widgets();
@@ -173,8 +175,10 @@ private slots:
     void showShaded();
     void showNormal_data();
     void showNormal();
+#ifndef QTEST_NO_CURSOR
     void setOpaqueResizeAndMove_data();
     void setOpaqueResizeAndMove();
+#endif
     void setWindowFlags_data();
     void setWindowFlags();
     void mouseDoubleClick();
@@ -498,7 +502,7 @@ void tst_QMdiSubWindow::emittingOfSignals()
 
     QSignalSpy spy(window, signal == SIGNAL(aboutToActivate())
                            ? signal.data()
-                           : SIGNAL(windowStateChanged(Qt::WindowStates, Qt::WindowStates)));
+                           : SIGNAL(windowStateChanged(Qt::WindowStates,Qt::WindowStates)));
     QVERIFY(spy.isEmpty());
     triggerSignal(window, &workspace, signal);
     // Unless the signal is windowRestored or windowDeactivated,
@@ -677,6 +681,7 @@ private:
     int _count;
 };
 
+#ifndef QTEST_NO_CURSOR
 void tst_QMdiSubWindow::setOpaqueResizeAndMove_data()
 {
     QTest::addColumn<bool>("opaqueMode");
@@ -691,9 +696,6 @@ void tst_QMdiSubWindow::setOpaqueResizeAndMove_data()
 
 void tst_QMdiSubWindow::setOpaqueResizeAndMove()
 {
-#if defined (QT_NO_CURSOR) || defined (Q_OS_WINCE_WM) //For Windows CE we will set QT_NO_CURSOR if there is no cursor support
-     QSKIP("No cursor available");
-#endif
     QFETCH(bool, opaqueMode);
     QFETCH(int, geometryCount);
     QFETCH(int, expectedGeometryCount);
@@ -800,6 +802,7 @@ void tst_QMdiSubWindow::setOpaqueResizeAndMove()
     QCOMPARE(window->size(), windowSize + QSize(geometryCount, geometryCount));
     }
 }
+#endif
 
 void tst_QMdiSubWindow::setWindowFlags_data()
 {

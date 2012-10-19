@@ -1,9 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
+** Copyright (C) 2012 Intel Corporation.
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the test suite of the Qt Toolkit.
+** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -39,27 +39,46 @@
 **
 ****************************************************************************/
 
-#ifndef PLATFORMQUIRKS_H
-#define PLATFORMQUIRKS_H
+#include <QtCore/QCoreApplication>
+#include <QtCore/QProcess>
+#include <QtCore/QThread>
+#include <QtTest>
 
-#include <qglobal.h>
-
-#ifdef QT_GUI_LIB
-#include <qapplication.h>
-#endif
-
-
-struct PlatformQuirks
+class tst_QProcessNoApplication : public QObject
 {
-    static inline bool haveMouseCursor()
-    {
-#if defined(Q_WS_X11)
-        return X11->desktopEnvironment != DE_MEEGO_COMPOSITOR;
-#else
-        return true;
-#endif
-    }
+    Q_OBJECT
+
+private Q_SLOTS:
+    void initializationDeadlock();
 };
 
-#endif
+void tst_QProcessNoApplication::initializationDeadlock()
+{
+    // see QTBUG-27260
+    // QProcess on Unix uses (or used to, at the time of the writing of this test)
+    // a global class called QProcessManager.
+    // This class is instantiated (or was) only in the main thread, which meant that
+    // blocking the main thread while waiting for QProcess could mean a deadlock.
 
+    struct MyThread : public QThread
+    {
+        void run()
+        {
+            // what we execute does not matter, as long as we try to
+            // and that the process exits
+            QProcess::execute("true");
+        }
+    };
+
+    static char argv0[] = "tst_QProcessNoApplication";
+    char *argv[] = { argv0, 0 };
+    int argc = 1;
+    QCoreApplication app(argc, argv);
+    MyThread thread;
+    thread.start();
+    QVERIFY(thread.wait(10000));
+}
+
+QTEST_APPLESS_MAIN(tst_QProcessNoApplication)
+
+#include "tst_qprocessnoapplication.moc"

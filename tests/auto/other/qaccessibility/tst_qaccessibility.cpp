@@ -1680,6 +1680,7 @@ void tst_QAccessibility::mdiSubWindowTest()
     const int subWindowCount =  5;
     for (int i = 0; i < subWindowCount; ++i) {
         QMdiSubWindow *window = mdiArea.addSubWindow(new QPushButton("QAccessibilityTest"));
+        window->setAttribute(Qt::WA_LayoutUsesWidgetRect);
         window->show();
         // Parts of this test requires that the sub windows are placed next
         // to each other. In order to achieve that QMdiArea must have
@@ -1759,7 +1760,7 @@ void tst_QAccessibility::mdiSubWindowTest()
     const QPoint globalWidgetPos = QPoint(globalPos.x() + widgetGeometry.x(),
                                           globalPos.y() + widgetGeometry.y());
 #ifdef Q_OS_MAC
-    QEXPECT_FAIL("", "QTBUG-22812", Abort);
+    QSKIP("QTBUG-22812");
 #endif
     QCOMPARE(childRect(interface), QRect(globalWidgetPos, widgetGeometry.size()));
 
@@ -1885,6 +1886,7 @@ void tst_QAccessibility::lineEditTest()
     QCOMPARE(textIface->textAtOffset(8, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1(" "));
     QCOMPARE(textIface->textAtOffset(25, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1("advice"));
     QCOMPARE(textIface->textAtOffset(92, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1("oneself"));
+    QCOMPARE(textIface->textAtOffset(101, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1(". --"));
 
     QCOMPARE(textIface->textBeforeOffset(5, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1(" "));
     QCOMPARE(textIface->textAfterOffset(5, QAccessible2::WordBoundary,&start,&end), QString::fromLatin1(" "));
@@ -2367,17 +2369,17 @@ void tst_QAccessibility::listTest()
     // Check for events
     QTest::mouseClick(listView->viewport(), Qt::LeftButton, 0, listView->visualItemRect(listView->item(1)).center());
     QAccessibleEvent selectionEvent(listView, QAccessible::Selection);
-    selectionEvent.setChild(2);
+    selectionEvent.setChild(1);
     QAccessibleEvent focusEvent(listView, QAccessible::Focus);
-    focusEvent.setChild(2);
+    focusEvent.setChild(1);
     QVERIFY(QTestAccessibility::containsEvent(&selectionEvent));
     QVERIFY(QTestAccessibility::containsEvent(&focusEvent));
     QTest::mouseClick(listView->viewport(), Qt::LeftButton, 0, listView->visualItemRect(listView->item(2)).center());
 
     QAccessibleEvent selectionEvent2(listView, QAccessible::Selection);
-    selectionEvent2.setChild(3);
+    selectionEvent2.setChild(2);
     QAccessibleEvent focusEvent2(listView, QAccessible::Focus);
-    focusEvent2.setChild(3);
+    focusEvent2.setChild(2);
     QVERIFY(QTestAccessibility::containsEvent(&selectionEvent2));
     QVERIFY(QTestAccessibility::containsEvent(&focusEvent2));
 
@@ -2821,7 +2823,10 @@ void tst_QAccessibility::comboBoxTest()
     { // not editable combobox
     QComboBox combo;
     combo.addItems(QStringList() << "one" << "two" << "three");
+    // Fully decorated windows have a minimum width of 160 on Windows.
+    combo.setMinimumWidth(200);
     combo.show();
+    QVERIFY(QTest::qWaitForWindowShown(&combo));
 
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&combo);
     QCOMPARE(verifyHierarchy(iface), 0);
@@ -2847,13 +2852,14 @@ void tst_QAccessibility::comboBoxTest()
     QVERIFY(iface->actionInterface());
     QCOMPARE(iface->actionInterface()->actionNames(), QStringList() << QAccessibleActionInterface::showMenuAction());
     iface->actionInterface()->doAction(QAccessibleActionInterface::showMenuAction());
-    QVERIFY(combo.view()->isVisible());
+    QTRY_VERIFY(combo.view()->isVisible());
 
     delete iface;
     }
 
     { // editable combobox
     QComboBox editableCombo;
+    editableCombo.setMinimumWidth(200);
     editableCombo.show();
     editableCombo.setEditable(true);
     editableCombo.addItems(QStringList() << "foo" << "bar" << "baz");

@@ -47,7 +47,8 @@
 #include <QPlastiqueStyle>
 
 #include <private/qstylesheetstyle_p.h>
-#include "../../../platformquirks.h"
+
+#include "../../../qtest-config.h"
 
 class tst_QStyleSheetStyle : public QObject
 {
@@ -78,7 +79,9 @@ private slots:
     void onWidgetDestroyed();
     void fontPrecedence();
     void focusColors();
+#ifndef QTEST_NO_CURSOR
     void hoverColors();
+#endif
     void background();
     void tabAlignement();
     void attributesList();
@@ -788,10 +791,9 @@ void tst_QStyleSheetStyle::focusColors()
     }
 }
 
+#ifndef QTEST_NO_CURSOR
 void tst_QStyleSheetStyle::hoverColors()
 {
-    if (!PlatformQuirks::haveMouseCursor())
-        QSKIP("No mouse Cursor on this platform");
     QList<QWidget *> widgets;
     widgets << new QPushButton("TESTING TESTING");
     widgets << new QLineEdit("TESTING TESTING");
@@ -872,16 +874,12 @@ void tst_QStyleSheetStyle::hoverColors()
         QVERIFY2(testForColors(image, QColor(0xe8, 0xff, 0x66)),
                  (QString::fromLatin1(widget->metaObject()->className())
                  + " did not contain background color #e8ff66").toLocal8Bit().constData());
-#ifdef Q_OS_MAC
-        if (qobject_cast<QComboBox *>(widget))
-            QEXPECT_FAIL("", "Failure only for QPushButton and QComboBox, see QTBUG-23686", Continue);
-#endif
         QVERIFY2(testForColors(image, QColor(0xff, 0x00, 0x84)),
                 (QString::fromLatin1(widget->metaObject()->className())
                 + " did not contain text color #ff0084").toLocal8Bit().constData());
     }
-
 }
+#endif
 
 class SingleInheritanceDialog : public QDialog
 {

@@ -3,7 +3,7 @@
 ** Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -39,44 +39,71 @@
 **
 ****************************************************************************/
 
-#ifndef QMOTIFSTYLE_P_H
-#define QMOTIFSTYLE_P_H
-#include <qlist.h>
-#include <qdatetime.h>
-#include <qprogressbar.h>
-#include "qmotifstyle.h"
-#include "qcommonstyle_p.h"
+#include <QtTest/QtTest>
+#include <QtCore/QProcess>
 
-QT_BEGIN_NAMESPACE
-
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists for the convenience
-// of qapplication_*.cpp, qwidget*.cpp and qfiledialog.cpp.  This header
-// file may change from version to version without notice, or even be removed.
-//
-// We mean it.
-//
-
-// Private class
-class QMotifStylePrivate : public QCommonStylePrivate
+class tst_QProcess : public QObject
 {
-    Q_DECLARE_PUBLIC(QMotifStyle)
-public:
-    QMotifStylePrivate();
+    Q_OBJECT
 
-public:
-#ifndef QT_NO_PROGRESSBAR
-    QList<QProgressBar *> bars;
-    int animationFps;
-    int animateTimer;
-    QTime startTime;
-    int animateStep;
-#endif // QT_NO_PROGRESSBAR
+#ifndef QT_NO_PROCESS
+private slots:
+
+    void echoTest_performance();
+
+#endif // QT_NO_PROCESS
 };
 
-QT_END_NAMESPACE
+#ifndef QT_NO_PROCESS
+#ifndef Q_OS_WINCE
+// Reading and writing to a process is not supported on Qt/CE
+void tst_QProcess::echoTest_performance()
+{
+    QProcess process;
+    process.start("testProcessLoopback/testProcessLoopback");
 
-#endif //QMOTIFSTYLE_P_H
+    QByteArray array;
+    array.resize(1024 * 1024);
+    for (int j = 0; j < array.size(); ++j)
+        array[j] = 'a' + (j % 20);
+
+    QVERIFY(process.waitForStarted());
+
+    QTime stopWatch;
+    stopWatch.start();
+
+    qint64 totalBytes = 0;
+    QByteArray dump;
+    QSignalSpy readyReadSpy(&process, SIGNAL(readyRead()));
+    QVERIFY(readyReadSpy.isValid());
+    while (stopWatch.elapsed() < 2000) {
+        process.write(array);
+        while (process.bytesToWrite() > 0) {
+            int readCount = readyReadSpy.count();
+            QVERIFY(process.waitForBytesWritten(5000));
+            if (readyReadSpy.count() == readCount)
+                QVERIFY(process.waitForReadyRead(5000));
+        }
+
+        while (process.bytesAvailable() < array.size())
+            QVERIFY2(process.waitForReadyRead(5000), qPrintable(process.errorString()));
+        dump = process.readAll();
+        totalBytes += dump.size();
+    }
+
+    qDebug() << "Elapsed time:" << stopWatch.elapsed() << "ms;"
+             << "transfer rate:" << totalBytes / (1048.576) / stopWatch.elapsed()
+             << "MB/s";
+
+    for (int j = 0; j < array.size(); ++j)
+        QCOMPARE(char(dump.at(j)), char('a' + (j % 20)));
+
+    process.closeWriteChannel();
+    QVERIFY(process.waitForFinished());
+}
+#endif // Q_OS_WINCE
+
+#endif // QT_NO_PROCESS
+
+QTEST_MAIN(tst_QProcess)
+#include "tst_bench_qprocess.moc"

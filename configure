@@ -727,7 +727,7 @@ mkdir -p "$outpath/config.tests"
 rm -f "$outpath/config.tests/.qmake.cache"
 cp "$QMAKE_VARS_FILE" "$outpath/config.tests/.qmake.cache"
 
-QMakeVar add styles "cde mac motif plastique cleanlooks windows"
+QMakeVar add styles "cde mac motif fusion plastique cleanlooks windows"
 
 # QTDIR may be set and point to an old or system-wide Qt installation
 unset QTDIR
@@ -2200,7 +2200,7 @@ if [ "$OPT_SHADOW" = "yes" ]; then
     if [ -x "$relpath/bin/syncqt" ]; then
         mkdir -p "$outpath/bin"
         echo "#!/bin/sh" >"$outpath/bin/syncqt"
-        echo "perl \"$relpath/bin/syncqt\" -qtdir \"$outpath\" \"\$@\"" >>"$outpath/bin/syncqt"
+        echo "perl \"$relpath/bin/syncqt\" -mkspecsdir \"$outpath/mkspecs\" \"\$@\"" >>"$outpath/bin/syncqt"
         chmod 755 "$outpath/bin/syncqt"
     fi
 
@@ -2311,12 +2311,10 @@ if [ -z "$PLATFORM" ]; then
             PLATFORM=macx-clang
          elif [ "$OSX_VERSION" -eq 11 ]; then
              # We're on Lion. Check if we have a supported Clang version
-             case "$(clang -v 2>&1 | grep -Po '(?<=version )\d[\d.]+')" in
-                 3.*)
+             if [ "$(clang -v 2>&1 | grep -Po '(?<=version )[\d]')" -ge 3 ]; then
                      PLATFORM=macx-clang
                      PLATFORM_NOTES="\n    - Also available for Mac OS X: macx-g++\n"
-                     ;;
-             esac
+             fi
          fi
          ;;
      AIX:*)
@@ -3281,11 +3279,6 @@ Additional options:
     -no-feature-<feature> Do not compile in <feature>.
     -feature-<feature> .. Compile in <feature>. The available features
                           are described in src/corelib/global/qfeatures.txt
-
-    -no-freetype ........ Do not compile in Freetype2 support.
-    -qt-freetype ........ Use the libfreetype bundled with Qt.
- *  -system-freetype .... Use libfreetype from the operating system.
-                          See http://www.freetype.org/
 
     -qconfig local ...... Use src/corelib/global/qconfig-local.h rather than the
                           default ($CFG_QCONFIG).
@@ -6125,8 +6118,7 @@ cat >>"$CACHEFILE.tmp" <<EOF
 QT_SOURCE_TREE = \$\$quote($relpath)
 QT_BUILD_TREE = \$\$quote($outpath)
 
-include(\$\$PWD/mkspecs/qmodule.pri)
-CONFIG += dylib fix_output_dirs no_private_qt_headers_warning QTDIR_build
+CONFIG += fix_output_dirs no_private_qt_headers_warning QTDIR_build
 
 EOF
 

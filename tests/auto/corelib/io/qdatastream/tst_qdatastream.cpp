@@ -48,6 +48,8 @@
 #include <QtGui/QPainter>
 #include <QtGui/QPen>
 
+#include "../../../qtest-config.h"
+
 Q_DECLARE_METATYPE(QBitArray)
 Q_DECLARE_METATYPE(qint64)
 
@@ -78,8 +80,10 @@ private slots:
     void stream_QByteArray_data();
     void stream_QByteArray();
 
+#ifndef QTEST_NO_CURSOR
     void stream_QCursor_data();
     void stream_QCursor();
+#endif
 
     void stream_QDate_data();
     void stream_QDate();
@@ -99,8 +103,10 @@ private slots:
     void stream_QPen_data();
     void stream_QPen();
 
+#ifndef Q_OS_WINCE
     void stream_QPixmap_data();
     void stream_QPixmap();
+#endif
 
     void stream_QPoint_data();
     void stream_QPoint();
@@ -132,8 +138,10 @@ private slots:
     void stream_qint64_data();
     void stream_qint64();
 
+#ifndef Q_OS_WINCE
     void stream_QIcon_data();
     void stream_QIcon();
+#endif
 
     void stream_QEasingCurve_data();
     void stream_QEasingCurve();
@@ -193,7 +201,9 @@ private:
     void writeQBrush(QDataStream *s);
     void writeQColor(QDataStream *s);
     void writeQByteArray(QDataStream *s);
+#ifndef QTEST_NO_CURSOR
     void writeQCursor(QDataStream *s);
+#endif
     void writeQWaitCursor(QDataStream *s);
     void writeQDate(QDataStream *s);
     void writeQTime(QDataStream *s);
@@ -220,7 +230,9 @@ private:
     void readQBrush(QDataStream *s);
     void readQColor(QDataStream *s);
     void readQByteArray(QDataStream *s);
+#ifndef QTEST_NO_CURSOR
     void readQCursor(QDataStream *s);
+#endif
     void readQDate(QDataStream *s);
     void readQTime(QDataStream *s);
     void readQDateTime(QDataStream *s);
@@ -999,7 +1011,7 @@ void tst_QDataStream::readQByteArray(QDataStream *s)
 }
 
 // ************************************
-#ifndef QT_NO_CURSOR
+#ifndef QTEST_NO_CURSOR
 static QCursor qCursorData(int index)
 {
     switch (index) {
@@ -1018,31 +1030,31 @@ static QCursor qCursorData(int index)
 }
 #endif
 
+#ifndef QTEST_NO_CURSOR
 void tst_QDataStream::stream_QCursor_data()
 {
-#ifndef QT_NO_CURSOR
     stream_data(9);
-#endif
 }
+#endif
 
+#ifndef QTEST_NO_CURSOR
 void tst_QDataStream::stream_QCursor()
 {
-#ifndef QT_NO_CURSOR
     STREAM_IMPL(QCursor);
-#endif
 }
+#endif
 
+#ifndef QTEST_NO_CURSOR
 void tst_QDataStream::writeQCursor(QDataStream *s)
 {
-#ifndef QT_NO_CURSOR
     QCursor d5(qCursorData(dataIndex(QTest::currentDataTag())));
     *s << d5;
-#endif
 }
+#endif
 
+#ifndef QTEST_NO_CURSOR
 void tst_QDataStream::readQCursor(QDataStream *s)
 {
-#ifndef QT_NO_CURSOR
     QCursor test(qCursorData(dataIndex(QTest::currentDataTag())));
     QCursor d5;
     *s >> d5;
@@ -1061,8 +1073,8 @@ void tst_QDataStream::readQCursor(QDataStream *s)
         QPixmap expected = *(test.mask());
         QCOMPARE(actual, expected);
     }
-#endif
 }
+#endif
 
 // ************************************
 
@@ -1518,35 +1530,34 @@ void tst_QDataStream::readQPen(QDataStream *s)
 
 // pixmap testing is currently limited to one pixmap only.
 //
+#ifndef Q_OS_WINCE
+// Test depends on more memory than available on Qt/CE
 void tst_QDataStream::stream_QPixmap_data()
 {
-#ifndef Q_OS_WINCE
     stream_data(1);
-#endif
 }
+#endif
 
+#ifndef Q_OS_WINCE
+// Test depends on more memory than available on Qt/CE
 void tst_QDataStream::stream_QPixmap()
 {
-#ifdef Q_OS_WINCE
-    QSKIP("Test depends on more memory than available on Qt/CE");
-#endif
     STREAM_IMPL(QPixmap);
 }
+#endif
 
+#ifndef Q_OS_WINCE
+// Test depends on more memory than available on Qt/CE
 void tst_QDataStream::stream_QIcon_data()
 {
-#ifndef Q_OS_WINCE
     stream_data(1);
-#endif
 }
 
 void tst_QDataStream::stream_QIcon()
 {
-#ifdef Q_OS_WINCE
-    QSKIP("Test depends on more memory than available on Qt/CE");
-#endif
     STREAM_IMPL(QIcon);
 }
+#endif
 
 void tst_QDataStream::writeQPixmap(QDataStream *s)
 {

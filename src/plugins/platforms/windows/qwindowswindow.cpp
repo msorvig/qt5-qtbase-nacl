@@ -61,6 +61,8 @@
 
 QT_BEGIN_NAMESPACE
 
+Q_GUI_EXPORT HICON qt_pixmapToWinHICON(const QPixmap &);
+
 static QByteArray debugWinStyle(DWORD style)
 {
     QByteArray rc = "0x";
@@ -699,13 +701,15 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const WindowData &data) :
     m_cursor(QWindowsScreen::screenOf(aWindow)->windowsCursor()->standardWindowCursor()),
     m_dropTarget(0),
     m_savedStyle(0),
-    m_format(aWindow->format())
+    m_format(aWindow->format()),
 #ifdef QT_OPENGL_ES_2
-   , m_eglSurface(0)
+    m_eglSurface(0),
 #endif
 #ifdef Q_OS_WINCE
-  , m_previouslyHidden(false)
+    m_previouslyHidden(false),
 #endif
+    m_iconSmall(0),
+    m_iconBig(0)
 {
     if (aWindow->surfaceType() == QWindow::OpenGLSurface)
         setFlag(OpenGLSurface);
@@ -730,6 +734,7 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const WindowData &data) :
 QWindowsWindow::~QWindowsWindow()
 {
     destroyWindow();
+    destroyIcon();
 }
 
 void QWindowsWindow::destroyWindow()
@@ -1178,7 +1183,7 @@ void QWindowsWindow::setWindowTitle(const QString &title)
         SetWindowText(m_data.hwnd, (const wchar_t*)title.utf16());
 }
 
-Qt::WindowFlags QWindowsWindow::setWindowFlags(Qt::WindowFlags flags)
+void QWindowsWindow::setWindowFlags(Qt::WindowFlags flags)
 {
     if (QWindowsContext::verboseWindows)
         qDebug() << '>' << __FUNCTION__ << this << window() << "\n    from: "
@@ -1202,7 +1207,6 @@ Qt::WindowFlags QWindowsWindow::setWindowFlags(Qt::WindowFlags flags)
         qDebug() << '<' << __FUNCTION__ << "\n    returns: "
                  << QWindowsWindow::debugWindowFlags(m_data.flags)
                  << " geometry " << oldGeometry << "->" << newGeometry;
-    return m_data.flags;
 }
 
 QWindowsWindow::WindowData QWindowsWindow::setWindowFlags_sys(Qt::WindowFlags wt,
@@ -1231,13 +1235,12 @@ void QWindowsWindow::handleWindowStateChange(Qt::WindowState state)
     QWindowSystemInterface::handleWindowStateChanged(window(), state);
 }
 
-Qt::WindowState QWindowsWindow::setWindowState(Qt::WindowState state)
+void QWindowsWindow::setWindowState(Qt::WindowState state)
 {
     if (m_data.hwnd) {
         setWindowState_sys(state);
         m_windowState = state;
     }
-    return state;
 }
 
 bool QWindowsWindow::isFullScreen_sys() const
@@ -1753,6 +1756,34 @@ QByteArray QWindowsWindow::debugWindowFlags(Qt::WindowFlags wf)
     if (iwf & Qt::WindowCloseButtonHint) rc += " WindowCloseButtonHint";
     rc += ']';
     return rc;
+}
+
+static HICON createHIcon(const QIcon &icon, int xSize, int ySize)
+{
+    if (!icon.isNull()) {
+        const QPixmap pm = icon.pixmap(icon.actualSize(QSize(xSize, ySize)));
+        if (!pm.isNull())
+            return qt_pixmapToWinHICON(pm);
+    }
+    return 0;
+}
+
+void QWindowsWindow::setWindowIcon(const QIcon &icon)
+{
+    if (m_data.hwnd) {
+        destroyIcon();
+
+        m_iconSmall = createHIcon(icon, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON));
+        m_iconBig = createHIcon(icon, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON));
+
+        if (m_iconBig) {
+            SendMessage(m_data.hwnd, WM_SETICON, 0 /* ICON_SMALL */, (LPARAM)m_iconSmall);
+            SendMessage(m_data.hwnd, WM_SETICON, 1 /* ICON_BIG */, (LPARAM)m_iconBig);
+        } else {
+            SendMessage(m_data.hwnd, WM_SETICON, 0 /* ICON_SMALL */, (LPARAM)m_iconSmall);
+            SendMessage(m_data.hwnd, WM_SETICON, 1 /* ICON_BIG */, (LPARAM)m_iconSmall);
+        }
+    }
 }
 
 QT_END_NAMESPACE

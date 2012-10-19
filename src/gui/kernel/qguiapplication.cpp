@@ -1213,6 +1213,10 @@ void QGuiApplicationPrivate::processWindowSystemEvent(QWindowSystemInterfacePriv
         QGuiApplicationPrivate::processPlatformPanelEvent(
                     static_cast<QWindowSystemInterfacePrivate::PlatformPanelEvent *>(e));
         break;
+    case QWindowSystemInterfacePrivate::FileOpen:
+        QGuiApplicationPrivate::processFileOpenEvent(
+                    static_cast<QWindowSystemInterfacePrivate::FileOpenEvent *>(e));
+        break;
     default:
         qWarning() << "Unknown user input event type:" << e->type;
         break;
@@ -1948,13 +1952,12 @@ void QGuiApplicationPrivate::reportGeometryChange(QWindowSystemInterfacePrivate:
     Qt::ScreenOrientation primaryOrientation = s->primaryOrientation();
     s->d_func()->updatePrimaryOrientation();
 
-    emit s->sizeChanged(s->size());
     emit s->geometryChanged(s->geometry());
-    emit s->physicalDotsPerInchXChanged(s->physicalDotsPerInchX());
-    emit s->physicalDotsPerInchYChanged(s->physicalDotsPerInchY());
+    emit s->physicalSizeChanged(s->physicalSize());
     emit s->physicalDotsPerInchChanged(s->physicalDotsPerInch());
-    emit s->availableSizeChanged(s->availableSize());
-    emit s->availableGeometryChanged(s->availableGeometry());
+    emit s->logicalDotsPerInchChanged(s->logicalDotsPerInch());
+    foreach (QScreen* sibling, s->virtualSiblings())
+        emit sibling->virtualGeometryChanged(sibling->virtualGeometry());
 
     if (s->primaryOrientation() != primaryOrientation)
         emit s->primaryOrientationChanged(s->primaryOrientation());
@@ -1976,8 +1979,8 @@ void QGuiApplicationPrivate::reportAvailableGeometryChange(
     QScreen *s = e->screen.data();
     s->d_func()->availableGeometry = e->availableGeometry;
 
-    emit s->availableSizeChanged(s->availableSize());
-    emit s->availableGeometryChanged(s->availableGeometry());
+    foreach (QScreen* sibling, s->virtualSiblings())
+        emit sibling->virtualGeometryChanged(sibling->virtualGeometry());
 }
 
 void QGuiApplicationPrivate::reportLogicalDotsPerInchChange(QWindowSystemInterfacePrivate::ScreenLogicalDotsPerInchEvent *e)
@@ -1992,8 +1995,6 @@ void QGuiApplicationPrivate::reportLogicalDotsPerInchChange(QWindowSystemInterfa
     QScreen *s = e->screen.data();
     s->d_func()->logicalDpi = QDpi(e->dpiX, e->dpiY);
 
-    emit s->logicalDotsPerInchXChanged(s->logicalDotsPerInchX());
-    emit s->logicalDotsPerInchYChanged(s->logicalDotsPerInchY());
     emit s->logicalDotsPerInchChanged(s->logicalDotsPerInch());
 }
 

@@ -210,7 +210,9 @@ bool QWindowsUser32DLL::initTouch()
     \ingroup qt-lighthouse-win
 */
 
-QWindowsShell32DLL::QWindowsShell32DLL() : sHCreateItemFromParsingName(0)
+QWindowsShell32DLL::QWindowsShell32DLL()
+    : sHCreateItemFromParsingName(0)
+    , sHGetStockIconInfo(0)
 {
 }
 
@@ -218,6 +220,7 @@ void QWindowsShell32DLL::init()
 {
     QSystemLibrary library(QStringLiteral("shell32"));
     sHCreateItemFromParsingName = (SHCreateItemFromParsingName)(library.resolve("SHCreateItemFromParsingName"));
+    sHGetStockIconInfo = (SHGetStockIconInfo)library.resolve("SHGetStockIconInfo");
 }
 
 QWindowsUser32DLL QWindowsContext::user32dll;
@@ -329,6 +332,11 @@ unsigned QWindowsContext::systemInfo() const
 bool QWindowsContext::useRTLExtensions() const
 {
     return d->m_keyMapper.useRTLExtensions();
+}
+
+QList<int> QWindowsContext::possibleKeys(const QKeyEvent *e) const
+{
+    return d->m_keyMapper.possibleKeys(e);
 }
 
 void QWindowsContext::setWindowCreationContext(const QSharedPointer<QWindowCreationContext> &ctx)
@@ -749,6 +757,8 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
 #endif
     case QtWindows::DisplayChangedEvent:
         return d->m_screenManager.handleDisplayChange(wParam, lParam);
+    case QtWindows::SettingChangedEvent:
+        return d->m_screenManager.handleScreenChanges();
     default:
         break;
     }
