@@ -59,6 +59,7 @@ QPepperCompositor::QPepperCompositor()
     :m_frameBuffer(0)
     ,m_needComposit(false)
     ,m_inFlush(false)
+    ,m_inResize(false)
 {
 
 }
@@ -100,20 +101,28 @@ void QPepperCompositor::setVisible(QPlatformWindow *window, bool visible)
 
     compositedWindow.visible = visible;
     compositedWindow.flushPending = true;
-    compositedWindow.damage = compositedWindow.window->geometry();
+    if (visible)
+        compositedWindow.damage = compositedWindow.window->geometry();
+    else
+        globalDamage = compositedWindow.window->geometry(); // repaint previosly covered area.
     maybeComposit();
 }
 
 void QPepperCompositor::raise(QPlatformWindow *window)
 {
+    QPepperCompositedWindow &compositedWindow = m_compositedWindows[window->window()];
+    compositedWindow.damage = compositedWindow.window->geometry();
     m_windowStack.removeAll(window->window());
     m_windowStack.append(window->window());
+    maybeComposit();
 }
 
 void QPepperCompositor::lower(QPlatformWindow *window)
 {
     m_windowStack.removeAll(window->window());
     m_windowStack.prepend(window->window());
+    QPepperCompositedWindow &compositedWindow = m_compositedWindows[window->window()];
+    globalDamage = compositedWindow.window->geometry(); // repaint previosly covered area.
 }
 
 void QPepperCompositor::setParent(QPlatformWindow *window, QPlatformWindow *parent)
@@ -124,15 +133,16 @@ void QPepperCompositor::setParent(QPlatformWindow *window, QPlatformWindow *pare
 void QPepperCompositor::setFrameBuffer(QPlatformWindow *window, QImage *frameBuffer)
 {
     m_compositedWindows[window->window()].frameBuffer = frameBuffer;
+    m_compositedWindows[window->window()].frameBuffer->fill(Qt::blue);
 }
 
-void QPepperCompositor::flush(QPlatformWindow *window)
+void QPepperCompositor::flush(QPlatformWindow *window, const QRegion &region)
 {
-//    qDebug() << "QPepperCompositor::flush" << window;
+//    qDebug() << "QPepperCompositor::flush" << window << region.boundingRect();
 
     QPepperCompositedWindow &compositedWindow = m_compositedWindows[window->window()];
     compositedWindow.flushPending = true;
-    compositedWindow.damage = compositedWindow.window->geometry();
+    compositedWindow.damage = region;
     maybeComposit();
 }
 
@@ -142,15 +152,19 @@ void QPepperCompositor::waitForFlushed(QPlatformWindow *surface)
         return;
 }
 
-void QPepperCompositor::setRasterFrameBuffer(QImage *frameBuffer)
+void QPepperCompositor::beginResize(QImage *frameBuffer)
 {
+    //qDebug() << "QPepperCompositor::beginResize";
+    m_inResize = true;
     m_frameBuffer = frameBuffer;
-    //m_frameBuffer->fill(Qt::green);
-    m_frameBuffer->fill(Qt::transparent);
+}
 
-    foreach (QWindow *window, m_windowStack) {
-        QWindowSystemInterface::handleExposeEvent(window, QRegion(window->geometry()));
-    }
+void QPepperCompositor::endResize()
+{
+    m_inResize = false;
+    globalDamage = QRect(QPoint(), m_frameBuffer->size());
+    composit();
+//    qDebug() << "QPepperCompositor::endResize";
 }
 
 void QPepperCompositor::flushCompleted()
@@ -185,6 +199,9 @@ QWindow *QPepperCompositor::keyWindow()
 
 void QPepperCompositor::maybeComposit()
 {
+    if (m_inResize)
+        return; // endResize will composit everything.
+
     if (!m_inFlush)
         composit();
     else
@@ -193,49 +210,40 @@ void QPepperCompositor::maybeComposit()
 
 void QPepperCompositor::composit()
 {
-//    qDebug() << "QPepperCompositor::composit";
-
     if (!m_frameBuffer) {
         qWarning("QPepperCompositor: No frame buffer set");
         return;
     }
 
+    //qDebug() << "QPepperCompositor::composit" << m_frameBuffer->size();
+
     QPainter p(m_frameBuffer);
-
-    // ### for now, clear the entire frame.
-    p.fillRect(QRect(QPoint(0,0), m_frameBuffer->size()), QBrush(Qt::transparent));
-
-    QRegion damaged;
-    foreach (QWindow *window, m_windowStack) {
-        QPepperCompositedWindow &compositedWindow = m_compositedWindows[window];
-     //   qDebug() << "unite" << compositedWindow.damage;
-        damaged = damaged.united(compositedWindow.damage);
-    //    qDebug() << "res" << damaged;
-    }
-
-    //foreach (const QRect &rect, damaged.rects()) {
-    //    p.fillRect(rect, QBrush(Qt::transparent));
-    //    qDebug() << "fill" << rect;
-    //}
-
     QRegion painted;
 
+    // Composit all windows in stacking order, paint and flush damaged area only.
     foreach (QWindow *window, m_windowStack) {
         QPepperCompositedWindow &compositedWindow = m_compositedWindows[window];
 
         if (compositedWindow.visible) {
-            p.drawImage(compositedWindow.window->geometry().topLeft(), *compositedWindow.frameBuffer);
-            painted += compositedWindow.damage;
+            const QRect windowGeometry = compositedWindow.window->geometry();
+            const QRegion globalDamageForWindow = globalDamage.intersected(QRegion(windowGeometry));
+            const QRegion localDamageForWindow = compositedWindow.damage;
+            const QRegion totalDamageForWindow = localDamageForWindow + globalDamageForWindow;
+            const QRect sourceRect = totalDamageForWindow.boundingRect();
+            const QRect destinationRect = QRect(windowGeometry.topLeft() + sourceRect.topLeft(), sourceRect.size());
+            p.drawImage(destinationRect, *compositedWindow.frameBuffer, sourceRect);
+            painted += destinationRect;
         }
 
         compositedWindow.flushPending = false;
         compositedWindow.damage = QRect();
     }
 
-    //QRegion needsClear = damaged - painted;
-    //qDebug() << "needsclear" << needsClear;
+    // qDebug() << "QPepperCompositor::composit painted" << painted;
+
+    globalDamage = QRect();
 
     m_inFlush = true;
-    emit flush();
+    emit flush(painted);
 }
 

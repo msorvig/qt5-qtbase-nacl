@@ -68,6 +68,8 @@ QPepperIntegration *QPepperIntegration::getPepperIntegration()
 QPepperIntegration::QPepperIntegration()
     : m_firstWindowCreated(false)
 {
+ //   QWindowSystemInterface::setSynchronousWindowsSystemEvents(true);
+
     globalPepperIntegration = this;
 
     m_screen = new QPepperScreen();
@@ -161,7 +163,7 @@ QPlatformTheme *QPepperIntegration::createPlatformTheme(const QString &name) con
 void QPepperIntegration::setPepperInstance(QPepperInstance *instance)
 {
     m_pepperInstance = instance;
-    connect(m_compositor,SIGNAL(flush()), this, SLOT(flushRasterFrameBuffer()));
+    connect(m_compositor,SIGNAL(flush(const QRegion&)), this, SLOT(flushRasterFrameBuffer(const QRegion&)));
 
     m_javascriptBridge = new QPepperJavascriptBridge(m_pepperInstance);
     m_javascriptBridge->evalFile(":/qpepperplatformplugin/qpepperfileaccess.js");
@@ -192,18 +194,22 @@ bool QPepperIntegration::wantsOpenGLGraphics() const
     return useOpenglToplevel;
 }
 
-void QPepperIntegration::setRasterFrameBuffer(QImage *m_frameBuffer)
+void QPepperIntegration::resizeScreen(QImage *m_frameBuffer)
 {
     // Set the frame buffer on the compositor
-    m_compositor->setRasterFrameBuffer(m_frameBuffer);
-    m_compositor->composit();
+    m_compositor->beginResize(m_frameBuffer);
 
+    // Send the screen geometry change to Qt, resize windows.
+    QRect screenRect(QPoint(0, 0), m_frameBuffer->size());
     m_screen->resizeMaximizedWindows();
-    QWindowSystemInterface::handleScreenGeometryChange(m_screen->screen(), toQRect(m_pepperInstance->m_currentGeometry));
+    QWindowSystemInterface::handleScreenGeometryChange(m_screen->screen(), screenRect);
     QWindowSystemInterface::flushWindowSystemEvents();
 
-    // Let Qt process events;
+    // Let Qt process the resize events;
     m_pepperEventDispatcher->processEventsContinue();
+
+    // End resize and composit.
+    m_compositor->endResize();
 }
 
 void QPepperIntegration::flushCompleted()
@@ -221,9 +227,9 @@ void QPepperIntegration::getKeyWindow(QWindow **window)
     *window = m_compositor->keyWindow();
 }
 
-void QPepperIntegration::flushRasterFrameBuffer()
+void QPepperIntegration::flushRasterFrameBuffer(const QRegion &region)
 {
-    m_pepperInstance->flush();
+    m_pepperInstance->flush(region);
 }
 
 

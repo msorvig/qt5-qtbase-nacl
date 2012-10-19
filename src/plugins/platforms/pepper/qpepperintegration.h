@@ -86,13 +86,13 @@ public:
     void processEvents();
 
     bool wantsOpenGLGraphics() const;
-    void setRasterFrameBuffer(QImage *m_frameBuffer);
+    void resizeScreen(QImage *m_frameBuffer);
     void flushCompleted();
 
 private Q_SLOTS:
     void getWindowAt(const QPoint & point, QWindow **window);
     void getKeyWindow(QWindow **window);
-    void flushRasterFrameBuffer();
+    void flushRasterFrameBuffer(const QRegion &region);
 private:
     QPepperScreen *m_screen;
     QPepperInstance *m_pepperInstance;

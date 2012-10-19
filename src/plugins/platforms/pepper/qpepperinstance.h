@@ -70,7 +70,7 @@ public:
     virtual void HandleMessage(const pp::Var& message);
 
     // Interface for QPepperCompositor:
-    void flush();
+    void flush(const QRegion &region);
     void waitForFlushed();
 
     // privates:

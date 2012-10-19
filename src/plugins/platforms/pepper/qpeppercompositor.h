@@ -54,7 +54,7 @@ public:
     QPlatformWindow *window;
     QImage *frameBuffer;
     QPlatformWindow *parentWindow;
-    QRect damage;
+    QRegion damage;
     bool flushPending;
     bool visible;
     QList<QWindow *> childWindows;
@@ -75,13 +75,14 @@ public:
     void setParent(QPlatformWindow *window, QPlatformWindow *parent);
 
     void setFrameBuffer(QPlatformWindow *window, QImage *frameBuffer);
-    void flush(QPlatformWindow *surface);
+    void flush(QPlatformWindow *surface, const QRegion &region);
     void waitForFlushed(QPlatformWindow *surface);
 
 // Server API
-    void setRasterFrameBuffer(QImage *frameBuffer); // call when the frame buffer geometry changes
+    void beginResize(QImage *frameBuffer);          // call when the frame buffer geometry changes
+    void endResize();
 Q_SIGNALS:
-    void flush();                                   // emitted when the server should flush the frame buffer
+    void flush(const QRegion &region);              // emitted when the server should flush the frame buffer
 public Q_SLOTS:
     void flushCompleted();                          // call when the frame buffer flush has completed.
 
@@ -94,8 +95,10 @@ private:
     QHash<QWindow *, QPepperCompositedWindow> m_compositedWindows;
     QList<QWindow *> m_windowStack;
     QImage *m_frameBuffer;
+    QRegion globalDamage; // damage caused by expose, window close, etc.
     bool m_needComposit;
     bool m_inFlush;
+    bool m_inResize;
 };
 
 #endif

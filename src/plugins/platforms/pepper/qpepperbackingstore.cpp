@@ -87,21 +87,14 @@ void QPepperBackingStore::endPaint()
 void QPepperBackingStore::flush(QWindow *window, const QRegion &region, const QPoint &offset)
 {
     Q_UNUSED(window);
-    Q_UNUSED(region);
     Q_UNUSED(offset);
-
-
-//    qDebug() << "QPepperBackingStore::flush" << this->window();
-
-    m_compositor->flush(window->handle());
+//    qDebug() << "QPepperBackingStore::flush" << this->window() << region.boundingRect() << offset;
+    m_compositor->flush(window->handle(), region);
 }
 
 void QPepperBackingStore::resize(const QSize &size, const QRegion &)
 {
   //  qDebug() << "QPepperBackingStore::resize" << size;
-  //  if (m_frameBuffer)
-  //      qDebug() << "resize" << m_frameBuffer->size();
-
 
     if (!m_frameBuffer || size != m_frameBuffer->size()) {
         createFrameBuffer(size);
@@ -118,7 +111,6 @@ void QPepperBackingStore::createFrameBuffer(QSize size)
     if (m_ownsFrameBuffer)
         delete m_frameBuffer;
     m_frameBuffer = new QImage(size, QImage::Format_ARGB32_Premultiplied);
-    m_frameBuffer->fill(Qt::red); // should never be seen
     m_ownsFrameBuffer = true;
 
     m_compositor->setFrameBuffer(window()->handle(),  m_frameBuffer);

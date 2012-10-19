@@ -107,8 +107,8 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
         return;
     m_currentGeometry = geometry;
 
- //   qDebug() << "QPepperInstance::DidChangeView" << m_windowId
- //            << geometry.size().width() << geometry.size().height();
+//    qDebug() << "";
+//    qDebug() << "QPepperInstance::DidChangeView" << geometry.size().width() << geometry.size().height();
 
     if (m_pepperIntegraton->wantsOpenGLGraphics()) {
 
@@ -118,6 +118,7 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
         delete m_context2D;
         delete m_imageData2D;
         delete m_frameBuffer;
+
 
         // Create new graphics context and frame buffer.
         m_context2D = new Graphics2D(this, geometry.size(), false);
@@ -131,7 +132,7 @@ void QPepperInstance::DidChangeView(const Rect& geometry, const Rect& clip)
                                m_imageData2D->stride(), QImage::Format_ARGB32_Premultiplied);
 
 
-        m_pepperIntegraton->setRasterFrameBuffer(m_frameBuffer);
+        m_pepperIntegraton->resizeScreen(m_frameBuffer);
     }
 }
 
@@ -181,18 +182,18 @@ void QPepperInstance::HandleMessage(const Var& var_message)
     }
 }
 
-void QPepperInstance::flush()
+void QPepperInstance::flush(const QRegion &region)
 {
     if (!m_context2D) {
         m_inFlush = false;
         return;
     }
 
-    m_context2D->PaintImageData(*m_imageData2D, pp::Point(),
-                                 pp::Rect(0, 0, m_context2D->size().width(),
-                                                m_context2D->size().height()));
-    m_context2D->Flush(m_callbackFactory.NewCallback(&QPepperInstance::flushCompletedCallback));
+    QRect flushRect = region.boundingRect();
+//    qDebug() << "QPepperInstance::flush" << flushRect;
 
+    m_context2D->PaintImageData(*m_imageData2D, pp::Point(0,0), toPPRect(flushRect));
+    m_context2D->Flush(m_callbackFactory.NewCallback(&QPepperInstance::flushCompletedCallback));
     m_inFlush = true;
 }
 
@@ -206,13 +207,7 @@ void QPepperInstance::flushCompletedCallback(int32_t)
 {
     m_inFlush = false;
     m_pepperIntegraton->flushCompleted();
-
     //qDebug() << "flushCompleted" << QThread::currentThreadId();
-}
-
-void flush_callback(void *, int32_t)
-{
-
 }
 
 void QPepperInstance::setupTestGraphics(pp::Size newSize)
@@ -233,5 +228,5 @@ void QPepperInstance::setupTestGraphics(pp::Size newSize)
 
     qtImage.fill(Qt::red);
     m_context2D->PaintImageData(*m_imageData2D, pp::Point(0,0));
-    //m_context2D->Flush(pp::CompletionCallback(flush_callback, 0));
+    m_context2D->Flush(m_callbackFactory.NewCallback(&QPepperInstance::flushCompletedCallback));
 }
