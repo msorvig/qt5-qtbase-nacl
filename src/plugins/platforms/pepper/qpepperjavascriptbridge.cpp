@@ -8,10 +8,16 @@ QPepperJavascriptBridge::QPepperJavascriptBridge(pp::Instance *instance)
 
 }
 
+QVariant QPepperJavascriptBridge::callJavascriptFunction(const QByteArray &tag, const QByteArray &code)
+{
+    evalSource("this.qCallFunction(\"" + tag  + ":" + code +"\")");
+}
+
 void QPepperJavascriptBridge::evalSource(const QByteArray &code)
 {
     // Post message to the Qt NaCl loader, which will eval() the message content.
-    // See handleMessage() in qttools/src/naclshared/qtnaclloader.js.
+    // "this" will be set to the nacl <embed> element. See handleMessage() in
+    // qttools/src/naclshared/qtnaclloader.js.
     m_instance->PostMessage(pp::Var(code.constData()));
 }
 

@@ -46,6 +46,7 @@ RESOURCES += $$PWD/../../../../lib/fonts/naclfonts.qrc \
 
 OTHER_FILES += $$PWD/../../../../tools/nacldemoserver/check_browser.js \
                $$PWD/../../../../tools/nacldemoserver/qtnaclloader.js \
+               $$PWD/qpepperhelpers.js \
                $$PWD/qpepperfileaccess.js \
 
 QT += core-private gui-private platformsupport-private

@@ -160,12 +160,19 @@ QPlatformTheme *QPepperIntegration::createPlatformTheme(const QString &name) con
     return 0;
 }
 
+// called on QPepperInstance::Init, pepper startup has now completed
 void QPepperIntegration::setPepperInstance(QPepperInstance *instance)
 {
     m_pepperInstance = instance;
     connect(m_compositor,SIGNAL(flush(const QRegion&)), this, SLOT(flushRasterFrameBuffer(const QRegion&)));
 
+    // Set up C++ <-> Javascript messaging.
     m_javascriptBridge = new QPepperJavascriptBridge(m_pepperInstance);
+    connect(m_javascriptBridge, SIGNAL(evalFunctionReply(const QByteArray&, const QString&)),
+                                SLOT(handleMessage(const QByteArray&, const QString&)));
+
+    // Inject helper javascript into the web page:
+    m_javascriptBridge->evalFile(":/qpepperplatformplugin/qpepperhelpers.js");
     m_javascriptBridge->evalFile(":/qpepperplatformplugin/qpepperfileaccess.js");
 }
 
@@ -210,6 +217,9 @@ void QPepperIntegration::resizeScreen(QImage *m_frameBuffer)
 
     // End resize and composit.
     m_compositor->endResize();
+
+    // Request DPI update.
+    m_javascriptBridge->callJavascriptFunction("devicePixelRatioChanged", "qGetDevicePixelRatio()");
 }
 
 void QPepperIntegration::flushCompleted()
@@ -230,6 +240,15 @@ void QPepperIntegration::getKeyWindow(QWindow **window)
 void QPepperIntegration::flushRasterFrameBuffer(const QRegion &region)
 {
     m_pepperInstance->flush(region);
+}
+
+void QPepperIntegration::handleMessage(const QByteArray &tag, const QString &message)
+{
+    Q_UNUSED(tag)
+    Q_UNUSED(message)
+    if (tag == QByteArrayLiteral("devicePixelRatioChanged")) {
+        // TODO: update screen here
+    }
 }
 
 

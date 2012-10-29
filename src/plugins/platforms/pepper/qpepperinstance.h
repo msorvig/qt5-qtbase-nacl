@@ -67,7 +67,7 @@ public:
     virtual void DidChangeFocus(bool has_focus);
     virtual bool HandleInputEvent(const pp::InputEvent& event);
     virtual bool HandleDocumentLoad(const pp::URLLoader& url_loader);
-    virtual void HandleMessage(const pp::Var& message);
+    virtual void HandleMessage(const pp::Var& var_message);
 
     // Interface for QPepperCompositor:
     void flush(const QRegion &region);

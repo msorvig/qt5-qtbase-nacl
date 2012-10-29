@@ -93,7 +93,8 @@ private Q_SLOTS:
     void getWindowAt(const QPoint & point, QWindow **window);
     void getKeyWindow(QWindow **window);
     void flushRasterFrameBuffer(const QRegion &region);
-private:
+    void handleMessage(const QByteArray &tag, const QString &message);
+public:
     QPepperScreen *m_screen;
     QPepperInstance *m_pepperInstance;
     QPepperCompositor *m_compositor;

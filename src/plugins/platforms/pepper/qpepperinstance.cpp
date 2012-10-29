@@ -45,6 +45,7 @@
 #include "qpepperhelpers.h"
 #include "qpeppermodule.h"
 #include "qpepperintegration.h"
+#include "qpepperjavascriptbridge.h"
 #endif
 
 #include <qpa/qwindowsysteminterface.h>
@@ -158,28 +159,13 @@ bool QPepperInstance::HandleDocumentLoad(const URLLoader& url_loader)
 // "functionName" and will call the corresponding slot on qtScriptableObject.
 void QPepperInstance::HandleMessage(const Var& var_message)
 {
-    if (qtScriptableObject == 0)
-        return;
-
-    QString message = QString::fromUtf8(var_message.AsString().data());
-
-    QStringList parts = message.split(QLatin1Char(':'));
-    if (parts.count() == 0)
-        return; // Empty or ill-formed message
-
-    const char *methodName = parts.at(0).toLatin1().constData();
-
-    // Call the function on the Qt main thread using Qt::QueuedConnection since
-    // this HandleMessage is called from the pepper tread. Currently zero or one
-    // arguments are supported.
-    if (parts.count() == 1) {
-        QMetaObject::invokeMethod(qtScriptableObject, methodName, Qt::QueuedConnection);
-    } else if (parts.count() == 2) {
-        QString argument = parts.at(1);
-        QMetaObject::invokeMethod(qtScriptableObject, methodName, Qt::QueuedConnection, Q_ARG(QString, argument));
-    } else {
-        qWarning("QtInstance::HandleMessage supports messages with zero or one arguements only");
-    }
+     if (var_message.is_string()) {
+        QString message = QString::fromUtf8(var_message.AsString().data());
+        QStringList parts = message.split(':');
+        if (parts.count() == 2) {
+            emit m_pepperIntegraton->m_javascriptBridge->evalFunctionReply(parts.at(0).toLocal8Bit(), parts.at(1));
+        }
+     }
 }
 
 void QPepperInstance::flush(const QRegion &region)
