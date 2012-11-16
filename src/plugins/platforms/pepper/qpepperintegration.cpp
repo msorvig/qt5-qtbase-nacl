@@ -103,10 +103,12 @@ bool QPepperIntegration::hasOpenGL() const
     return true;
 }
 
+#ifndef Q_OS_NACL
 QPlatformOpenGLContext *QPepperIntegration::createPlatformOpenGLContext(QOpenGLContext *context) const
 {
     return new QPepperGLContext();
 }
+#endif
 
 QPlatformWindow *QPepperIntegration::createPlatformWindow(QWindow *window) const
 {

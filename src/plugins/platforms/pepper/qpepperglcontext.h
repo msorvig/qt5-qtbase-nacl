@@ -43,11 +43,14 @@
 #ifndef QPLATFORMGLCONTEXT_PEPPER_H
 #define QPLATFORMGLCONTEXT_PEPPER_H
 
+#include <qglobal.h>
+
+#ifndef QT_NO_OPENGL
+
 #include <qpa/qplatformopenglcontext.h>
 
 #include <ppapi/cpp/graphics_3d.h>
 #include <ppapi/cpp/graphics_3d_client.h>
-
 
 class QPepperInstance;
 class QPepperGLContext : public QPlatformOpenGLContext
@@ -68,5 +71,7 @@ private:
     pp::Graphics3D *m_context;
     bool m_pendingFlush;
 };
+
+#endif
 
 #endif

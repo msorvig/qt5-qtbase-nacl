@@ -39,6 +39,10 @@
 **
 ****************************************************************************/
 
+#include <qglobal.h>
+
+#ifndef QT_NO_OPENGL
+
 #include "qpepperglcontext.h"
 #include "qpepperinstance.h"
 
@@ -154,3 +158,5 @@ QSurfaceFormat QPepperGLContext::format() const
     format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
     return format;
 }
+
+#endif
