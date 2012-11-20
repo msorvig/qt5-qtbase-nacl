@@ -88,7 +88,7 @@ public:
     QImage *m_frameBuffer;
     bool m_inFlush;
     qint32 m_windowId;
-    pp::CompletionCallbackFactory<QPepperInstance, ThreadSafeRefCount> m_callbackFactory;
+    pp::CompletionCallbackFactory<QPepperInstance> m_callbackFactory;
 };
 
 #endif
