@@ -111,6 +111,7 @@ bool QLibraryPrivate::load_sys()
         qualifiedFileName = attempt;
         errorString.clear();
     } else {
+        qDebug() << "dlopen failed" << dlerror();
         errorString = QStringLiteral("Nacl load of ibqtpepper.so failed");
     }
     return (pHnd != 0);
