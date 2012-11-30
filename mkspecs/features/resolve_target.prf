@@ -52,6 +52,7 @@ win32 {
                 # Add .nexe extenson to app targes.
                 # Except don't do it for the configure tests. Empiric testing shows that QT_CONFIG
                 # does not contain "qpa" at this stage, so use that as a completely arbitray condition.
+                # better way?: QTDIR_build|!contains(IN_PWD, ^$$[QT_HOST_PREFIX/get].*)
                 contains(QT_CONFIG, "qpa") {
                     TARGET_EXT = .nexe
                     TARGET=$${TARGET}$${TARGET_EXT}
