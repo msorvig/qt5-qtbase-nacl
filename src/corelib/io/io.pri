@@ -138,11 +138,10 @@ win32 {
                 io/qprocess_unix.cpp \
                 io/qfilesystemiterator_unix.cpp \
 
-        !nacl:mac: {
+        mac {
             SOURCES += io/qsettings_mac.cpp
             OBJECTIVE_SOURCES += io/qurl_mac.mm
-        }
-        mac {
+
             osx {
                 OBJECTIVE_SOURCES += io/qfilesystemwatcher_fsevents.mm
                 HEADERS += io/qfilesystemwatcher_fsevents_p.h
@@ -176,11 +175,9 @@ win32 {
             HEADERS += io/qfilesystemwatcher_inotify_p.h
         }
 
-        !nacl {
-            freebsd-*|mac|darwin-*|openbsd-*:{
-                SOURCES += io/qfilesystemwatcher_kqueue.cpp
-                HEADERS += io/qfilesystemwatcher_kqueue_p.h
-            }
+        freebsd-*|mac|darwin-*|openbsd-*:{
+            SOURCES += io/qfilesystemwatcher_kqueue.cpp
+            HEADERS += io/qfilesystemwatcher_kqueue_p.h
         }
 }
 

@@ -98,16 +98,13 @@ winrt {
                 kernel/qfunctions_winrt.h
 }
 
-mac {
-    SOURCES += \
-        kernel/qcoreapplication_mac.cpp
-}
-
-mac:!nacl {
+mac: {
        HEADERS += \
                 kernel/qcore_mac_p.h
        SOURCES += \
-                kernel/qcore_mac.cpp
+                kernel/qcore_mac.cpp \
+                kernel/qcoreapplication_mac.cpp
+
        OBJECTIVE_SOURCES += \
                 kernel/qcore_mac_objc.mm
 
