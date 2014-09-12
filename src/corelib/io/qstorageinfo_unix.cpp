@@ -407,6 +407,7 @@ void QStorageInfoPrivate::doStat()
 
 void QStorageInfoPrivate::retreiveVolumeInfo()
 {
+#ifndef Q_OS_NACL
     QT_STATFSBUF statfs_buf;
     int result;
     EINTR_LOOP(result, QT_STATFS(QFile::encodeName(rootPath).constData(), &statfs_buf));
@@ -425,6 +426,7 @@ void QStorageInfoPrivate::retreiveVolumeInfo()
         readOnly = (statfs_buf.f_flag & ST_RDONLY) != 0;
 #endif
     }
+#endif
 }
 
 QList<QStorageInfo> QStorageInfoPrivate::mountedVolumes()

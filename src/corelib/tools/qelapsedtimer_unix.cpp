@@ -31,8 +31,10 @@
 **
 ****************************************************************************/
 
+#ifndef Q_OS_NACL
 // ask for the latest POSIX, just in case
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 #include "qelapsedtimer.h"
 #if defined(Q_OS_VXWORKS)
@@ -99,7 +101,7 @@ static inline void qt_clock_gettime(clockid_t clock, struct timespec *ts)
     quint64 mod = cycles % cycles_per_sec;
     ts->tv_nsec = mod * Q_INT64_C(1000000000) / cycles_per_sec;
 }
-#elif !defined(CLOCK_REALTIME)
+#elif !defined(CLOCK_REALTIME) || defined(Q_OS_NACL)
 #  define CLOCK_REALTIME 0
 static inline void qt_clock_gettime(int, struct timespec *ts)
 {
@@ -117,7 +119,9 @@ static inline void qt_clock_gettime(int, struct timespec *ts)
 #else
 static inline void qt_clock_gettime(clockid_t clock, struct timespec *ts)
 {
+#ifndef Q_OS_NACL
     clock_gettime(clock, ts);
+#endif
 }
 #endif
 

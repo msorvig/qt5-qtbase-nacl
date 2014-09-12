@@ -709,6 +709,7 @@ void QLibraryPrivate::updatePluginState()
     }
 #endif
 
+#if !defined (Q_OS_NACL)
     if (!pHnd) {
         // scan for the plugin metadata without loading
         success = findPatternUnloaded(fileName, this);
@@ -758,6 +759,7 @@ void QLibraryPrivate::updatePluginState()
     } else {
         pluginState = IsAPlugin;
     }
+#endif // Q_OS_NACL
 }
 
 /*!

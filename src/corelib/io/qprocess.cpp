@@ -91,7 +91,7 @@ QT_END_NAMESPACE
 #include <qwineventnotifier.h>
 #endif
 
-#ifndef QT_NO_PROCESS
+#ifndef QT_NO_PROCESS && !defined Q_OS_NACL
 
 QT_BEGIN_NAMESPACE
 

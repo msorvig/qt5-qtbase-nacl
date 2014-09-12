@@ -164,13 +164,17 @@ win32 {
             SOURCES += \
                 io/qstandardpaths_android.cpp \
                 io/qstorageinfo_unix.cpp
+        } else:nacl {
+            SOURCES += \
+                io/qstandardpaths_unix.cpp \
+                io/qstorageinfo_stub.cpp
         } else {
             SOURCES += \
                 io/qstandardpaths_unix.cpp \
                 io/qstorageinfo_unix.cpp
         }
 
-        linux|if(qnx:contains(QT_CONFIG, inotify)) {
+        !nacl:linux|if(qnx:contains(QT_CONFIG, inotify)) {
             SOURCES += io/qfilesystemwatcher_inotify.cpp
             HEADERS += io/qfilesystemwatcher_inotify_p.h
         }
