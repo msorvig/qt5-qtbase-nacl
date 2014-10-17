@@ -120,9 +120,11 @@ mac: {
 
 nacl {
     SOURCES += \
-        kernel/qfunctions_nacl.cpp
+        kernel/qfunctions_nacl.cpp \
+        kernel/qcorepeppereventdispatcher.cpp
     HEADERS += \
-        kernel/qfunctions_nacl.h
+        kernel/qfunctions_nacl.h \
+        kernel/qcorepeppereventdispatcher_p.h
 }
 
 unix|integrity {
