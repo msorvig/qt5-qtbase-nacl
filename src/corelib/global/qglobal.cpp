@@ -2954,6 +2954,14 @@ QString qt_error_string(int errorCode)
     return ret.trimmed();
 }
 
+#ifdef Q_OS_NACL
+// NaCl/Pepper does not support environment variables. Instead, in-process
+// storage for qputenv/qgetenv is implemented here in order to support
+// run-time setting of the variables Qt responds to.
+typedef QHash<QByteArray, QByteArray> EnvironmentStorage;
+Q_GLOBAL_STATIC(EnvironmentStorage, environment);
+#endif
+
 // getenv is declared as deprecated in VS2005. This function
 // makes use of the new secure getenv function.
 /*!
@@ -2983,6 +2991,8 @@ QByteArray qgetenv(const char *varName)
     Q_ASSERT(buffer.endsWith('\0'));
     buffer.chop(1);
     return buffer;
+#elif defined Q_OS_NACL
+    return environment()->value(QByteArray(varName));
 #else
     return QByteArray(::getenv(varName));
 #endif
@@ -3011,6 +3021,8 @@ bool qEnvironmentVariableIsEmpty(const char *varName) Q_DECL_NOEXCEPT
     size_t dummy;
     char buffer = '\0';
     return getenv_s(&dummy, &buffer, 1, varName) != ERANGE;
+#elif defined Q_OS_NACL
+    return qgetenv(varName).isEmpty();
 #else
     const char * const value = ::getenv(varName);
     return !value || !*value;
@@ -3037,6 +3049,8 @@ bool qEnvironmentVariableIsSet(const char *varName) Q_DECL_NOEXCEPT
     size_t requiredSize = 0;
     (void)getenv_s(&requiredSize, 0, 0, varName);
     return requiredSize != 0;
+#elif defined Q_OS_NACL
+    return !qgetenv(varName).isEmpty();
 #else
     return ::getenv(varName) != 0;
 #endif
@@ -3067,6 +3081,9 @@ bool qputenv(const char *varName, const QByteArray& value)
 #elif defined(_POSIX_VERSION) && (_POSIX_VERSION-0) >= 200112L
     // POSIX.1-2001 has setenv
     return setenv(varName, value.constData(), true) == 0;
+#elif defined Q_OS_NACL
+    environment()->insert(QByteArray(varName), value);
+    return true;
 #else
     QByteArray buffer(varName);
     buffer += '=';
@@ -3102,6 +3119,8 @@ bool qunsetenv(const char *varName)
     QByteArray buffer(varName);
     buffer += '=';
     return putenv(buffer.constData()) == 0;
+#elif defined Q_OS_NACL
+    environment()->remove(QByteArray(varName));
 #else
     // Fallback to putenv("var=") which will insert an empty var into the
     // environment and leak it
