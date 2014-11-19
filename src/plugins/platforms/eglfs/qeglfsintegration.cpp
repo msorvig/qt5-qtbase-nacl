@@ -135,7 +135,7 @@ QVariant QEglFSIntegration::styleHint(QPlatformIntegration::StyleHint hint) cons
     switch (hint)
     {
     case QPlatformIntegration::ShowIsFullScreen:
-        return screen()->compositingWindow() == 0;
+        return QOpenGLCompositor::instance()->targetWindow() == Q_NULLPTR;
     default:
         return QPlatformIntegration::styleHint(hint);
     }

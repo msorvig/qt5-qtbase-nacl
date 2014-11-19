@@ -65,12 +65,6 @@ public:
 
     EGLSurface primarySurface() const { return m_surface; }
 
-    QEGLPlatformWindow *compositingWindow() Q_DECL_OVERRIDE { return m_rootWindow; }
-    QOpenGLContext *compositingContext() Q_DECL_OVERRIDE { return m_rootContext; }
-
-    void setRootWindow(QEGLPlatformWindow *window) { m_rootWindow = window; }
-    void setRootContext(QOpenGLContext *context) { m_rootContext = context; }
-
 protected:
     void setPrimarySurface(EGLSurface surface);
 
@@ -79,8 +73,6 @@ private:
 
     EGLSurface m_surface;
     QEGLPlatformCursor *m_cursor;
-    QEGLPlatformWindow *m_rootWindow;
-    QOpenGLContext *m_rootContext;
 };
 
 QT_END_NAMESPACE

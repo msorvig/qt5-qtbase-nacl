@@ -32,22 +32,48 @@
 ****************************************************************************/
 
 #include <QtGui/QOpenGLContext>
-#include <QtGui/QOpenGLShaderProgram>
-#include <QtGui/QOpenGLFramebufferObject>
+#include <QtGui/QWindow>
+#include <QtGui/QScreen>
+#include <QtGui/QMatrix4x4>
 #include <QtGui/private/qopengltextureblitter_p.h>
 #include <qpa/qplatformbackingstore.h>
 
-#include "qeglcompositor_p.h"
-#include "qeglplatformwindow_p.h"
-#include "qeglplatformscreen_p.h"
+#include "qopenglcompositor_p.h"
 
 QT_BEGIN_NAMESPACE
 
-static QEGLCompositor *compositor = 0;
+/*!
+    \class QOpenGLCompositor
+    \brief A generic OpenGL-based compositor
+    \since 5.4
+    \internal
+    \ingroup qpa
 
-QEGLCompositor::QEGLCompositor()
+    This class provides a lightweight compositor that maintains the
+    basic stacking order of windows and composites them by drawing
+    textured quads via OpenGL.
+
+    It it meant to be used by platform plugins that run without a
+    windowing system.
+
+    It is up to the platform plugin to manage the lifetime of the
+    compositor (instance(), destroy()), set the correct destination
+    context and window as early as possible (setTargetWindow()),
+    register the composited windows as they are shown, activated,
+    raised and lowered (addWindow(), moveToTop(), etc.), and to
+    schedule repaints (update()).
+
+    \note To get support for QWidget-based windows, just use
+    QOpenGLCompositorBackingStore. It will automatically create
+    textures from the raster-rendered content and trigger the
+    necessary repaints.
+ */
+
+static QOpenGLCompositor *compositor = 0;
+
+QOpenGLCompositor::QOpenGLCompositor()
     : m_context(0),
-      m_window(0),
+      m_targetWindow(0),
       m_blitter(0)
 {
     Q_ASSERT(!compositor);
@@ -56,7 +82,7 @@ QEGLCompositor::QEGLCompositor()
     connect(&m_updateTimer, SIGNAL(timeout()), SLOT(renderAll()));
 }
 
-QEGLCompositor::~QEGLCompositor()
+QOpenGLCompositor::~QOpenGLCompositor()
 {
     Q_ASSERT(compositor == this);
     if (m_blitter) {
@@ -66,18 +92,22 @@ QEGLCompositor::~QEGLCompositor()
     compositor = 0;
 }
 
-void QEGLCompositor::schedule(QOpenGLContext *context, QEGLPlatformWindow *window)
+void QOpenGLCompositor::setTarget(QOpenGLContext *context, QWindow *targetWindow)
 {
     m_context = context;
-    m_window = window;
+    m_targetWindow = targetWindow;
+}
+
+void QOpenGLCompositor::update()
+{
     if (!m_updateTimer.isActive())
         m_updateTimer.start();
 }
 
-void QEGLCompositor::renderAll()
+void QOpenGLCompositor::renderAll()
 {
-    Q_ASSERT(m_context && m_window);
-    m_context->makeCurrent(m_window->window());
+    Q_ASSERT(m_context && m_targetWindow);
+    m_context->makeCurrent(m_targetWindow);
 
     if (!m_blitter) {
         m_blitter = new QOpenGLTextureBlitter;
@@ -85,16 +115,17 @@ void QEGLCompositor::renderAll()
     }
     m_blitter->bind();
 
-    QEGLPlatformScreen *screen = static_cast<QEGLPlatformScreen *>(m_window->screen());
-    QList<QEGLPlatformWindow *> windows = screen->windows();
-    for (int i = 0; i < windows.size(); ++i)
-        render(windows.at(i));
+    for (int i = 0; i < m_windows.size(); ++i)
+        m_windows.at(i)->beginCompositing();
+
+    for (int i = 0; i < m_windows.size(); ++i)
+        render(m_windows.at(i));
 
     m_blitter->release();
-    m_context->swapBuffers(m_window->window());
+    m_context->swapBuffers(m_targetWindow);
 
-    for (int i = 0; i < windows.size(); ++i)
-        windows.at(i)->composited();
+    for (int i = 0; i < m_windows.size(); ++i)
+        m_windows.at(i)->endCompositing();
 }
 
 struct BlendStateBinder
@@ -120,23 +151,22 @@ struct BlendStateBinder
     bool m_blend;
 };
 
-void QEGLCompositor::render(QEGLPlatformWindow *window)
+void QOpenGLCompositor::render(QOpenGLCompositorWindow *window)
 {
     const QPlatformTextureList *textures = window->textures();
     if (!textures)
         return;
 
-    const QRect targetWindowRect(QPoint(0, 0), window->screen()->geometry().size());
-    glViewport(0, 0, targetWindowRect.width(), targetWindowRect.height());
+    const QRect screenRect(QPoint(0, 0), m_targetWindow->screen()->geometry().size());
+    glViewport(0, 0, screenRect.width(), screenRect.height());
 
     float currentOpacity = 1.0f;
     BlendStateBinder blend;
 
     for (int i = 0; i < textures->count(); ++i) {
         uint textureId = textures->textureId(i);
-        QMatrix4x4 target = QOpenGLTextureBlitter::targetTransform(textures->geometry(i),
-                                                                   targetWindowRect);
-        const float opacity = window->window()->opacity();
+        QMatrix4x4 target = QOpenGLTextureBlitter::targetTransform(textures->geometry(i), screenRect);
+        const float opacity = window->sourceWindow()->opacity();
         if (opacity != currentOpacity) {
             currentOpacity = opacity;
             m_blitter->setOpacity(currentOpacity);
@@ -148,7 +178,7 @@ void QEGLCompositor::render(QEGLPlatformWindow *window)
             m_blitter->blit(textureId, target, QOpenGLTextureBlitter::OriginTopLeft);
         } else if (textures->count() == 1) {
             // A regular QWidget window
-            const bool translucent = window->window()->requestedFormat().alphaBufferSize() > 0;
+            const bool translucent = window->sourceWindow()->requestedFormat().alphaBufferSize() > 0;
             blend.set(translucent);
             m_blitter->blit(textureId, target, QOpenGLTextureBlitter::OriginTopLeft);
         } else if (!textures->stacksOnTop(i)) {
@@ -160,7 +190,7 @@ void QEGLCompositor::render(QEGLPlatformWindow *window)
 
     for (int i = 0; i < textures->count(); ++i) {
         if (textures->stacksOnTop(i)) {
-            QMatrix4x4 target = QOpenGLTextureBlitter::targetTransform(textures->geometry(i), targetWindowRect);
+            QMatrix4x4 target = QOpenGLTextureBlitter::targetTransform(textures->geometry(i), screenRect);
             blend.set(true);
             m_blitter->blit(textures->textureId(i), target, QOpenGLTextureBlitter::OriginBottomLeft);
         }
@@ -169,17 +199,49 @@ void QEGLCompositor::render(QEGLPlatformWindow *window)
     m_blitter->setOpacity(1.0f);
 }
 
-QEGLCompositor *QEGLCompositor::instance()
+QOpenGLCompositor *QOpenGLCompositor::instance()
 {
     if (!compositor)
-        compositor = new QEGLCompositor;
+        compositor = new QOpenGLCompositor;
     return compositor;
 }
 
-void QEGLCompositor::destroy()
+void QOpenGLCompositor::destroy()
 {
     delete compositor;
     compositor = 0;
+}
+
+void QOpenGLCompositor::addWindow(QOpenGLCompositorWindow *window)
+{
+    if (!m_windows.contains(window)) {
+        m_windows.append(window);
+        emit topWindowChanged(window);
+    }
+}
+
+void QOpenGLCompositor::removeWindow(QOpenGLCompositorWindow *window)
+{
+    m_windows.removeOne(window);
+    if (!m_windows.isEmpty())
+        emit topWindowChanged(m_windows.last());
+}
+
+void QOpenGLCompositor::moveToTop(QOpenGLCompositorWindow *window)
+{
+    m_windows.removeOne(window);
+    m_windows.append(window);
+    emit topWindowChanged(window);
+}
+
+void QOpenGLCompositor::changeWindowIndex(QOpenGLCompositorWindow *window, int newIdx)
+{
+    int idx = m_windows.indexOf(window);
+    if (idx != -1 && idx != newIdx) {
+        m_windows.move(idx, newIdx);
+        if (newIdx == m_windows.size() - 1)
+            emit topWindowChanged(m_windows.last());
+    }
 }
 
 QT_END_NAMESPACE
