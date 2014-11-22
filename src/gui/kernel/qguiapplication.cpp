@@ -1896,6 +1896,7 @@ void QGuiApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyE
         }
     }
 #endif
+    e->eventAccepted = ev.isAccepted();
 }
 
 void QGuiApplicationPrivate::processEnterEvent(QWindowSystemInterfacePrivate::EnterEvent *e)

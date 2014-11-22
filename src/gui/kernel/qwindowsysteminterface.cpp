@@ -258,16 +258,16 @@ bool QWindowSystemInterface::tryHandleExtendedShortcutEvent(QWindow *w, ulong ti
 }
 
 
-void QWindowSystemInterface::handleKeyEvent(QWindow *w, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text, bool autorep, ushort count) {
+bool QWindowSystemInterface::handleKeyEvent(QWindow *w, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text, bool autorep, ushort count) {
     unsigned long time = QWindowSystemInterfacePrivate::eventTime.elapsed();
-    handleKeyEvent(w, time, t, k, mods, text, autorep, count);
+    return handleKeyEvent(w, time, t, k, mods, text, autorep, count);
 }
 
-void QWindowSystemInterface::handleKeyEvent(QWindow *tlw, ulong timestamp, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text, bool autorep, ushort count)
+bool QWindowSystemInterface::handleKeyEvent(QWindow *tlw, ulong timestamp, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text, bool autorep, ushort count)
 {
     QWindowSystemInterfacePrivate::KeyEvent * e =
             new QWindowSystemInterfacePrivate::KeyEvent(tlw, timestamp, t, k, mods, text, autorep, count);
-    QWindowSystemInterfacePrivate::handleWindowSystemEvent(e);
+    return QWindowSystemInterfacePrivate::handleWindowSystemEvent(e);
 }
 
 void QWindowSystemInterface::handleExtendedKeyEvent(QWindow *w, QEvent::Type type, int key, Qt::KeyboardModifiers modifiers,
