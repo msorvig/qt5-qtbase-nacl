@@ -295,48 +295,52 @@ int main(int argc, char *argv[]) \
 #endif
 
 #define QTEST_MAIN(TestObject) \
-int main(int argc, char *argv[]) \
+int testMain(int argc, char *argv[]) \
 { \
     QApplication app(argc, argv); \
     app.setAttribute(Qt::AA_Use96Dpi, true); \
     QTEST_DISABLE_KEYPAD_NAVIGATION \
     TestObject tc; \
     return QTest::qExec(&tc, argc, argv); \
-}
+} \
+Q_GUI_BLOCKING_MAIN(testMain)
 
 #elif defined(QT_GUI_LIB)
 
 #include <QtTest/qtest_gui.h>
 
 #define QTEST_MAIN(TestObject) \
-int main(int argc, char *argv[]) \
+int testMain(int argc, char *argv[]) \
 { \
     QGuiApplication app(argc, argv); \
     app.setAttribute(Qt::AA_Use96Dpi, true); \
     TestObject tc; \
     return QTest::qExec(&tc, argc, argv); \
-}
+} \
+Q_GUI_BLOCKING_MAIN(testMain)
 
 #else
 
 #define QTEST_MAIN(TestObject) \
-int main(int argc, char *argv[]) \
+int testMain(int argc, char *argv[]) \
 { \
     QCoreApplication app(argc, argv); \
     app.setAttribute(Qt::AA_Use96Dpi, true); \
     TestObject tc; \
     return QTest::qExec(&tc, argc, argv); \
-}
+} \
+Q_CORE_BLOCKING_MAIN(testMain)
 
 #endif // QT_GUI_LIB
 
 #define QTEST_GUILESS_MAIN(TestObject) \
-int main(int argc, char *argv[]) \
+int testMain(int argc, char *argv[]) \
 { \
     QCoreApplication app(argc, argv); \
     app.setAttribute(Qt::AA_Use96Dpi, true); \
     TestObject tc; \
     return QTest::qExec(&tc, argc, argv); \
-}
+} \
+Q_CORE_BLOCKING_MAIN(testMain)
 
 #endif
