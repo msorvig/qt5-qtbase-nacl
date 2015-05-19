@@ -1,0 +1,262 @@
+<!--
+    The Qt Quick Playground.
+
+    This html file implements the Qt Quick playground. The central parts
+    of the playground are the code editor ("qml-input"), and the Qt Quick
+    display ("qml-output") (implemented as a native client plugin).
+
+    In addition to this comes example selection logic, native client loading
+    logic, and QML error handling. The main entry point is the "init()" function.
+
+    Dependencies:
+        qtloader.js
+        playground.nmf
+        playground.pexe / nexe
+        examples/*
+-->
+
+<html>
+
+<head>
+    <title>Qt Quick Playground</title>
+    <script src="qtloader.js" type="text/javascript"></script>
+</head>
+
+<style>
+
+body, html {
+    overflow: hidden;
+    margin : 0;
+}
+
+#TOPLEVEL {  display: flex; flex-direction: column; }
+#HEADER { flex: 0; flex-basis: 50px; display: flex; justify-content: center; align-items: center; }
+#TOOLBAR { flex: 0; flex-basis: 25px; display: flex;  align-items: center; padding: 5; padding-left : 10; }
+#A { flex: 10; display: flex; flex-direction: row; }
+#B { flex: 1; flex-basis: 50px; display: flex; flex-direction: row; }
+.flex-child { flex: 1; margin: 5; display: flex; }
+.qt-nacl-container{ flex: 1; display: flex; }
+.qt-nacl-embed{ flex: 1; }
+
+#HEADER { background-color : steelblue }
+#TITLETEXT { color: white; font-family: arial; font-weight: 100; font-size: 200%; letter-spacing: 2px;}
+
+</style>
+
+<script type="text/javascript">
+
+// Globals
+
+var debug = false;
+var qt = undefined;
+
+// Utility
+
+function $(elementId) {
+    return document.getElementById(elementId)
+}
+
+function readFile(url, onComplete) {
+    var xhr = new XMLHttpRequest()
+    xhr.open("GET", url, true)
+    xhr.responseType = "text"
+    xhr.onload = function(e) {
+      if (this.status == 200) 
+      {
+          var source = this.response
+          onComplete(url, source)
+      } else {
+          console.log("Load error on " + url)
+      }
+    }
+    xhr.send(null)
+}
+
+// HTML local storage save support
+
+function localStorageKey(name) {
+    return "qmlsource-" + name
+}
+
+function localSaveSource(name, source) {
+    localStorage.setItem(localStorageKey(name), source)
+}
+
+function localLoadSource(name) {
+    return localStorage.getItem(localStorageKey(name))
+}
+function localHasSource(name) {
+    return localLoadSource(name) !== null
+}
+
+function localDeleteSource(name) {
+    localStorage.removeItem(localStorageKey(name))
+}
+
+// Action callbacks and response logic
+
+function onProgress(event) {
+    if (debug)
+        console.log(event.type)
+
+    // Show progress indicator on load start
+    if (event.type == "loadstart") {
+       $("loading").style.display = "block"
+    }
+
+    // Update progress indicator on progress
+    if (event.type == "progress") {
+        var progress = 100 * event.loaded / event.total;
+        var progressString = progress.toPrecision(2)
+        if (progress == 100)
+            progressString = 100;
+
+        $("loading").innerHTML = "Loading Qt Quick: " +  progressString + " %.";
+    }
+
+    // Re-trigger QML loading logic when Qt is ready
+    if (event.type == "load")
+        $("example-select").onchange();
+
+    // Hide progress indicator on load end
+    if (event.type == "loadend") {
+        $("loading").style.display = "none";
+    }
+}
+
+function onMessage(message) {
+    // Present QML errors to the user
+    var qmlStatusKey = "qmlstatus:"
+    if (message.data.indexOf(qmlStatusKey) === 0) {
+        var content = message.data.slice(qmlStatusKey.length);
+        $("qml-status").value = "Parse Status " + content;
+    }
+
+    var qmlWarningsKey = "qmlwarnings:"
+    if (message.data.indexOf(qmlWarningsKey) === 0) {
+        var content = message.data.slice(qmlWarningsKey.length);
+        $("qml-warnings").value += content; // append warnings
+    }
+}
+
+function onCrash(event) {
+    // Oops. inform the user and restart Qt.
+    $("qml-status").value = "Qt crashed: restarting";
+    var output = $("qml-output");
+    while (output.firstChild) {
+        output.removeChild(output.firstChild);
+    }
+    init();
+}
+
+function setSource(url, source) {
+    $("qml-input").value = source
+
+    // run code on source update
+    $("run-button").onclick();
+}
+
+function onExampleSelect(name){
+    // The example has changes, update source and Qt Quick display
+    var url = "examples/" + name + ".qml"
+    if (localHasSource(name)) {
+        setSource(url, localLoadSource(name))
+    } else {
+        readFile(url, setSource)
+    }
+}
+
+function onSaveSource() {
+    // Save the current example source to local storage
+    var name = $("example-select").value
+    var source = $("qml-input").value
+    localSaveSource(name, source)
+}
+
+function onResetSource() {
+    // Reset the source back to the example default, discarding local changes
+    var name = $("example-select").value
+    localDeleteSource(name)
+    // trigger reload
+    $("example-select").onchange();
+}
+
+function onChangeSource() {
+    // Tell Qt to update the source QML iff autorun is enabled
+    var autorun = $("autorun").checked
+    if (autorun)
+        $("run-button").onclick();
+}
+
+function onRunSource() {
+    // Clear warnings
+    $("qml-warnings").value = ""
+
+    // Tell Qt to update the source QML
+    var source = $("qml-input").value
+    qt.postMessage("qmlsource:" + source);
+}
+
+// Main entry point
+
+function init() {
+    if (debug)
+        console.log("init")
+
+    // Add load progress indicator
+    var loading = document.createElement("DIV");
+    loading.id = "loading"
+    loading.style.display = "none";
+    $("qml-output").appendChild(loading);
+
+    // Begin loading Qt
+    qt = new Qt({
+        src : "playground.nmf",
+        type : "application/x-nacl",
+    });
+    var element = qt.createQtElement();
+
+    // Register event listeners
+    element.addEventListener('loadstart', onProgress, true);
+    element.addEventListener('progress', onProgress, true);
+    element.addEventListener('load', onProgress, true);
+    element.addEventListener('loadend', onProgress, true);
+    element.addEventListener('message', onMessage, true);
+    element.addEventListener('crash', onCrash, true);
+
+    // Add to Qt DOM
+    $("qml-output").appendChild(element);
+
+    // Trigger example selection logic
+    $("example-select").onchange();
+}
+
+</script>
+
+<body id="TOPLEVEL" onload="init()">
+    <div id="HEADER">
+        <div id="TITLETEXT"> Qt Quick Playground </div>
+    </div>
+    <div id="TOOLBAR">
+        <select id="example-select" onchange="onExampleSelect(value)">
+            <option value="hello">Hello World</option>
+            <option value="shaders">Shaders</option>
+            <option value="video">Video</option>
+            <option value="gallery">Gallery</option>
+        </select>
+        <button id="save-button" type="button" onclick="onSaveSource()">Save</button>
+        <button id="reset-button" type="button" onclick="onResetSource()">Reset</button>
+        <button id="run-button" type="button" onclick="onRunSource()">Run</button>
+        <input id="autorun" type="checkbox" checked=true>Autorun</button>
+    </div>
+    <div id="A">
+        <textarea id="qml-input" class="flex-child" oninput="onChangeSource()">  </textarea>
+        <div id="qml-output" class="flex-child">  </div>
+    </div>
+    <div id="B">
+        <textarea id="qml-status" class="flex-child" rows="5" cols="60" readonly=true>  </textarea>
+        <textarea id="qml-warnings" class="flex-child" rows="5" cols="60" readonly=true>  </textarea>
+    </div>
+</body>
+
+</html>

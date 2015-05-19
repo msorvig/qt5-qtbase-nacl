@@ -22,3 +22,4 @@ SUBDIRS = \
     window_shadereffects \          # Shaders!
     window_controls \               # (some) Qt Quick Controls
     window_controls_gallery \       # Qt Quick Gallery example
+    playground \                    # the Qt Quick playground
