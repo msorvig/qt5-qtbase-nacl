@@ -47,6 +47,7 @@ The script expects a standard Qt module checkout. Example nacl-configure usage:
     /path/to/qt/qtbase/nacl-configure mac_x86_newlib release 64
 
 Available toolchains include:
+
     mac_pnacl
     mac_x86_glibc [not supported]
     mac_x86_newlib
@@ -73,11 +74,13 @@ combined with static linking make debug builds impractical due to the increased
 build time.
 
 1.2) Build Qt:
+
     make module-qtbase
     make module-qtdeclarative
     make module-qtquickcontrols
 
-    [the "make" calls above should succeed]
+This is the "supported" (tested) module set, and the make commands should complete
+without errors. Other modules may or may not work.
 
 2) Building applications with Qt for NaCl:
 
