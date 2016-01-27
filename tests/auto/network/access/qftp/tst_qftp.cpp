@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -63,16 +58,13 @@ class tst_QFtp : public QObject
 
 public:
     tst_QFtp();
-    virtual ~tst_QFtp();
 
-
-public slots:
+private slots:
     void initTestCase_data();
     void initTestCase();
     void cleanupTestCase();
     void init();
     void cleanup();
-private slots:
     void connectToHost_data();
     void connectToHost();
     void connectToUnresponsiveHost();
@@ -187,10 +179,6 @@ tst_QFtp::tst_QFtp() :
 {
 }
 
-tst_QFtp::~tst_QFtp()
-{
-}
-
 void tst_QFtp::initTestCase_data()
 {
     QTest::addColumn<bool>("setProxy");
@@ -290,10 +278,11 @@ void tst_QFtp::init()
 
 #if !defined(Q_OS_WINCE)
     srand(time(0));
-    uniqueExtension = QString("%1%2%3").arg((qulonglong)this).arg(rand()).arg((qulonglong)time(0));
+    uniqueExtension = QString::number((quintptr)this) + QString::number(rand())
+        + QString::number((qulonglong)time(0));
 #else
     srand(0);
-    uniqueExtension = QString("%1%2%3").arg((qulonglong)this).arg(rand()).arg((qulonglong)(0));
+    uniqueExtension = QString::number((quintptr)this) + QString::number(rand()) + QLatin1Char('0');
 #endif
 }
 
@@ -643,19 +632,20 @@ void tst_QFtp::get_data()
 
     // test the two get() overloads in one routine
     for ( int i=0; i<2; i++ ) {
-        QTest::newRow( QString("relPath01_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow(("relPath01_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
                 << "qtest/rfc3252" << 1 << rfc3252 << (bool)(i==1);
-        QTest::newRow( QString("relPath02_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString("ftptest")     << QString("password")
+        QTest::newRow(("relPath02_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString("ftptest")     << QString("password")
                 << "qtest/rfc3252" << 1 << rfc3252 << (bool)(i==1);
 
-        QTest::newRow( QString("absPath01_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
+        QTest::newRow(("absPath01_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
                 << "/qtest/rfc3252" << 1 << rfc3252 << (bool)(i==1);
-        QTest::newRow( QString("absPath02_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString("ftptest")     << QString("password")
+        QTest::newRow(("absPath02_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString("ftptest")     << QString("password")
                 << "/var/ftp/qtest/rfc3252" << 1 << rfc3252 << (bool)(i==1);
 
-        QTest::newRow( QString("nonExist01_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
+        QTest::newRow(("nonExist01_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
                 << QString("foo")  << 0 << QByteArray() << (bool)(i==1);
-        QTest::newRow( QString("nonExist02_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
+        QTest::newRow(("nonExist02_" + iB).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
                 << QString("/foo") << 0 << QByteArray() << (bool)(i==1);
     }
 }
@@ -734,7 +724,7 @@ void tst_QFtp::put_data()
 
     // test the two put() overloads in one routine
     for ( int i=0; i<2; i++ ) {
-        QTest::newRow( QString("relPath01_%1").arg(i).toLatin1().constData() ) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
+        QTest::newRow(("relPath01_" + QByteArray::number(i)).constData()) << QtNetworkSettings::serverName() << (uint)21 << QString() << QString()
                 << QString("qtest/upload/rel01_%1") << rfc3252
                 << (bool)(i==1) << 1;
         /*
@@ -2048,10 +2038,10 @@ bool tst_QFtp::dirExists( const QString &host, quint16 port, const QString &user
 
     addCommand( QFtp::ConnectToHost, ftp->connectToHost( host, port ) );
     addCommand( QFtp::Login, ftp->login( user, password ) );
-    if ( dirToCreate.startsWith( "/" ) )
+    if ( dirToCreate.startsWith( QLatin1Char('/') ) )
         addCommand( QFtp::Cd, ftp->cd( dirToCreate ) );
     else
-        addCommand( QFtp::Cd, ftp->cd( cdDir + "/" + dirToCreate ) );
+        addCommand( QFtp::Cd, ftp->cd( cdDir + QLatin1Char('/') + dirToCreate ) );
     addCommand( QFtp::Close, ftp->close() );
 
     inFileDirExistsFunction = true;

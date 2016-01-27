@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -397,8 +392,9 @@ void tst_QFileSystemModel::rowsInserted_data()
     QTest::addColumn<int>("count");
     QTest::addColumn<int>("ascending");
     for (int i = 0; i < 4; ++i) {
-        QTest::newRow(QString("Qt::AscendingOrder %1").arg(i).toLocal8Bit().constData())  << i << (int)Qt::AscendingOrder;
-        QTest::newRow(QString("Qt::DescendingOrder %1").arg(i).toLocal8Bit().constData()) << i << (int)Qt::DescendingOrder;
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow(("Qt::AscendingOrder " + iB).constData()) << i << (int)Qt::AscendingOrder;
+        QTest::newRow(("Qt::DescendingOrder " + iB).constData()) << i << (int)Qt::DescendingOrder;
     }
 }
 
@@ -426,7 +422,7 @@ void tst_QFileSystemModel::rowsInserted()
     int oldCount = model->rowCount(root);
     QStringList files;
     for (int i = 0; i < count; ++i)
-        files.append(QString("c%1").arg(i));
+        files.append(QLatin1Char('c') + QString::number(i));
     QVERIFY(createFiles(tmp, files, 5));
     TRY_WAIT(model->rowCount(root) == oldCount + count);
     QTRY_COMPARE(model->rowCount(root), oldCount + count);
@@ -949,8 +945,8 @@ void tst_QFileSystemModel::dirsBeforeFiles()
 
     for (int i = 0; i < 3; ++i) {
         QLatin1Char c('a' + i);
-        dir.mkdir(QString("%1-dir").arg(c));
-        QFile file(flatDirTestPath + QString("/%1-file").arg(c));
+        dir.mkdir(c + QLatin1String("-dir"));
+        QFile file(flatDirTestPath + QLatin1Char('/') + c + QLatin1String("-file"));
         file.open(QIODevice::ReadWrite);
         file.close();
     }
@@ -1027,7 +1023,7 @@ void tst_QFileSystemModel::permissions() // checks QTBUG-20503
     QFETCH(bool, readOnly);
 
     const QString tmp = flatDirTestPath;
-    const QString file  = tmp + '/' + "f";
+    const QString file = tmp + QLatin1String("/f");
     QVERIFY(createFiles(tmp, QStringList() << "f"));
 
     QVERIFY(QFile::setPermissions(file,  QFile::Permissions(permissions)));

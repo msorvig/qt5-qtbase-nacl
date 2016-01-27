@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2015 Olivier Goffart <ogoffart@woboq.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -2038,57 +2033,57 @@ void tst_QObject::metamethod()
 
     m = mobj->method(mobj->indexOfMethod("invoke1()"));
     QVERIFY(m.methodSignature() == "invoke1()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Public);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Public);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
     QVERIFY(!(m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("sinvoke1()"));
     QVERIFY(m.methodSignature() == "sinvoke1()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Public);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Public);
     QVERIFY((m.attributes() & QMetaMethod::Scriptable));
     QVERIFY(!(m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("invoke2()"));
     QVERIFY(m.methodSignature() == "invoke2()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Protected);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Protected);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
     QVERIFY((m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("sinvoke2()"));
     QVERIFY(m.methodSignature() == "sinvoke2()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Protected);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Protected);
     QVERIFY((m.attributes() & QMetaMethod::Scriptable));
     QVERIFY((m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("invoke3()"));
     QVERIFY(m.methodSignature() == "invoke3()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Private);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Private);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
     QVERIFY(!(m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("sinvoke3()"));
     QVERIFY(m.methodSignature() == "sinvoke3()");
-    QVERIFY(m.methodType() == QMetaMethod::Method);
-    QVERIFY(m.access() == QMetaMethod::Private);
+    QCOMPARE(m.methodType(), QMetaMethod::Method);
+    QCOMPARE(m.access(), QMetaMethod::Private);
     QVERIFY((m.attributes() & QMetaMethod::Scriptable));
     QVERIFY(!(m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("signal5()"));
     QVERIFY(m.methodSignature() == "signal5()");
-    QVERIFY(m.methodType() == QMetaMethod::Signal);
-    QVERIFY(m.access() == QMetaMethod::Public);
+    QCOMPARE(m.methodType(), QMetaMethod::Signal);
+    QCOMPARE(m.access(), QMetaMethod::Public);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
     QVERIFY((m.attributes() & QMetaMethod::Compatibility));
 
     m = mobj->method(mobj->indexOfMethod("aPublicSlot()"));
     QVERIFY(m.methodSignature() == "aPublicSlot()");
-    QVERIFY(m.methodType() == QMetaMethod::Slot);
-    QVERIFY(m.access() == QMetaMethod::Public);
+    QCOMPARE(m.methodType(), QMetaMethod::Slot);
+    QCOMPARE(m.access(), QMetaMethod::Public);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
     QVERIFY(!(m.attributes() & QMetaMethod::Compatibility));
 
@@ -2360,7 +2355,7 @@ void tst_QObject::testUserData()
         int id = user_data_ids[i];
         CustomData *data = static_cast<CustomData *>(my_test_object.userData(id));
         QVERIFY(data != 0);
-        QVERIFY(data->id == id);
+        QCOMPARE(data->id, id);
     }
 }
 
@@ -2902,12 +2897,12 @@ void tst_QObject::floatProperty()
     QVERIFY(idx > 0);
     QMetaProperty prop = obj.metaObject()->property(idx);
     QVERIFY(prop.isValid());
-    QVERIFY(prop.type() == uint(QMetaType::type("float")));
+    QCOMPARE(int(prop.type()), QMetaType::type("float"));
     QVERIFY(!prop.write(&obj, QVariant("Hello")));
     QVERIFY(prop.write(&obj, QVariant::fromValue(128.0f)));
     QVariant v = prop.read(&obj);
-    QVERIFY(int(v.userType()) == QMetaType::Float);
-    QVERIFY(qvariant_cast<float>(v) == 128.0f);
+    QCOMPARE(v.userType(), int(QMetaType::Float));
+    QCOMPARE(qvariant_cast<float>(v), 128.0f);
 }
 
 void tst_QObject::qrealProperty()
@@ -2917,18 +2912,18 @@ void tst_QObject::qrealProperty()
     QVERIFY(idx > 0);
     QMetaProperty prop = obj.metaObject()->property(idx);
     QVERIFY(prop.isValid());
-    QVERIFY(prop.type() == uint(QMetaType::type("qreal")));
+    QCOMPARE(int(prop.type()), QMetaType::type("qreal"));
     QVERIFY(!prop.write(&obj, QVariant("Hello")));
 
     QVERIFY(prop.write(&obj, QVariant::fromValue(128.0f)));
     QVariant v = prop.read(&obj);
     QCOMPARE(v.userType(), qMetaTypeId<qreal>());
-    QVERIFY(qvariant_cast<qreal>(v) == 128.0);
+    QCOMPARE(qvariant_cast<qreal>(v), 128.0);
 
     QVERIFY(prop.write(&obj, QVariant::fromValue(double(127))));
     v = prop.read(&obj);
     QCOMPARE(v.userType(), qMetaTypeId<qreal>());
-    QVERIFY(qvariant_cast<qreal>(v) == 127.0);
+    QCOMPARE(qvariant_cast<qreal>(v), 127.0);
 }
 
 class DynamicPropertyObject : public PropertyObject
@@ -2994,7 +2989,7 @@ void tst_QObject::recursiveSignalEmission()
     proc.start(path);
     QVERIFY2(proc.waitForStarted(), qPrintable(QString::fromLatin1("Cannot start '%1': %2").arg(path, proc.errorString())));
     QVERIFY(proc.waitForFinished());
-    QVERIFY(proc.exitStatus() == QProcess::NormalExit);
+    QCOMPARE(proc.exitStatus(), QProcess::NormalExit);
     QCOMPARE(proc.exitCode(), 0);
 #endif
 }

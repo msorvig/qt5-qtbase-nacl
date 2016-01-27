@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -125,9 +120,10 @@ class tst_QNetworkReply: public QObject
             qsrand(QTime(0,0,0).msecsTo(QTime::currentTime()) + QCoreApplication::applicationPid());
             seedCreated = true; // not thread-safe, but who cares
         }
-        QString s = QString("%1-%2-%3").arg(QTime(0,0,0).msecsTo(QTime::currentTime())).arg(QCoreApplication::applicationPid()).arg(qrand());
-        return s;
-    };
+        return QString::number(QTime(0, 0, 0).msecsTo(QTime::currentTime()))
+            + QLatin1Char('-') + QString::number(QCoreApplication::applicationPid())
+            + QLatin1Char('-') + QString::number(qrand());
+    }
 
     static QString tempRedirectReplyStr() {
         QString s = "HTTP/1.1 307 Temporary Redirect\r\n"
@@ -198,6 +194,7 @@ public Q_SLOTS:
 
 protected Q_SLOTS:
     void nestedEventLoops_slot();
+    void notEnoughData();
 
 private Q_SLOTS:
     void cleanup() { cleanupTestData(); }
@@ -487,6 +484,7 @@ private:
     void cleanupTestData();
 
     QString testDataDir;
+    bool notEnoughDataForFastSender;
 };
 
 bool tst_QNetworkReply::seedCreated = false;
@@ -515,16 +513,16 @@ namespace QTest {
     template<>
     char *toString(const QList<QNetworkCookie> &list)
     {
-        QString result = "QList(";
+        QByteArray result = "QList(";
         bool first = true;
         foreach (QNetworkCookie cookie, list) {
             if (!first)
                 result += ", ";
             first = false;
-            result += QString::fromLatin1("QNetworkCookie(%1)").arg(QLatin1String(cookie.toRawForm()));
+            result += "QNetworkCookie(" + cookie.toRawForm() + ')';
         }
-
-        return qstrdup(result.append(')').toLocal8Bit());
+        result.append(')');
+        return qstrdup(result.constData());
     }
 }
 
@@ -991,11 +989,13 @@ public:
     }
 
     // a server that sends the data provided at construction time, useful for HTTP
-    FastSender(const QByteArray& data, bool https, bool fillBuffer)
+    FastSender(const QByteArray& data, bool https, bool fillBuffer, tst_QNetworkReply *listener = 0)
         : wantedSize(data.size()), port(-1), protocol(ProvidedData),
           doSsl(https), fillKernelBuffer(fillBuffer), transferRate(-1),
           dataToTransmit(data), dataIndex(0)
     {
+        if (listener)
+            connect(this, SIGNAL(notEnoughData()), listener, SLOT(notEnoughData()));
         start();
         ready.acquire();
     }
@@ -1058,6 +1058,7 @@ protected:
             do {
                 if (writeNextData(client, BlockSize) < BlockSize) {
                     qDebug() << "ERROR: FastSender: not enough data to write in order to fill buffers; or client is reading too fast";
+                    emit notEnoughData();
                     return;
                 }
                 while (client->bytesToWrite() > 0) {
@@ -1118,6 +1119,7 @@ protected:
     }
 signals:
     void dataReady();
+    void notEnoughData();
 };
 
 class RateControlledReader: public QObject
@@ -2778,7 +2780,7 @@ void tst_QNetworkReply::postToHttpsMultipart()
 
     // hack for testing the setting of the content-type header by hand:
     if (contentType == "custom") {
-        QByteArray contentType("multipart/custom; boundary=\"" + multiPart->boundary() + "\"");
+        QByteArray contentType("multipart/custom; boundary=\"" + multiPart->boundary() + '"');
         request.setHeader(QNetworkRequest::ContentTypeHeader, contentType);
     }
 
@@ -2930,7 +2932,7 @@ void tst_QNetworkReply::connectToIPv6Address()
     QVERIFY2(waitForFinish(reply) == Success, msgWaitForFinished(reply));
     QByteArray content = reply->readAll();
     //qDebug() << server.receivedData;
-    QByteArray hostinfo = "\r\nHost: " + hostfield + ":" + QByteArray::number(server.serverPort()) + "\r\n";
+    QByteArray hostinfo = "\r\nHost: " + hostfield + ':' + QByteArray::number(server.serverPort()) + "\r\n";
     QVERIFY(server.receivedData.contains(hostinfo));
     QCOMPARE(content, dataToSend);
     QCOMPARE(reply->url(), request.url());
@@ -4814,7 +4816,7 @@ void tst_QNetworkReply::ioPostToHttpsUploadProgress()
     server.listen(QHostAddress(QHostAddress::LocalHost), 0);
 
     // create the request
-    QUrl url = QUrl(QString("https://127.0.0.1:%1/").arg(server.serverPort()));
+    QUrl url = QUrl(QLatin1String("https://127.0.0.1:") + QString::number(server.serverPort()) + QLatin1Char('/'));
     QNetworkRequest request(url);
 
     request.setRawHeader("Content-Type", "application/octet-stream");
@@ -4898,7 +4900,8 @@ void tst_QNetworkReply::ioGetFromBuiltinHttp()
              << testData.size() << "bytes of data";
 
     const bool fillKernelBuffer = bufferSize > 0;
-    FastSender server(httpResponse, https, fillKernelBuffer);
+    notEnoughDataForFastSender = false;
+    FastSender server(httpResponse, https, fillKernelBuffer, this);
 
     QUrl url(QString("%1://127.0.0.1:%2/qtest/rfc3252.txt")
              .arg(https?"https":"http")
@@ -4913,7 +4916,13 @@ void tst_QNetworkReply::ioGetFromBuiltinHttp()
     QTime loopTime;
     loopTime.start();
 
-    QVERIFY2(waitForFinish(reply) == Success, msgWaitForFinished(reply));
+    const int result = waitForFinish(reply);
+    if (notEnoughDataForFastSender) {
+        server.wait();
+        QSKIP("kernel socket buffers are too big for this test to work");
+    }
+
+    QVERIFY2(result == Success, msgWaitForFinished(reply));
 
     const int elapsedTime = loopTime.elapsed();
     server.wait();
@@ -4941,7 +4950,7 @@ void tst_QNetworkReply::ioGetFromBuiltinHttp()
         const int allowedDeviation = 16; // TODO find out why the send rate is 13% faster currently
         const int minRate = rate * 1024 * (100-allowedDeviation) / 100;
         const int maxRate = rate * 1024 * (100+allowedDeviation) / 100;
-        qDebug() << minRate << "<="<< server.transferRate << "<=" << maxRate << "?";
+        qDebug() << minRate << "<="<< server.transferRate << "<=" << maxRate << '?';
         // The test takes too long to run if sending enough data to overwhelm the
         // reciever's kernel buffers.
         //QEXPECT_FAIL("http+limited", "Limiting is broken right now, check QTBUG-15065", Continue);
@@ -5030,7 +5039,7 @@ void tst_QNetworkReply::emitAllUploadProgressSignals()
     server.listen(QHostAddress(QHostAddress::LocalHost), 0);
     connect(&server, SIGNAL(newConnection()), &QTestEventLoop::instance(), SLOT(exitLoop()));
 
-    QUrl url = QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort()));
+    QUrl url = QUrl(QLatin1String("http://127.0.0.1:") + QString::number(server.serverPort()) + QLatin1Char('/'));
     QNetworkRequest normalRequest(url);
     normalRequest.setRawHeader("Content-Type", "application/octet-stream");
 
@@ -5085,7 +5094,7 @@ void tst_QNetworkReply::ioPostToHttpEmptyUploadProgress()
     server.listen(QHostAddress(QHostAddress::LocalHost), 0);
 
     // create the request
-    QUrl url = QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort()));
+    QUrl url = QUrl(QLatin1String("http://127.0.0.1:") + QString::number(server.serverPort()) + QLatin1Char('/'));
     QNetworkRequest request(url);
     request.setRawHeader("Content-Type", "application/octet-stream");
     QNetworkReplyPtr reply(manager.post(request, &buffer));
@@ -5517,7 +5526,7 @@ void tst_QNetworkReply::sendCookies_data()
     list.clear();
     cookie = QNetworkCookie("a", "b");
     cookie.setPath("/");
-    cookie.setDomain("." + QtNetworkSettings::serverDomainName());
+    cookie.setDomain(QLatin1Char('.') + QtNetworkSettings::serverDomainName());
     list << cookie;
     QTest::newRow("domain-match") << list << "a=b";
 
@@ -5584,6 +5593,11 @@ void tst_QNetworkReply::nestedEventLoops_slot()
     subloop.exec();
 
     QTestEventLoop::instance().exitLoop();
+}
+
+void tst_QNetworkReply::notEnoughData()
+{
+    notEnoughDataForFastSender = true;
 }
 
 void tst_QNetworkReply::nestedEventLoops()
@@ -5850,7 +5864,7 @@ void tst_QNetworkReply::httpConnectionCount()
     QCoreApplication::instance()->processEvents();
 
     for (int i = 0; i < 10; i++) {
-        QNetworkRequest request (QUrl("http://127.0.0.1:" + QString::number(server.serverPort()) + "/" +  QString::number(i)));
+        QNetworkRequest request (QUrl("http://127.0.0.1:" + QString::number(server.serverPort()) + QLatin1Char('/') +  QString::number(i)));
         QNetworkReply* reply = manager.get(request);
         reply->setParent(&server);
     }
@@ -6463,9 +6477,10 @@ public slots:
             QByteArray data(amount, '@');
 
             if (chunkedEncoding) {
-                client->write(QString(QString("%1").arg(amount,0,16).toUpper() + "\r\n").toLatin1());
+                client->write(QByteArray::number(amount, 16).toUpper());
+                client->write("\r\n");
                 client->write(data.constData(), amount);
-                client->write(QString("\r\n").toLatin1());
+                client->write("\r\n");
             } else {
                 client->write(data.constData(), amount);
             }
@@ -7734,6 +7749,7 @@ void tst_QNetworkReply::emitErrorForAllReplies() // QTBUG-36890
 #ifdef QT_BUILD_INTERNAL
 void tst_QNetworkReply::backgroundRequest_data()
 {
+#ifndef QT_NO_BEARERMANAGEMENT
     QTest::addColumn<QUrl>("url");
     QTest::addColumn<bool>("background");
     QTest::addColumn<int>("policy");
@@ -7759,7 +7775,7 @@ void tst_QNetworkReply::backgroundRequest_data()
     QTest::newRow("ftp, bg, normal") << ftpurl << true << (int)QNetworkSession::NoPolicy << QNetworkReply::NoError;
     QTest::newRow("ftp, fg, nobg") << ftpurl << false << (int)QNetworkSession::NoBackgroundTrafficPolicy << QNetworkReply::NoError;
     QTest::newRow("ftp, bg, nobg") << ftpurl << true << (int)QNetworkSession::NoBackgroundTrafficPolicy << QNetworkReply::BackgroundRequestNotAllowedError;
-
+#endif // !QT_NO_BEARERMANAGEMENT
 }
 #endif
 
@@ -8296,10 +8312,15 @@ void tst_QNetworkReply::putWithServerClosingConnectionImmediately()
             server.m_expectedReplies = numUploads;
             server.listen(QHostAddress(QHostAddress::LocalHost), 0);
 
+            QString urlPrefix = QLatin1String("http");
+            if (withSsl)
+                urlPrefix += QLatin1Char('s');
+            urlPrefix += QLatin1String("://127.0.0.1:");
+            urlPrefix += QString::number(server.serverPort());
+            urlPrefix += QLatin1String("/file=");
             for (int i = 0; i < numUploads; i++) {
                 // create the request
-                QUrl url = QUrl(QString("http%1://127.0.0.1:%2/file=%3").arg(withSsl ? "s" : "").arg(server.serverPort()).arg(i));
-                QNetworkRequest request(url);
+                QNetworkRequest request(QUrl(urlPrefix + QString::number(i)));
                 QNetworkReply *reply = manager.put(request, sourceFile);
                 connect(reply, SIGNAL(sslErrors(QList<QSslError>)), reply, SLOT(ignoreSslErrors()));
                 connect(reply, SIGNAL(finished()), &server, SLOT(replyFinished()));

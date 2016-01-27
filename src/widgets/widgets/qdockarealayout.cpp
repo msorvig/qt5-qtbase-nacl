@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2015 Olivier Goffart <ogoffart@woboq.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1677,9 +1683,9 @@ void QDockAreaLayoutInfo::tab(int index, QLayoutItem *dockWidgetItem)
         QDockAreaLayoutInfo *new_info
             = new QDockAreaLayoutInfo(sep, dockPos, o, tabBarShape, mainWindow);
         item_list[index].subinfo = new_info;
-        new_info->item_list.append(item_list.at(index).widgetItem);
+        new_info->item_list.append(QDockAreaLayoutItem(item_list.at(index).widgetItem));
         item_list[index].widgetItem = 0;
-        new_info->item_list.append(dockWidgetItem);
+        new_info->item_list.append(QDockAreaLayoutItem(dockWidgetItem));
         new_info->tabbed = true;
         new_info->updateTabBar();
         new_info->setCurrentTab(dockWidgetItem->widget());
@@ -1699,9 +1705,9 @@ void QDockAreaLayoutInfo::split(int index, Qt::Orientation orientation,
         QDockAreaLayoutInfo *new_info
             = new QDockAreaLayoutInfo(sep, dockPos, orientation, tabBarShape, mainWindow);
         item_list[index].subinfo = new_info;
-        new_info->item_list.append(item_list.at(index).widgetItem);
+        new_info->item_list.append(QDockAreaLayoutItem(item_list.at(index).widgetItem));
         item_list[index].widgetItem = 0;
-        new_info->item_list.append(dockWidgetItem);
+        new_info->item_list.append(QDockAreaLayoutItem(dockWidgetItem));
     }
 }
 
@@ -1802,9 +1808,9 @@ void QDockAreaLayoutInfo::saveState(QDataStream &stream) const
             stream << (uchar) WidgetMarker;
             QWidget *w = item.widgetItem->widget();
             QString name = w->objectName();
-            if (name.isEmpty()) {
-                qWarning("QMainWindow::saveState(): 'objectName' not set for QDockWidget %p '%s;",
-                         w, qPrintable(w->windowTitle()));
+            if (Q_UNLIKELY(name.isEmpty())) {
+                qWarning("QMainWindow::saveState(): 'objectName' not set for QDockWidget %p '%ls;",
+                         w, qUtf16Printable(w->windowTitle()));
             }
             stream << name;
 
@@ -3082,8 +3088,8 @@ void QDockAreaLayout::addDockWidget(QInternal::DockPosition pos, QDockWidget *do
         int tbshape = 0;
 #endif
         QDockAreaLayoutInfo new_info(&sep, pos, orientation, tbshape, mainWindow);
-        new_info.item_list.append(new QDockAreaLayoutInfo(info));
-        new_info.item_list.append(dockWidgetItem);
+        new_info.item_list.append(QDockAreaLayoutItem(new QDockAreaLayoutInfo(info)));
+        new_info.item_list.append(QDockAreaLayoutItem(dockWidgetItem));
         info = new_info;
     }
 
@@ -3110,7 +3116,7 @@ void QDockAreaLayout::tabifyDockWidget(QDockWidget *first, QDockWidget *second)
 void QDockAreaLayout::resizeDocks(const QList<QDockWidget *> &docks,
                                   const QList<int> &sizes, Qt::Orientation o)
 {
-    if (docks.count() != sizes.count()) {
+    if (Q_UNLIKELY(docks.count() != sizes.count())) {
         qWarning("QMainWidget::resizeDocks: size of the lists are not the same");
         return;
     }
@@ -3118,12 +3124,12 @@ void QDockAreaLayout::resizeDocks(const QList<QDockWidget *> &docks,
     fallbackToSizeHints = false;
     for (int i = 0; i < count; ++i) {
         QList<int> path = indexOf(docks[i]);
-        if (path.isEmpty()) {
+        if (Q_UNLIKELY(path.isEmpty())) {
             qWarning("QMainWidget::resizeDocks: one QDockWidget is not part of the layout");
             continue;
         }
         int size = sizes[i];
-        if (size <= 0) {
+        if (Q_UNLIKELY(size <= 0)) {
             qWarning("QMainWidget::resizeDocks: all sizes need to be larger than 0");
             size = 1;
         }

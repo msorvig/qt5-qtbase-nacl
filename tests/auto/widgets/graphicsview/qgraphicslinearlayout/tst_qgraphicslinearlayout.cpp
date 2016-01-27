@@ -1,32 +1,27 @@
 
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -46,13 +41,8 @@
 class tst_QGraphicsLinearLayout : public QObject {
 Q_OBJECT
 
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
-
 private slots:
+    void initTestCase();
     void qgraphicslinearlayout_data();
     void qgraphicslinearlayout();
 
@@ -149,22 +139,6 @@ void tst_QGraphicsLinearLayout::initTestCase()
     // since the style will influence the results, we have to ensure
     // that the tests are run using the same style on all platforms
     QApplication::setStyle("windows");
-}
-
-// This will be called after the last test function is executed.
-// It is only called once.
-void tst_QGraphicsLinearLayout::cleanupTestCase()
-{
-}
-
-// This will be called before each test function is executed.
-void tst_QGraphicsLinearLayout::init()
-{
-}
-
-// This will be called after every test function.
-void tst_QGraphicsLinearLayout::cleanup()
-{
 }
 
 class RectWidget : public QGraphicsWidget
@@ -425,10 +399,11 @@ void tst_QGraphicsLinearLayout::dump_data()
     QTest::addColumn<int>("itemCount");
     QTest::addColumn<int>("layoutCount");
     for (int i = -1; i < 3; ++i) {
-        QTest::newRow(QString("%1, 0, 0").arg(i).toLatin1()) << 0 << 0;
-        QTest::newRow(QString("%1, 0, 5").arg(i).toLatin1()) << 5 << 5;
-        QTest::newRow(QString("%1, 5, 0").arg(i).toLatin1()) << 5 << 5;
-        QTest::newRow(QString("%1, 5, 5").arg(i).toLatin1()) << 5 << 5;
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow((iB + ", 0, 0").constData()) << 0 << 0;
+        QTest::newRow((iB + ", 0, 5").constData()) << 5 << 5;
+        QTest::newRow((iB + ", 5, 0").constData()) << 5 << 5;
+        QTest::newRow((iB + ", 5, 5").constData()) << 5 << 5;
     }
 }
 
@@ -511,11 +486,13 @@ void tst_QGraphicsLinearLayout::insertItem_data()
     QTest::addColumn<int>("insertItemAt");
     QTest::addColumn<bool>("isWidget");
     for (int i = -1; i < 4; ++i) {
+        const QByteArray iB = QByteArray::number(i);
         for (int j = 0; j < 2; ++j) {
-            QTest::newRow(QString("0, 0, %1 %2").arg(i).arg(j).toLatin1()) << 0 << 0 << i << (bool)j;
-            QTest::newRow(QString("1, 0, %1 %2").arg(i).arg(j).toLatin1()) << 1 << 0 << i << (bool)j;
-            QTest::newRow(QString("0, 1, %1 %2").arg(i).arg(j).toLatin1()) << 0 << 1 << i << (bool)j;
-            QTest::newRow(QString("2, 2, %1 %2").arg(i).arg(j).toLatin1()) << 2 << 2 << i << (bool)j;
+            const QByteArray postFix = iB + ' ' + QByteArray::number(j);
+            QTest::newRow(("0, 0, " + postFix).constData()) << 0 << 0 << i << (bool)j;
+            QTest::newRow(("1, 0, " + postFix).constData()) << 1 << 0 << i << (bool)j;
+            QTest::newRow(("0, 1, " + postFix).constData()) << 0 << 1 << i << (bool)j;
+            QTest::newRow(("2, 2, " + postFix).constData()) << 2 << 2 << i << (bool)j;
         }
     }
 }
@@ -565,11 +542,13 @@ void tst_QGraphicsLinearLayout::insertStretch_data()
     QTest::addColumn<int>("insertItemAt");
     QTest::addColumn<int>("stretch");
     for (int i = -1; i < 4; ++i) {
+        const QByteArray iB = QByteArray::number(i);
         for (int j = 0; j < 2; ++j) {
-            QTest::newRow(QString("0, 0, %1 %2").arg(i).arg(j).toLatin1()) << 0 << 0 << i << j;
-            QTest::newRow(QString("1, 0, %1 %2").arg(i).arg(j).toLatin1()) << 1 << 0 << i << j;
-            QTest::newRow(QString("0, 1, %1 %2").arg(i).arg(j).toLatin1()) << 0 << 1 << i << j;
-            QTest::newRow(QString("2, 2, %1 %2").arg(i).arg(j).toLatin1()) << 2 << 2 << i << j;
+            const QByteArray postFix = iB + ' ' + QByteArray::number(j);
+            QTest::newRow(("0, 0, " + postFix).constData()) << 0 << 0 << i << j;
+            QTest::newRow(("1, 0, " + postFix).constData()) << 1 << 0 << i << j;
+            QTest::newRow(("0, 1, " + postFix).constData()) << 0 << 1 << i << j;
+            QTest::newRow(("2, 2, " + postFix).constData()) << 2 << 2 << i << j;
         }
     }
 }
@@ -786,12 +765,13 @@ void tst_QGraphicsLinearLayout::removeAt_data()
     QTest::addColumn<int>("removeItemAt");
     QTest::addColumn<Qt::Orientation>("orientation");
     for (int i = -1; i < 4; ++i) {
+        const QByteArray iB = QByteArray::number(i);
         for (int k = 0; k < 2; ++k) {
             Qt::Orientation orientation = (k == 0) ? Qt::Vertical : Qt::Horizontal;
-            QTest::newRow(QString("0, 0, %1").arg(i).toLatin1()) << 0 << 0 << i << orientation;
-            QTest::newRow(QString("1, 0, %1").arg(i).toLatin1()) << 1 << 0 << i << orientation;
-            QTest::newRow(QString("0, 1, %1").arg(i).toLatin1()) << 0 << 1 << i << orientation;
-            QTest::newRow(QString("2, 2, %1").arg(i).toLatin1()) << 2 << 2 << i << orientation;
+            QTest::newRow(("0, 0, " + iB).constData()) << 0 << 0 << i << orientation;
+            QTest::newRow(("1, 0, " + iB).constData()) << 1 << 0 << i << orientation;
+            QTest::newRow(("0, 1, " + iB).constData()) << 0 << 1 << i << orientation;
+            QTest::newRow(("2, 2, " + iB).constData()) << 2 << 2 << i << orientation;
         }
     }
 }
@@ -840,10 +820,11 @@ void tst_QGraphicsLinearLayout::removeItem_data()
     QTest::addColumn<int>("layoutCount");
     QTest::addColumn<int>("removeItemAt");
     for (int i = -1; i < 4; ++i) {
-        QTest::newRow(QString("0, 0, %1").arg(i).toLatin1()) << 0 << 0 << i;
-        QTest::newRow(QString("1, 0, %1").arg(i).toLatin1()) << 1 << 0 << i;
-        QTest::newRow(QString("0, 1, %1").arg(i).toLatin1()) << 0 << 1 << i;
-        QTest::newRow(QString("2, 2, %1").arg(i).toLatin1()) << 2 << 2 << i;
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow(("0, 0, " + iB).constData()) << 0 << 0 << i;
+        QTest::newRow(("1, 0, " + iB).constData()) << 1 << 0 << i;
+        QTest::newRow(("0, 1, " + iB).constData()) << 0 << 1 << i;
+        QTest::newRow(("2, 2, " + iB).constData()) << 2 << 2 << i;
     }
 }
 

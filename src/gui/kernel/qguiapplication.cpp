@@ -1,31 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -37,6 +44,7 @@
 #include <qpa/qplatformintegrationfactory_p.h>
 #include "private/qevent_p.h"
 #include "qfont.h"
+#include "qtouchdevice.h"
 #include <qpa/qplatformfontdatabase.h>
 #include <qpa/qplatformwindow.h>
 #include <qpa/qplatformnativeinterface.h>
@@ -123,8 +131,6 @@ Qt::KeyboardModifiers QGuiApplicationPrivate::modifier_buttons = Qt::NoModifier;
 
 QPointF QGuiApplicationPrivate::lastCursorPosition(qInf(), qInf());
 
-Qt::MouseButtons QGuiApplicationPrivate::tabletState = Qt::NoButton;
-QWindow *QGuiApplicationPrivate::tabletPressTarget = 0;
 QWindow *QGuiApplicationPrivate::currentMouseWindow = 0;
 
 QString QGuiApplicationPrivate::styleOverride;
@@ -132,6 +138,8 @@ QString QGuiApplicationPrivate::styleOverride;
 Qt::ApplicationState QGuiApplicationPrivate::applicationState = Qt::ApplicationInactive;
 
 bool QGuiApplicationPrivate::highDpiScalingUpdated = false;
+
+QVector<QGuiApplicationPrivate::TabletPointData> QGuiApplicationPrivate::tabletDevicePoints;
 
 QPlatformIntegration *QGuiApplicationPrivate::platform_integration = 0;
 QPlatformTheme *QGuiApplicationPrivate::platform_theme = 0;
@@ -150,6 +158,7 @@ QIcon *QGuiApplicationPrivate::app_icon = 0;
 
 QString *QGuiApplicationPrivate::platform_name = 0;
 QString *QGuiApplicationPrivate::displayName = 0;
+QString *QGuiApplicationPrivate::desktopFileName = 0;
 
 QPalette *QGuiApplicationPrivate::app_pal = 0;        // default application palette
 
@@ -609,6 +618,8 @@ QGuiApplication::~QGuiApplication()
     QGuiApplicationPrivate::displayName = 0;
     delete QGuiApplicationPrivate::m_inputDeviceManager;
     QGuiApplicationPrivate::m_inputDeviceManager = 0;
+    delete QGuiApplicationPrivate::desktopFileName;
+    QGuiApplicationPrivate::desktopFileName = 0;
 }
 
 QGuiApplicationPrivate::QGuiApplicationPrivate(int &argc, char **argv, int flags)
@@ -647,6 +658,34 @@ void QGuiApplication::setApplicationDisplayName(const QString &name)
 QString QGuiApplication::applicationDisplayName()
 {
     return QGuiApplicationPrivate::displayName ? *QGuiApplicationPrivate::displayName : applicationName();
+}
+
+/*!
+    \property QGuiApplication::desktopFileName
+    \brief the base name of the desktop entry for this application
+    \since 5.7
+
+    This is the file name, without the full path, of the desktop entry
+    that represents this application according to the freedesktop desktop
+    entry specification.
+
+    This property gives a precise indication of what desktop entry represents
+    the application and it is needed by the windowing system to retrieve
+    such information without resorting to imprecise heuristics.
+
+    The latest version of the freedesktop desktop entry specification can be obtained
+    \l{http://standards.freedesktop.org/desktop-entry-spec/latest/}{here}.
+*/
+void QGuiApplication::setDesktopFileName(const QString &name)
+{
+    if (!QGuiApplicationPrivate::desktopFileName)
+        QGuiApplicationPrivate::desktopFileName = new QString;
+    *QGuiApplicationPrivate::desktopFileName = name;
+}
+
+QString QGuiApplication::desktopFileName()
+{
+    return QGuiApplicationPrivate::desktopFileName ? *QGuiApplicationPrivate::desktopFileName : QString();
 }
 
 /*!
@@ -1058,10 +1097,7 @@ static void init_platform(const QString &pluginArgument, const QString &platform
     QGuiApplicationPrivate::platform_integration = qt_create_pepper_integration();
 #else
     QGuiApplicationPrivate::platform_integration = QPlatformIntegrationFactory::create(name, arguments, argc, argv, platformPluginPath);
-#endif
-    if (QGuiApplicationPrivate::platform_integration) {
-        QGuiApplicationPrivate::platform_name = new QString(name);
-    } else {
+    if (Q_UNLIKELY(!QGuiApplicationPrivate::platform_integration)) {
         QStringList keys = QPlatformIntegrationFactory::keys(platformPluginPath);
 
         QString fatalMessage
@@ -1080,6 +1116,8 @@ static void init_platform(const QString &pluginArgument, const QString &platform
         qFatal("%s", qPrintable(fatalMessage));
         return;
     }
+
+    QGuiApplicationPrivate::platform_name = new QString(name);
 
     // Many platforms have created QScreens at this point. Finish initializing
     // QHighDpiScaling to be prepared for early calls to qt_defaultDpi().
@@ -1404,16 +1442,16 @@ void QGuiApplicationPrivate::init()
 
     if (loadTestability) {
         QLibrary testLib(QStringLiteral("qttestability"));
-        if (testLib.load()) {
+        if (Q_UNLIKELY(!testLib.load())) {
+            qCritical() << "Library qttestability load failed:" << testLib.errorString();
+        } else {
             typedef void (*TasInitialize)(void);
             TasInitialize initFunction = (TasInitialize)testLib.resolve("qt_testability_init");
-            if (initFunction) {
-                initFunction();
-            } else {
+            if (Q_UNLIKELY(!initFunction)) {
                 qCritical() << "Library qttestability resolve failed!";
+            } else {
+                initFunction();
             }
-        } else {
-            qCritical() << "Library qttestability load failed:" << testLib.errorString();
         }
     }
 #else
@@ -2193,12 +2231,26 @@ void QGuiApplicationPrivate::processFileOpenEvent(QWindowSystemInterfacePrivate:
     QGuiApplication::sendSpontaneousEvent(qApp, &event);
 }
 
+QGuiApplicationPrivate::TabletPointData &QGuiApplicationPrivate::tabletDevicePoint(qint64 deviceId)
+{
+    for (int i = 0; i < tabletDevicePoints.size(); ++i) {
+        TabletPointData &pointData = tabletDevicePoints[i];
+        if (pointData.deviceId == deviceId)
+            return pointData;
+    }
+
+    tabletDevicePoints.append(TabletPointData(deviceId));
+    return tabletDevicePoints.last();
+}
+
 void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::TabletEvent *e)
 {
 #ifndef QT_NO_TABLETEVENT
+    TabletPointData &pointData = tabletDevicePoint(e->uid);
+
     QEvent::Type type = QEvent::TabletMove;
-    if (e->buttons != tabletState)
-        type = (e->buttons > tabletState) ? QEvent::TabletPress : QEvent::TabletRelease;
+    if (e->buttons != pointData.state)
+        type = (e->buttons > pointData.state) ? QEvent::TabletPress : QEvent::TabletRelease;
 
     QWindow *window = e->window.data();
     modifier_buttons = e->modifiers;
@@ -2214,14 +2266,14 @@ void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::T
         }
         if (!window)
             return;
-        tabletPressTarget = window;
+        pointData.target = window;
     } else {
         if (e->nullWindow()) {
-            window = tabletPressTarget;
+            window = pointData.target;
             localValid = false;
         }
         if (type == QEvent::TabletRelease)
-            tabletPressTarget = 0;
+            pointData.target = Q_NULLPTR;
         if (!window)
             return;
     }
@@ -2230,7 +2282,7 @@ void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::T
         QPointF delta = e->global - e->global.toPoint();
         local = window->mapFromGlobal(e->global.toPoint()) + delta;
     }
-    Qt::MouseButtons stateChange = e->buttons ^ tabletState;
+    Qt::MouseButtons stateChange = e->buttons ^ pointData.state;
     Qt::MouseButton button = Qt::NoButton;
     for (int check = Qt::LeftButton; check <= int(Qt::MaxMouseButton); check = check << 1) {
         if (check & stateChange) {
@@ -2244,7 +2296,7 @@ void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::T
                     e->modifiers, e->uid, button, e->buttons);
     ev.setTimestamp(e->timestamp);
     QGuiApplication::sendSpontaneousEvent(window, &ev);
-    tabletState = e->buttons;
+    pointData.state = e->buttons;
 #else
     Q_UNUSED(e)
 #endif
@@ -2256,7 +2308,7 @@ void QGuiApplicationPrivate::processTabletEnterProximityEvent(QWindowSystemInter
     QTabletEvent ev(QEvent::TabletEnterProximity, QPointF(), QPointF(),
                     e->device, e->pointerType, 0, 0, 0,
                     0, 0, 0,
-                    Qt::NoModifier, e->uid, Qt::NoButton, tabletState);
+                    Qt::NoModifier, e->uid, Qt::NoButton, tabletDevicePoint(e->uid).state);
     ev.setTimestamp(e->timestamp);
     QGuiApplication::sendSpontaneousEvent(qGuiApp, &ev);
 #else
@@ -2270,7 +2322,7 @@ void QGuiApplicationPrivate::processTabletLeaveProximityEvent(QWindowSystemInter
     QTabletEvent ev(QEvent::TabletLeaveProximity, QPointF(), QPointF(),
                     e->device, e->pointerType, 0, 0, 0,
                     0, 0, 0,
-                    Qt::NoModifier, e->uid, Qt::NoButton, tabletState);
+                    Qt::NoModifier, e->uid, Qt::NoButton, tabletDevicePoint(e->uid).state);
     ev.setTimestamp(e->timestamp);
     QGuiApplication::sendSpontaneousEvent(qGuiApp, &ev);
 #else
@@ -3555,7 +3607,7 @@ void QGuiApplicationPrivate::_q_updateFocusObject(QObject *object)
     emit q->focusObjectChanged(object);
 }
 
-enum {
+enum MouseMasks {
     MouseCapsMask = 0xFF,
     MouseSourceMaskDst = 0xFF00,
     MouseSourceMaskSrc = MouseCapsMask,

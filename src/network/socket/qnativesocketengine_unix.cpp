@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -107,15 +113,8 @@ static inline void qt_socket_getPortAndAddress(const qt_sockaddr *s, quint16 *po
             QHostAddress tmpAddress;
             tmpAddress.setAddress(tmp);
             *addr = tmpAddress;
-            if (s->a6.sin6_scope_id) {
-#ifndef QT_NO_IPV6IFNAME
-                char scopeid[IFNAMSIZ];
-                if (::if_indextoname(s->a6.sin6_scope_id, scopeid)) {
-                    addr->setScopeId(QLatin1String(scopeid));
-                } else
-#endif
-                    addr->setScopeId(QString::number(s->a6.sin6_scope_id));
-            }
+            if (s->a6.sin6_scope_id)
+                addr->setScopeId(QNetworkInterface::interfaceNameFromIndex(s->a6.sin6_scope_id));
         }
         if (port)
             *port = ntohs(s->a6.sin6_port);
@@ -129,21 +128,6 @@ static inline void qt_socket_getPortAndAddress(const qt_sockaddr *s, quint16 *po
         tmpAddress.setAddress(ntohl(s->a4.sin_addr.s_addr));
         *addr = tmpAddress;
     }
-}
-
-// inline on purpose
-inline uint QNativeSocketEnginePrivate::scopeIdFromString(const QString &scopeid)
-{
-    if (scopeid.isEmpty())
-        return 0;
-
-    bool ok;
-    uint id = scopeid.toUInt(&ok);
-#ifndef QT_NO_IPV6IFNAME
-    if (!ok)
-        id = ::if_nametoindex(scopeid.toLatin1());
-#endif
-    return id;
 }
 
 static void convertToLevelAndOption(QNativeSocketEngine::SocketOption opt,
@@ -1207,53 +1191,6 @@ qint64 QNativeSocketEnginePrivate::nativeRead(char *data, qint64 maxSize)
     return qint64(r);
 }
 
-#ifdef Q_OS_BLACKBERRY
-int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool selectForRead) const
-{
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(socketDescriptor, &fds);
-
-    int retval;
-    QList<QSocketNotifier *> notifiers;
-    if (selectForRead) {
-        notifiers << readNotifier;
-        retval = bb_select(notifiers, socketDescriptor + 1, &fds, 0, timeout);
-    } else {
-        notifiers << writeNotifier;
-        retval = bb_select(notifiers, socketDescriptor + 1, 0, &fds, timeout);
-    }
-
-    return retval;
-}
-
-int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool checkRead, bool checkWrite,
-                       bool *selectForRead, bool *selectForWrite) const
-{
-    fd_set fdread;
-    FD_ZERO(&fdread);
-    if (checkRead)
-        FD_SET(socketDescriptor, &fdread);
-
-    fd_set fdwrite;
-    FD_ZERO(&fdwrite);
-    if (checkWrite)
-        FD_SET(socketDescriptor, &fdwrite);
-
-    QList<QSocketNotifier *> notifiers;
-    notifiers << readNotifier << writeNotifier;
-    int ret = bb_select(notifiers, socketDescriptor + 1, &fdread, &fdwrite, timeout);
-
-    if (ret <= 0)
-        return ret;
-    *selectForRead = FD_ISSET(socketDescriptor, &fdread);
-    *selectForWrite = FD_ISSET(socketDescriptor, &fdwrite);
-
-    return ret;
-}
-
-#else // not Q_OS_BLACKBERRY:
-
 int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool selectForRead) const
 {
     fd_set fds;
@@ -1300,6 +1237,5 @@ int QNativeSocketEnginePrivate::nativeSelect(int timeout, bool checkRead, bool c
 
     return ret;
 }
-#endif // Q_OS_BLACKBERRY
 
 QT_END_NAMESPACE

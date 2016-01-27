@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -275,9 +270,6 @@ public slots:
     void dummySlot() {}
 
 private:
-#if defined Q_OS_BLACKBERRY
-    QScopedPointer<QWidget> rootWindow;
-#endif
     QString platformName;
 };
 
@@ -285,13 +277,6 @@ void tst_QGraphicsView::initTestCase()
 {
 #ifdef Q_OS_WINCE_WM
     qApp->setAutoMaximizeThreshold(-1);
-#endif
-
-#if defined Q_OS_BLACKBERRY
-    // On BlackBerry first window is always shown full screen. However, many tests rely on specific
-    // window sizes. Create a dummy full screen window, so subsequent windows have correct size.
-    rootWindow.reset(new QWidget);
-    rootWindow->show();
 #endif
 }
 
@@ -468,10 +453,12 @@ void tst_QGraphicsView::interactive()
         QCOMPARE(item->events.size(), i * 5 + 5);
         QCOMPARE(item->events.at(item->events.size() - 2), QEvent::GraphicsSceneMouseRelease);
         QCOMPARE(item->events.at(item->events.size() - 1), QEvent::UngrabMouse);
+#ifndef QT_NO_CONTEXTMENU
         QContextMenuEvent contextEvent(QContextMenuEvent::Mouse, itemPoint, view.mapToGlobal(itemPoint));
         QApplication::sendEvent(view.viewport(), &contextEvent);
         QCOMPARE(item->events.size(), i * 5 + 6);
         QCOMPARE(item->events.last(), QEvent::GraphicsSceneContextMenu);
+#endif // QT_NO_CONTEXTMENU
     }
 
     view.setInteractive(false);
@@ -483,10 +470,12 @@ void tst_QGraphicsView::interactive()
         sendMouseRelease(view.viewport(), itemPoint);
         QCOMPARE(item->events.size(), 501);
         QCOMPARE(item->events.last(), QEvent::GraphicsSceneContextMenu);
+#ifndef QT_NO_CONTEXTMENU
         QContextMenuEvent contextEvent(QContextMenuEvent::Mouse, itemPoint, view.mapToGlobal(itemPoint));
         QApplication::sendEvent(view.viewport(), &contextEvent);
         QCOMPARE(item->events.size(), 501);
         QCOMPARE(item->events.last(), QEvent::GraphicsSceneContextMenu);
+#endif // QT_NO_CONTEXTMENU
     }
 }
 
@@ -583,7 +572,7 @@ void tst_QGraphicsView::sceneRect_growing()
 
     QGraphicsScene scene;
     for (int i = 0; i < 100; ++i)
-        scene.addText(QString("(0, %1)").arg((i - 50) * 20))->setPos(0, (i - 50) * 20);
+        scene.addText(QLatin1String("(0, ") + QString::number((i - 50) * 20))->setPos(0, (i - 50) * 20);
 
     QGraphicsView view(&scene, &toplevel);
     view.setFixedSize(200, 200);
@@ -1391,8 +1380,8 @@ void tst_QGraphicsView::fitInView()
     items[2]->setPos(-100, 100);
     items[3]->setPos(100, 100);
 
-    items[0]->rotate(30);
-    items[1]->rotate(-30);
+    items[0]->setTransform(QTransform().rotate(30), true);
+    items[1]->setTransform(QTransform().rotate(-30), true);
 
 #if defined(Q_OS_WINCE)
     //Is the standard scrollbar size
@@ -2888,9 +2877,6 @@ void tst_QGraphicsView::scrollBarRanges()
     QFETCH(ExpectedValueDescription, vmax);
     QFETCH(bool, useStyledPanel);
 
-    if (style == QLatin1String("GTK+") && useStyledPanel)
-        QSKIP("GTK + style test skipped, see QTBUG-29002");
-
     if (useStyledPanel && style == QStringLiteral("Macintosh") && platformName == QStringLiteral("cocoa"))
         QSKIP("Insignificant on OSX");
     QGraphicsScene scene;
@@ -3506,7 +3492,7 @@ void tst_QGraphicsView::embeddedViews()
     SpyItem *item = new SpyItem;
     v2->scene()->addItem(item);
 
-    proxy->translate(5, 5);
+    proxy->setTransform(QTransform::fromTranslate(5, 5), true);
 
     QImage actual(64, 64, QImage::Format_ARGB32_Premultiplied);
     actual.fill(0);

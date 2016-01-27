@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -849,7 +845,7 @@ void tst_QFile::readAll()
 
     QByteArray a = file.readAll();
     file.reset();
-    QVERIFY(file.pos() == 0);
+    QCOMPARE(file.pos(), 0);
 
     QVERIFY(file.bytesAvailable() > 7);
     QByteArray b = file.read(1);
@@ -1195,7 +1191,7 @@ void tst_QFile::append()
     f.close();
 
     QVERIFY2(f.open(QIODevice::Append), msgOpenFailed(f).constData());
-    QVERIFY(f.pos() == 1);
+    QCOMPARE(f.pos(), 1);
     f.putChar('a');
     f.close();
     QCOMPARE(int(f.size()), 2);
@@ -2047,7 +2043,7 @@ void tst_QFile::longFileName()
         QString line = ts.readLine();
         QCOMPARE(line, fileName);
     }
-    QString newName = fileName + QLatin1String("1");
+    QString newName = fileName + QLatin1Char('1');
     {
         QVERIFY(QFile::copy(fileName, newName));
         QFile file(newName);
@@ -2224,7 +2220,7 @@ void tst_QFile::removeOpenFile()
         QVERIFY(removed);
         QVERIFY(!f.isOpen());
         QVERIFY(!f.exists());
-        QVERIFY(f.error() == QFile::NoError);
+        QCOMPARE(f.error(), QFile::NoError);
     }
 
     {
@@ -2251,7 +2247,7 @@ void tst_QFile::removeOpenFile()
         QVERIFY(removed);
         QVERIFY(!f.isOpen());
         QVERIFY(!f.exists());
-        QVERIFY(f.error() == QFile::NoError);
+        QCOMPARE(f.error(), QFile::NoError);
     }
 }
 
@@ -2819,13 +2815,13 @@ void tst_QFile::readEof()
         char buf[10];
         int ret = file.read(buf, sizeof buf);
         QCOMPARE(ret, 0);
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
 
         // Do it again to ensure that we get the same result
         ret = file.read(buf, sizeof buf);
         QCOMPARE(ret, 0);
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
     }
 
@@ -2840,13 +2836,13 @@ void tst_QFile::readEof()
 
         QByteArray ret = file.read(10);
         QVERIFY(ret.isEmpty());
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
 
         // Do it again to ensure that we get the same result
         ret = file.read(10);
         QVERIFY(ret.isEmpty());
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
     }
 
@@ -2862,13 +2858,13 @@ void tst_QFile::readEof()
         char buf[10];
         int ret = file.readLine(buf, sizeof buf);
         QCOMPARE(ret, -1);
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
 
         // Do it again to ensure that we get the same result
         ret = file.readLine(buf, sizeof buf);
         QCOMPARE(ret, -1);
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
     }
 
@@ -2883,13 +2879,13 @@ void tst_QFile::readEof()
 
         QByteArray ret = file.readLine();
         QVERIFY(ret.isNull());
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
 
         // Do it again to ensure that we get the same result
         ret = file.readLine();
         QVERIFY(ret.isNull());
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
     }
 
@@ -2904,12 +2900,12 @@ void tst_QFile::readEof()
 
         char c;
         QVERIFY(!file.getChar(&c));
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
 
         // Do it again to ensure that we get the same result
         QVERIFY(!file.getChar(&c));
-        QVERIFY(file.error() == QFile::NoError);
+        QCOMPARE(file.error(), QFile::NoError);
         QVERIFY(file.atEnd());
     }
 }
@@ -2997,7 +2993,7 @@ void tst_QFile::map()
     memory = file.map(offset, size);
     QCOMPARE(file.error(), QFile::NoError);
     QVERIFY(memory);
-    QVERIFY(memory[0] == 'Q');
+    QCOMPARE(memory[0], uchar('Q'));
     QVERIFY(file.unmap(memory));
     QCOMPARE(file.error(), QFile::NoError);
 

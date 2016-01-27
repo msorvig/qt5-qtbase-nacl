@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -39,6 +45,12 @@
 #include "qtextcodec.h"
 
 QT_BEGIN_NAMESPACE
+
+static inline QString textUriListLiteral() { return QStringLiteral("text/uri-list"); }
+static inline QString textHtmlLiteral() { return QStringLiteral("text/html"); }
+static inline QString textPlainLiteral() { return QStringLiteral("text/plain"); }
+static inline QString applicationXColorLiteral() { return QStringLiteral("application/x-color"); }
+static inline QString applicationXQtImageLiteral() { return QStringLiteral("application/x-qt-image"); }
 
 struct QMimeDataStruct
 {
@@ -101,7 +113,7 @@ QVariant QMimeDataPrivate::retrieveTypedData(const QString &format, QVariant::Ty
 
     // Text data requested: fallback to URL data if available
     if (format == QLatin1String("text/plain") && !data.isValid()) {
-        data = retrieveTypedData(QLatin1String("text/uri-list"), QVariant::List);
+        data = retrieveTypedData(textUriListLiteral(), QVariant::List);
         if (data.type() == QVariant::Url) {
             data = QVariant(data.toUrl().toDisplayString());
         } else if (data.type() == QVariant::List) {
@@ -325,7 +337,7 @@ QMimeData::~QMimeData()
 QList<QUrl> QMimeData::urls() const
 {
     Q_D(const QMimeData);
-    QVariant data = d->retrieveTypedData(QLatin1String("text/uri-list"), QVariant::List);
+    QVariant data = d->retrieveTypedData(textUriListLiteral(), QVariant::List);
     QList<QUrl> urls;
     if (data.type() == QVariant::Url)
         urls.append(data.toUrl());
@@ -359,7 +371,7 @@ void QMimeData::setUrls(const QList<QUrl> &urls)
     for (int i = 0; i < numUrls; ++i)
         list.append(urls.at(i));
 
-    d->setData(QLatin1String("text/uri-list"), list);
+    d->setData(textUriListLiteral(), list);
 }
 
 /*!
@@ -372,7 +384,7 @@ void QMimeData::setUrls(const QList<QUrl> &urls)
 */
 bool QMimeData::hasUrls() const
 {
-    return hasFormat(QLatin1String("text/uri-list"));
+    return hasFormat(textUriListLiteral());
 }
 
 
@@ -385,7 +397,7 @@ bool QMimeData::hasUrls() const
 QString QMimeData::text() const
 {
     Q_D(const QMimeData);
-    QVariant data = d->retrieveTypedData(QLatin1String("text/plain"), QVariant::String);
+    QVariant data = d->retrieveTypedData(textPlainLiteral(), QVariant::String);
     return data.toString();
 }
 
@@ -398,7 +410,7 @@ QString QMimeData::text() const
 void QMimeData::setText(const QString &text)
 {
     Q_D(QMimeData);
-    d->setData(QLatin1String("text/plain"), text);
+    d->setData(textPlainLiteral(), text);
 }
 
 /*!
@@ -409,7 +421,7 @@ void QMimeData::setText(const QString &text)
 */
 bool QMimeData::hasText() const
 {
-    return hasFormat(QLatin1String("text/plain")) || hasUrls();
+    return hasFormat(textPlainLiteral()) || hasUrls();
 }
 
 /*!
@@ -421,7 +433,7 @@ bool QMimeData::hasText() const
 QString QMimeData::html() const
 {
     Q_D(const QMimeData);
-    QVariant data = d->retrieveTypedData(QLatin1String("text/html"), QVariant::String);
+    QVariant data = d->retrieveTypedData(textHtmlLiteral(), QVariant::String);
     return data.toString();
 }
 
@@ -434,7 +446,7 @@ QString QMimeData::html() const
 void QMimeData::setHtml(const QString &html)
 {
     Q_D(QMimeData);
-    d->setData(QLatin1String("text/html"), html);
+    d->setData(textHtmlLiteral(), html);
 }
 
 /*!
@@ -445,7 +457,7 @@ void QMimeData::setHtml(const QString &html)
 */
 bool QMimeData::hasHtml() const
 {
-    return hasFormat(QLatin1String("text/html"));
+    return hasFormat(textHtmlLiteral());
 }
 
 /*!
@@ -463,7 +475,7 @@ bool QMimeData::hasHtml() const
 QVariant QMimeData::imageData() const
 {
     Q_D(const QMimeData);
-    return d->retrieveTypedData(QLatin1String("application/x-qt-image"), QVariant::Image);
+    return d->retrieveTypedData(applicationXQtImageLiteral(), QVariant::Image);
 }
 
 /*!
@@ -480,7 +492,7 @@ QVariant QMimeData::imageData() const
 void QMimeData::setImageData(const QVariant &image)
 {
     Q_D(QMimeData);
-    d->setData(QLatin1String("application/x-qt-image"), image);
+    d->setData(applicationXQtImageLiteral(), image);
 }
 
 /*!
@@ -491,7 +503,7 @@ void QMimeData::setImageData(const QVariant &image)
 */
 bool QMimeData::hasImage() const
 {
-    return hasFormat(QLatin1String("application/x-qt-image"));
+    return hasFormat(applicationXQtImageLiteral());
 }
 
 /*!
@@ -510,7 +522,7 @@ bool QMimeData::hasImage() const
 QVariant QMimeData::colorData() const
 {
     Q_D(const QMimeData);
-    return d->retrieveTypedData(QLatin1String("application/x-color"), QVariant::Color);
+    return d->retrieveTypedData(applicationXColorLiteral(), QVariant::Color);
 }
 
 /*!
@@ -523,7 +535,7 @@ QVariant QMimeData::colorData() const
 void QMimeData::setColorData(const QVariant &color)
 {
     Q_D(QMimeData);
-    d->setData(QLatin1String("application/x-color"), color);
+    d->setData(applicationXColorLiteral(), color);
 }
 
 
@@ -535,7 +547,7 @@ void QMimeData::setColorData(const QVariant &color)
 */
 bool QMimeData::hasColor() const
 {
-    return hasFormat(QLatin1String("application/x-color"));
+    return hasFormat(applicationXColorLiteral());
 }
 
 /*!
@@ -616,7 +628,9 @@ QStringList QMimeData::formats() const
 {
     Q_D(const QMimeData);
     QStringList list;
-    for (int i=0; i<d->dataList.size(); i++)
+    const int size = d->dataList.size();
+    list.reserve(size);
+    for (int i = 0; i < size; ++i)
         list += d->dataList.at(i).format;
     return list;
 }

@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -55,6 +61,12 @@
 #endif
 #ifndef ABS_CNT
 #define ABS_CNT                 (ABS_MAX+1)
+#endif
+#ifndef ABS_MT_POSITION_X
+#define ABS_MT_POSITION_X       0x35
+#endif
+#ifndef ABS_MT_POSITION_Y
+#define ABS_MT_POSITION_Y       0x36
 #endif
 
 #define LONG_BITS (sizeof(long) * 8 )
@@ -113,67 +125,73 @@ QStringList QDeviceDiscoveryStatic::scanConnectedDevices()
 
 bool QDeviceDiscoveryStatic::checkDeviceType(const QString &device)
 {
-    bool ret = false;
     int fd = QT_OPEN(device.toLocal8Bit().constData(), O_RDONLY | O_NDELAY, 0);
-    if (!fd) {
+    if (Q_UNLIKELY(fd == -1)) {
         qWarning() << "Device discovery cannot open device" << device;
         return false;
     }
 
+    qCDebug(lcDD) << "doing static device discovery for " << device;
+
+    if ((m_types & Device_DRM) && device.contains(QString::fromLatin1(QT_DRM_DEVICE_PREFIX))) {
+        QT_CLOSE(fd);
+        return true;
+    }
+
+    long bitsAbs[LONG_FIELD_SIZE(ABS_CNT)];
     long bitsKey[LONG_FIELD_SIZE(KEY_CNT)];
-    if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(bitsKey)), bitsKey) >= 0 ) {
-        if (!ret && (m_types & Device_Keyboard)) {
-            if (testBit(KEY_Q, bitsKey)) {
-                qCDebug(lcDD) << "Found keyboard at" << device;
-                ret = true;
-            }
-        }
+    long bitsRel[LONG_FIELD_SIZE(REL_CNT)];
+    memset(bitsAbs, 0, sizeof(bitsAbs));
+    memset(bitsKey, 0, sizeof(bitsKey));
+    memset(bitsRel, 0, sizeof(bitsRel));
 
-        if (!ret && (m_types & Device_Mouse)) {
-            long bitsRel[LONG_FIELD_SIZE(REL_CNT)];
-            if (ioctl(fd, EVIOCGBIT(EV_REL, sizeof(bitsRel)), bitsRel) >= 0 ) {
-                if (testBit(REL_X, bitsRel) && testBit(REL_Y, bitsRel) && testBit(BTN_MOUSE, bitsKey)) {
-                    qCDebug(lcDD) << "Found mouse at" << device;
-                    ret = true;
-                }
-            }
-        }
+    ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(bitsAbs)), bitsAbs);
+    ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(bitsKey)), bitsKey);
+    ioctl(fd, EVIOCGBIT(EV_REL, sizeof(bitsRel)), bitsRel);
 
-        if (!ret && (m_types & (Device_Touchpad | Device_Touchscreen))) {
-            long bitsAbs[LONG_FIELD_SIZE(ABS_CNT)];
-            if (ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(bitsAbs)), bitsAbs) >= 0 ) {
-                if (testBit(ABS_X, bitsAbs) && testBit(ABS_Y, bitsAbs)) {
-                    if ((m_types & Device_Touchpad) && testBit(BTN_TOOL_FINGER, bitsKey)) {
-                        qCDebug(lcDD) << "Found touchpad at" << device;
-                        ret = true;
-                    } else if ((m_types & Device_Touchscreen) && testBit(BTN_TOUCH, bitsKey)) {
-                        qCDebug(lcDD) << "Found touchscreen at" << device;
-                        ret = true;
-                    } else if ((m_types & Device_Tablet) && (testBit(BTN_STYLUS, bitsKey) || testBit(BTN_TOOL_PEN, bitsKey))) {
-                        qCDebug(lcDD) << "Found tablet at" << device;
-                        ret = true;
-                    }
-                }
-            }
-        }
+    QT_CLOSE(fd);
 
-        if (!ret && (m_types & Device_Joystick)) {
-            long bitsAbs[LONG_FIELD_SIZE(ABS_CNT)];
-            if (ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(bitsAbs)), bitsAbs) >= 0 ) {
-                if ((m_types & Device_Joystick)
-                    && (testBit(BTN_A, bitsKey) || testBit(BTN_TRIGGER, bitsKey) || testBit(ABS_RX, bitsAbs))) {
-                    qCDebug(lcDD) << "Found joystick/gamepad at" << device;
-                    ret = true;
-                }
-            }
+    if ((m_types & Device_Keyboard)) {
+        if (testBit(KEY_Q, bitsKey)) {
+            qCDebug(lcDD) << "Found keyboard at" << device;
+            return true;
         }
     }
 
-    if (!ret && (m_types & Device_DRM) && device.contains(QString::fromLatin1(QT_DRM_DEVICE_PREFIX)))
-        ret = true;
+    if ((m_types & Device_Mouse)) {
+        if (testBit(REL_X, bitsRel) && testBit(REL_Y, bitsRel) && testBit(BTN_MOUSE, bitsKey)) {
+            qCDebug(lcDD) << "Found mouse at" << device;
+            return true;
+        }
+    }
 
-    QT_CLOSE(fd);
-    return ret;
+    if ((m_types & (Device_Touchpad | Device_Touchscreen))) {
+        if (testBit(ABS_X, bitsAbs) && testBit(ABS_Y, bitsAbs)) {
+            if ((m_types & Device_Touchpad) && testBit(BTN_TOOL_FINGER, bitsKey)) {
+                qCDebug(lcDD) << "Found touchpad at" << device;
+                return true;
+            } else if ((m_types & Device_Touchscreen) && testBit(BTN_TOUCH, bitsKey)) {
+                qCDebug(lcDD) << "Found touchscreen at" << device;
+                return true;
+            } else if ((m_types & Device_Tablet) && (testBit(BTN_STYLUS, bitsKey) || testBit(BTN_TOOL_PEN, bitsKey))) {
+                qCDebug(lcDD) << "Found tablet at" << device;
+                return true;
+            }
+        } else if (testBit(ABS_MT_POSITION_X, bitsAbs) &&
+                   testBit(ABS_MT_POSITION_Y, bitsAbs)) {
+            qCDebug(lcDD) << "Found new-style touchscreen at" << device;
+            return true;
+        }
+    }
+
+    if ((m_types & Device_Joystick)) {
+        if (testBit(BTN_A, bitsKey) || testBit(BTN_TRIGGER, bitsKey) || testBit(ABS_RX, bitsAbs)) {
+            qCDebug(lcDD) << "Found joystick/gamepad at" << device;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 QT_END_NAMESPACE

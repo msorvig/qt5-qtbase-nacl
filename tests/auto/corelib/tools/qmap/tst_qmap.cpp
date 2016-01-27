@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -413,24 +408,24 @@ void tst_QMap::key()
         QCOMPARE(map1.key(1, def), def);
 
         map1.insert("one", 1);
-        QCOMPARE(map1.key(1), QString("one"));
-        QCOMPARE(map1.key(1, def), QString("one"));
+        QCOMPARE(map1.key(1), QLatin1String("one"));
+        QCOMPARE(map1.key(1, def), QLatin1String("one"));
         QCOMPARE(map1.key(2), QString());
         QCOMPARE(map1.key(2, def), def);
 
         map1.insert("two", 2);
-        QCOMPARE(map1.key(1), QString("one"));
-        QCOMPARE(map1.key(1, def), QString("one"));
-        QCOMPARE(map1.key(2), QString("two"));
-        QCOMPARE(map1.key(2, def), QString("two"));
+        QCOMPARE(map1.key(1), QLatin1String("one"));
+        QCOMPARE(map1.key(1, def), QLatin1String("one"));
+        QCOMPARE(map1.key(2), QLatin1String("two"));
+        QCOMPARE(map1.key(2, def), QLatin1String("two"));
         QCOMPARE(map1.key(3), QString());
         QCOMPARE(map1.key(3, def), def);
 
         map1.insert("deux", 2);
-        QCOMPARE(map1.key(1), QString("one"));
-        QCOMPARE(map1.key(1, def), QString("one"));
-        QVERIFY(map1.key(2) == "deux" || map1.key(2) == "two");
-        QVERIFY(map1.key(2, def) == "deux" || map1.key(2, def) == "two");
+        QCOMPARE(map1.key(1), QLatin1String("one"));
+        QCOMPARE(map1.key(1, def), QLatin1String("one"));
+        QVERIFY(map1.key(2) == QLatin1String("deux") || map1.key(2) == QLatin1String("two"));
+        QVERIFY(map1.key(2, def) == QLatin1String("deux") || map1.key(2, def) == QLatin1String("two"));
         QCOMPARE(map1.key(3), QString());
         QCOMPARE(map1.key(3, def), def);
     }
@@ -608,8 +603,8 @@ void tst_QMap::find()
     map1.insert(1,"Mayer");
     map1.insert(2,"Hej");
 
-    QVERIFY(map1.find(1).value() == "Mayer");
-    QVERIFY(map1.find(2).value() == "Hej");
+    QCOMPARE(map1.find(1).value(), QLatin1String("Mayer"));
+    QCOMPARE(map1.find(2).value(), QLatin1String("Hej"));
 
     for(i = 3; i < 10; ++i) {
         compareString = testString.arg(i);
@@ -643,8 +638,8 @@ void tst_QMap::constFind()
 
     QVERIFY(map1.constFind(4) == map1.constEnd());
 
-    QVERIFY(map1.constFind(1).value() == "Mayer");
-    QVERIFY(map1.constFind(2).value() == "Hej");
+    QCOMPARE(map1.constFind(1).value(), QLatin1String("Mayer"));
+    QCOMPARE(map1.constFind(2).value(), QLatin1String("Hej"));
 
     for(i = 3; i < 10; ++i) {
         compareString = testString.arg(i);
@@ -705,10 +700,10 @@ void tst_QMap::lowerUpperBound()
     QCOMPARE(map1.lowerBound(5).key(), 5);
     QCOMPARE(map1.lowerBound(6).key(), 7);
     QCOMPARE(map1.lowerBound(7).key(), 7);
-    QCOMPARE(map1.lowerBound(6).value(), QString("seven_2"));
-    QCOMPARE(map1.lowerBound(7).value(), QString("seven_2"));
-    QCOMPARE((++map1.lowerBound(6)).value(), QString("seven"));
-    QCOMPARE((++map1.lowerBound(7)).value(), QString("seven"));
+    QCOMPARE(map1.lowerBound(6).value(), QLatin1String("seven_2"));
+    QCOMPARE(map1.lowerBound(7).value(), QLatin1String("seven_2"));
+    QCOMPARE((++map1.lowerBound(6)).value(), QLatin1String("seven"));
+    QCOMPARE((++map1.lowerBound(7)).value(), QLatin1String("seven"));
     QCOMPARE(map1.lowerBound(10).key(), 10);
     QVERIFY(map1.lowerBound(999) == map1.end());
 }
@@ -733,11 +728,11 @@ void tst_QMap::mergeCompare()
     map1b.unite(map2b);
     sanityCheckTree(map1b, __LINE__);
 
-    QVERIFY(map1.value(1) == "ett");
-    QVERIFY(map1.value(2) == "tvo");
-    QVERIFY(map1.value(3) == "tre");
-    QVERIFY(map1.value(4) == "fyra");
-    QVERIFY(map1.value(5) == "fem");
+    QCOMPARE(map1.value(1), QLatin1String("ett"));
+    QCOMPARE(map1.value(2), QLatin1String("tvo"));
+    QCOMPARE(map1.value(3), QLatin1String("tre"));
+    QCOMPARE(map1.value(4), QLatin1String("fyra"));
+    QCOMPARE(map1.value(5), QLatin1String("fem"));
 
     map3.insert(1, "ett");
     map3.insert(2, "tvo");
@@ -755,7 +750,7 @@ void tst_QMap::take()
     map.insert(2, "zwei");
     map.insert(3, "drei");
 
-    QVERIFY(map.take(3) == "drei");
+    QCOMPARE(map.take(3), QLatin1String("drei"));
     QVERIFY(!map.contains(3));
 }
 
@@ -771,19 +766,19 @@ void tst_QMap::iterators()
     //STL-Style iterators
 
     QMap<int, QString>::iterator stlIt = map.begin();
-    QVERIFY(stlIt.value() == "Teststring 1");
+    QCOMPARE(stlIt.value(), QLatin1String("Teststring 1"));
 
     stlIt+=5;
-    QVERIFY(stlIt.value() == "Teststring 6");
+    QCOMPARE(stlIt.value(), QLatin1String("Teststring 6"));
 
     stlIt++;
-    QVERIFY(stlIt.value() == "Teststring 7");
+    QCOMPARE(stlIt.value(), QLatin1String("Teststring 7"));
 
     stlIt-=3;
-    QVERIFY(stlIt.value() == "Teststring 4");
+    QCOMPARE(stlIt.value(), QLatin1String("Teststring 4"));
 
     stlIt--;
-    QVERIFY(stlIt.value() == "Teststring 3");
+    QCOMPARE(stlIt.value(), QLatin1String("Teststring 3"));
 
     for(stlIt = map.begin(), i = 1; stlIt != map.end(); ++stlIt, ++i)
             QVERIFY(stlIt.value() == testString.arg(i));
@@ -792,19 +787,19 @@ void tst_QMap::iterators()
     //STL-Style const-iterators
 
     QMap<int, QString>::const_iterator cstlIt = map.constBegin();
-    QVERIFY(cstlIt.value() == "Teststring 1");
+    QCOMPARE(cstlIt.value(), QLatin1String("Teststring 1"));
 
     cstlIt+=5;
-    QVERIFY(cstlIt.value() == "Teststring 6");
+    QCOMPARE(cstlIt.value(), QLatin1String("Teststring 6"));
 
     cstlIt++;
-    QVERIFY(cstlIt.value() == "Teststring 7");
+    QCOMPARE(cstlIt.value(), QLatin1String("Teststring 7"));
 
     cstlIt-=3;
-    QVERIFY(cstlIt.value() == "Teststring 4");
+    QCOMPARE(cstlIt.value(), QLatin1String("Teststring 4"));
 
     cstlIt--;
-    QVERIFY(cstlIt.value() == "Teststring 3");
+    QCOMPARE(cstlIt.value(), QLatin1String("Teststring 3"));
 
     for(cstlIt = map.constBegin(), i = 1; cstlIt != map.constEnd(); ++cstlIt, ++i)
             QVERIFY(cstlIt.value() == testString.arg(i));
@@ -1062,7 +1057,7 @@ void tst_QMap::equal_range()
     QCOMPARE(cresult.second, cmap.cend());
 
     for (int i = -10; i < 10; i += 2)
-        map.insert(i, QString("%1").arg(i));
+        map.insert(i, QString::number(i));
 
     result = map.equal_range(0);
     QCOMPARE(result.first, map.find(0));

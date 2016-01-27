@@ -1,31 +1,37 @@
 /****************************************************************************
 **
 ** Copyright (C) 2013 John Layt <jlayt@kde.org>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -255,7 +261,7 @@ static QMap<int, QByteArray> parseTzAbbreviations(QDataStream &ds, int tzh_charc
             return map;
     }
     // Then extract all the substrings pointed to by types
-    foreach (const QTzType &type, types) {
+    for (const QTzType &type : types) {
         QByteArray abbrev;
         for (int i = type.tz_abbrind; input.at(i) != '\0'; ++i)
             abbrev.append(input.at(i));
@@ -621,15 +627,22 @@ void QTzTimeZonePrivate::init(const QByteArray &ianaId)
     // Translate the TZ file into internal format
 
     // Translate the array index based tz_abbrind into list index
-    m_abbreviations = abbrevMap.values();
-    QList<int> abbrindList = abbrevMap.keys();
+    const int size = abbrevMap.size();
+    m_abbreviations.clear();
+    m_abbreviations.reserve(size);
+    QVector<int> abbrindList;
+    abbrindList.reserve(size);
+    for (auto it = abbrevMap.cbegin(), end = abbrevMap.cend(); it != end; ++it) {
+        m_abbreviations.append(it.value());
+        abbrindList.append(it.key());
+    }
     for (int i = 0; i < typeList.size(); ++i)
         typeList[i].tz_abbrind = abbrindList.indexOf(typeList.at(i).tz_abbrind);
 
     // Offsets are stored as total offset, want to know separate UTC and DST offsets
     // so find the first non-dst transition to use as base UTC Offset
     int utcOffset = 0;
-    foreach (const QTzTransition &tran, tranList) {
+    for (const QTzTransition &tran : qAsConst(tranList)) {
         if (!typeList.at(tran.tz_typeind).tz_isdst) {
             utcOffset = typeList.at(tran.tz_typeind).tz_gmtoff;
             break;
@@ -638,7 +651,7 @@ void QTzTimeZonePrivate::init(const QByteArray &ianaId)
 
     // Now for each transition time calculate our rule and save them
     m_tranTimes.reserve(tranList.count());
-    foreach (const QTzTransition &tz_tran, tranList) {
+    for (const QTzTransition &tz_tran : qAsConst(tranList)) {
         QTzTransitionTime tran;
         QTzTransitionRule rule;
         const QTzType tz_type = typeList.at(tz_tran.tz_typeind);
@@ -790,7 +803,7 @@ int QTzTimeZonePrivate::daylightTimeOffset(qint64 atMSecsSinceEpoch) const
 bool QTzTimeZonePrivate::hasDaylightTime() const
 {
     // TODO Perhaps cache as frequently accessed?
-    foreach (const QTzTransitionRule &rule, m_tranRules) {
+    for (const QTzTransitionRule &rule : m_tranRules) {
         if (rule.dstOffset != 0)
             return true;
     }
@@ -983,9 +996,9 @@ QList<QByteArray> QTzTimeZonePrivate::availableTimeZoneIds(QLocale::Country coun
 {
     // TODO AnyCountry
     QList<QByteArray> result;
-    foreach (const QByteArray &key, tzZones->keys()) {
-        if (tzZones->value(key).country == country)
-            result << key;
+    for (auto it = tzZones->cbegin(), end = tzZones->cend(); it != end; ++it) {
+        if (it.value().country == country)
+            result << it.key();
     }
     std::sort(result.begin(), result.end());
     return result;

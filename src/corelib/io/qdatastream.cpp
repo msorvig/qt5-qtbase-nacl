@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -180,6 +186,20 @@ QT_BEGIN_NAMESPACE
     defined, check the \b {Related Non-Members} section of the
     class's documentation page.
 
+    \section1 Using Read Transactions
+
+    When a data stream operates on an asynchronous device, the chunks of data
+    can arrive at arbitrary points in time. The QDataStream class implements
+    a transaction mechanism that provides the ability to read the data
+    atomically with a series of stream operators. As an example, you can
+    handle incomplete reads from a socket by using a transaction in a slot
+    connected to the readyRead() signal:
+
+    \snippet code/src_corelib_io_qdatastream.cpp 6
+
+    If no full packet is received, this code restores the stream to the
+    initial position, after which you need to wait for more data to arrive.
+
     \sa QTextStream, QVariant
 */
 
@@ -223,6 +243,8 @@ QT_BEGIN_NAMESPACE
   QDataStream member functions
  *****************************************************************************/
 
+#define Q_VOID
+
 #undef  CHECK_STREAM_PRECOND
 #ifndef QT_NO_DEBUG
 #define CHECK_STREAM_PRECOND(retVal) \
@@ -241,6 +263,12 @@ QT_BEGIN_NAMESPACE
     CHECK_STREAM_PRECOND(retVal) \
     if (q_status != Ok) \
         return retVal;
+
+#define CHECK_STREAM_TRANSACTION_PRECOND(retVal) \
+    if (!d || d->transactionDepth == 0) { \
+        qWarning("QDataStream: No transaction in progress"); \
+        return retVal; \
+    }
 
 /*!
     Constructs a data stream that has no I/O device.
@@ -527,6 +555,7 @@ void QDataStream::setByteOrder(ByteOrder bo)
     \value Qt_5_4 Version 16 (Qt 5.4)
     \value Qt_5_5 Same as Qt_5_4
     \value Qt_5_6 Version 17 (Qt 5.6)
+    \value Qt_5_7 Same as Qt_5_6
     \omitvalue Qt_DefaultCompiledVersion
 
     \sa setVersion(), version()
@@ -566,9 +595,174 @@ void QDataStream::setByteOrder(ByteOrder bo)
     \sa version(), Version
 */
 
+/*!
+    \since 5.7
+
+    Starts a new read transaction on the stream.
+
+    Defines a restorable point within the sequence of read operations. For
+    sequential devices, read data will be duplicated internally to allow
+    recovery in case of incomplete reads. For random-access devices,
+    this function saves the current position of the stream. Call
+    commitTransaction(), rollbackTransaction(), or abortTransaction() to
+    finish the current transaction.
+
+    Once a transaction is started, subsequent calls to this function will make
+    the transaction recursive. Inner transactions act as agents of the
+    outermost transaction (i.e., report the status of read operations to the
+    outermost transaction, which can restore the position of the stream).
+
+    \note Restoring to the point of the nested startTransaction() call is not
+    supported.
+
+    When an error occurs during a transaction (including an inner transaction
+    failing), reading from the data stream is suspended (all subsequent read
+    operations return empty/zero values) and subsequent inner transactions are
+    forced to fail. Starting a new outermost transaction recovers from this
+    state. This behavior makes it unnecessary to error-check every read
+    operation separately.
+
+    \sa commitTransaction(), rollbackTransaction(), abortTransaction()
+*/
+
+void QDataStream::startTransaction()
+{
+    CHECK_STREAM_PRECOND(Q_VOID)
+
+    if (d == 0)
+        d.reset(new QDataStreamPrivate());
+
+    if (++d->transactionDepth == 1) {
+        dev->startTransaction();
+        resetStatus();
+    }
+}
+
+/*!
+    \since 5.7
+
+    Completes a read transaction. Returns \c true if no read errors have
+    occurred during the transaction; otherwise returns \c false.
+
+    If called on an inner transaction, committing will be postponed until
+    the outermost commitTransaction(), rollbackTransaction(), or
+    abortTransaction() call occurs.
+
+    Otherwise, if the stream status indicates reading past the end of the
+    data, this function restores the stream data to the point of the
+    startTransaction() call. When this situation occurs, you need to wait for
+    more data to arrive, after which you start a new transaction. If the data
+    stream has read corrupt data or any of the inner transactions was aborted,
+    this function aborts the transaction.
+
+    \sa startTransaction(), rollbackTransaction(), abortTransaction()
+*/
+
+bool QDataStream::commitTransaction()
+{
+    CHECK_STREAM_TRANSACTION_PRECOND(false)
+    if (--d->transactionDepth == 0) {
+        CHECK_STREAM_PRECOND(false)
+
+        if (q_status == ReadPastEnd) {
+            dev->rollbackTransaction();
+            return false;
+        }
+        dev->commitTransaction();
+    }
+    return q_status == Ok;
+}
+
+/*!
+    \since 5.7
+
+    Reverts a read transaction.
+
+    This function is commonly used to rollback the transaction when an
+    incomplete read was detected prior to committing the transaction.
+
+    If called on an inner transaction, reverting is delegated to the outermost
+    transaction, and subsequently started inner transactions are forced to
+    fail.
+
+    For the outermost transaction, restores the stream data to the point of
+    the startTransaction() call. If the data stream has read corrupt data or
+    any of the inner transactions was aborted, this function aborts the
+    transaction.
+
+    If the preceding stream operations were successful, sets the status of the
+    data stream to \value ReadPastEnd.
+
+    \sa startTransaction(), commitTransaction(), abortTransaction()
+*/
+
+void QDataStream::rollbackTransaction()
+{
+    setStatus(ReadPastEnd);
+
+    CHECK_STREAM_TRANSACTION_PRECOND(Q_VOID)
+    if (--d->transactionDepth != 0)
+        return;
+
+    CHECK_STREAM_PRECOND(Q_VOID)
+    if (q_status == ReadPastEnd)
+        dev->rollbackTransaction();
+    else
+        dev->commitTransaction();
+}
+
+/*!
+    \since 5.7
+
+    Aborts a read transaction.
+
+    This function is commonly used to discard the transaction after
+    higher-level protocol errors or loss of stream synchronization.
+
+    If called on an inner transaction, aborting is delegated to the outermost
+    transaction, and subsequently started inner transactions are forced to
+    fail.
+
+    For the outermost transaction, discards the restoration point and any
+    internally duplicated data of the stream. Will not affect the current
+    read position of the stream.
+
+    Sets the status of the data stream to \value ReadCorruptData.
+
+    \sa startTransaction(), commitTransaction(), rollbackTransaction()
+*/
+
+void QDataStream::abortTransaction()
+{
+    q_status = ReadCorruptData;
+
+    CHECK_STREAM_TRANSACTION_PRECOND(Q_VOID)
+    if (--d->transactionDepth != 0)
+        return;
+
+    CHECK_STREAM_PRECOND(Q_VOID)
+    dev->commitTransaction();
+}
+
 /*****************************************************************************
   QDataStream read functions
  *****************************************************************************/
+
+/*!
+    \internal
+*/
+
+int QDataStream::readBlock(char *data, int len)
+{
+    // Disable reads on failure in transacted stream
+    if (q_status != Ok && dev->isTransactionStarted())
+        return -1;
+
+    const int readResult = dev->read(data, len);
+    if (readResult != len)
+        setStatus(ReadPastEnd);
+    return readResult;
+}
 
 /*!
     \fn QDataStream &QDataStream::operator>>(quint8 &i)
@@ -588,9 +782,7 @@ QDataStream &QDataStream::operator>>(qint8 &i)
     i = 0;
     CHECK_STREAM_PRECOND(*this)
     char c;
-    if (!dev->getChar(&c))
-        setStatus(ReadPastEnd);
-    else
+    if (readBlock(&c, 1) == 1)
         i = qint8(c);
     return *this;
 }
@@ -615,9 +807,8 @@ QDataStream &QDataStream::operator>>(qint16 &i)
 {
     i = 0;
     CHECK_STREAM_PRECOND(*this)
-    if (dev->read((char *)&i, 2) != 2) {
+    if (readBlock(reinterpret_cast<char *>(&i), 2) != 2) {
         i = 0;
-        setStatus(ReadPastEnd);
     } else {
         if (!noswap) {
             i = qbswap(i);
@@ -646,9 +837,8 @@ QDataStream &QDataStream::operator>>(qint32 &i)
 {
     i = 0;
     CHECK_STREAM_PRECOND(*this)
-    if (dev->read((char *)&i, 4) != 4) {
+    if (readBlock(reinterpret_cast<char *>(&i), 4) != 4) {
         i = 0;
-        setStatus(ReadPastEnd);
     } else {
         if (!noswap) {
             i = qbswap(i);
@@ -681,9 +871,8 @@ QDataStream &QDataStream::operator>>(qint64 &i)
         *this >> i2 >> i1;
         i = ((quint64)i1 << 32) + i2;
     } else {
-        if (dev->read((char *)&i, 8) != 8) {
+        if (readBlock(reinterpret_cast<char *>(&i), 8) != 8) {
             i = qint64(0);
-            setStatus(ReadPastEnd);
         } else {
             if (!noswap) {
                 i = qbswap(i);
@@ -727,9 +916,8 @@ QDataStream &QDataStream::operator>>(float &f)
 
     f = 0.0f;
     CHECK_STREAM_PRECOND(*this)
-    if (dev->read((char *)&f, 4) != 4) {
+    if (readBlock(reinterpret_cast<char *>(&f), 4) != 4) {
         f = 0.0f;
-        setStatus(ReadPastEnd);
     } else {
         if (!noswap) {
             union {
@@ -765,9 +953,8 @@ QDataStream &QDataStream::operator>>(double &f)
 
     f = 0.0;
     CHECK_STREAM_PRECOND(*this)
-    if (dev->read((char *)&f, 8) != 8) {
+    if (readBlock(reinterpret_cast<char *>(&f), 8) != 8) {
         f = 0.0;
-        setStatus(ReadPastEnd);
     } else {
         if (!noswap) {
             union {
@@ -844,9 +1031,8 @@ QDataStream &QDataStream::readBytes(char *&s, uint &l)
             memcpy(curBuf, prevBuf, allocated);
             delete [] prevBuf;
         }
-        if (dev->read(curBuf + allocated, blockSize) != blockSize) {
+        if (readBlock(curBuf + allocated, blockSize) != blockSize) {
             delete [] curBuf;
-            setStatus(ReadPastEnd);
             return *this;
         }
         allocated += blockSize;
@@ -870,7 +1056,7 @@ QDataStream &QDataStream::readBytes(char *&s, uint &l)
 int QDataStream::readRawData(char *s, int len)
 {
     CHECK_STREAM_PRECOND(-1)
-    return dev->read(s, len);
+    return readBlock(s, len);
 }
 
 
@@ -1153,7 +1339,7 @@ int QDataStream::skipRawData(int len)
 
         while (len > 0) {
             int blockSize = qMin(len, (int)sizeof(buf));
-            int n = dev->read(buf, blockSize);
+            int n = readBlock(buf, blockSize);
             if (n == -1)
                 return -1;
             if (n == 0)

@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -60,7 +55,6 @@ enum Platforms {
     WINDOWS_CE,
     WINDOWS_RT,
     QNX,
-    BLACKBERRY,
     ANDROID,
     OTHER
 };
@@ -160,6 +154,7 @@ Configure::Configure(int& argc, char** argv) : verbose(0)
     dictionary[ "SSE4_2" ]          = "auto";
     dictionary[ "AVX" ]             = "auto";
     dictionary[ "AVX2" ]            = "auto";
+    dictionary[ "AVX512" ]          = "auto";
     dictionary[ "SYNCQT" ]          = "auto";
     dictionary[ "CE_CRT" ]          = "no";
     dictionary[ "CETEST" ]          = "auto";
@@ -262,6 +257,7 @@ Configure::Configure(int& argc, char** argv) : verbose(0)
     dictionary[ "PNG" ]             = "auto";
     dictionary[ "LIBJPEG" ]         = "auto";
     dictionary[ "LIBPNG" ]          = "auto";
+    dictionary[ "DOUBLECONVERSION" ] = "auto";
     dictionary[ "FREETYPE" ]        = "yes";
     dictionary[ "HARFBUZZ" ]        = "qt";
 
@@ -280,7 +276,6 @@ Configure::Configure(int& argc, char** argv) : verbose(0)
     dictionary[ "STYLE_FUSION" ]    = "yes";
     dictionary[ "STYLE_WINDOWSCE" ] = "no";
     dictionary[ "STYLE_WINDOWSMOBILE" ] = "no";
-    dictionary[ "STYLE_GTK" ]       = "no";
 
     dictionary[ "SQL_MYSQL" ]       = "no";
     dictionary[ "SQL_ODBC" ]        = "no";
@@ -306,7 +301,7 @@ Configure::Configure(int& argc, char** argv) : verbose(0)
     dictionary[ "NATIVE_GESTURES" ] = "yes";
     dictionary[ "MSVC_MP" ] = "no";
 
-    if (dictionary["QMAKESPEC"] == QString("win32-g++")) {
+    if (dictionary["QMAKESPEC"].startsWith("win32-g++")) {
         const QString zero = QStringLiteral("0");
         const QStringList parts = Environment::gccVersion().split(QLatin1Char('.'));
         dictionary["QT_GCC_MAJOR_VERSION"] = parts.value(0, zero);
@@ -472,25 +467,21 @@ void Configure::parseCmdLine()
             dictionary[ "COMPILE_EXAMPLES" ] = "no";
         }
 
-        else if (configCmdLine.at(i) == "-c++11")
-            dictionary[ "C++STD" ] = "c++11";
-        else if (configCmdLine.at(i) == "-no-c++11")
-            dictionary[ "C++STD" ] = "c++98";
         else if (configCmdLine.at(i) == "-c++std") {
             ++i;
             if (i == argCount)
                 break;
 
             QString level = configCmdLine.at(i);
-            if (level == "c++98" || level == "c++11" || level == "c++14" || level == "c++1z"
+            if (level == "c++11" || level == "c++14" || level == "c++1z"
                     || level == "auto") {
                 dictionary[ "C++STD" ] = level;
-            } else if (level == "98" || level == "11" || level == "14" || level == "1z") {
+            } else if (level == "11" || level == "14" || level == "1z") {
                 dictionary[ "C++STD" ] = "c++" + level;
             } else {
                 dictionary[ "DONE" ] = "error";
                 cout << "ERROR: invalid C++ standard " << level
-                     << "; valid options are: c++98 c++11 c++14 c++1z auto" << endl;
+                     << "; valid options are: c++11 c++14 c++1z auto" << endl;
                 return;
             }
         }
@@ -631,6 +622,14 @@ void Configure::parseCmdLine()
         } else if (configCmdLine.at(i) == "-system-libpng") {
             dictionary[ "LIBPNG" ] = "system";
         }
+
+        // Double Conversion -----------------------------------------
+        else if (configCmdLine.at(i) == "-no-doubleconversion")
+            dictionary[ "DOUBLECONVERSION" ] = "no";
+        else if (configCmdLine.at(i) == "-qt-doubleconversion")
+            dictionary[ "DOUBLECONVERSION" ] = "qt";
+        else if (configCmdLine.at(i) == "-system-doubleconversion")
+            dictionary[ "DOUBLECONVERSION" ] = "system";
 
         // Text Rendering --------------------------------------------
         else if (configCmdLine.at(i) == "-no-freetype")
@@ -894,6 +893,10 @@ void Configure::parseCmdLine()
             dictionary[ "AVX2" ] = "no";
         else if (configCmdLine.at(i) == "-avx2")
             dictionary[ "AVX2" ] = "yes";
+        else if (configCmdLine.at(i) == "-no-avx512")
+            dictionary[ "AVX512" ] = "";
+        else if (configCmdLine.at(i) == "-avx512")
+            dictionary[ "AVX512" ] = "auto";
 
         else if (configCmdLine.at(i) == "-no-ssl") {
             dictionary[ "SSL"] = "no";
@@ -903,8 +906,10 @@ void Configure::parseCmdLine()
               dictionary[ "OPENSSL"] = "no";
         } else if (configCmdLine.at(i) == "-openssl") {
               dictionary[ "OPENSSL" ] = "yes";
+              dictionary[ "SSL" ] = "yes";
         } else if (configCmdLine.at(i) == "-openssl-linked") {
               dictionary[ "OPENSSL" ] = "linked";
+              dictionary[ "SSL" ] = "yes";
         } else if (configCmdLine.at(i) == "-no-libproxy") {
               dictionary[ "LIBPROXY"] = "no";
         } else if (configCmdLine.at(i) == "-libproxy") {
@@ -1422,19 +1427,12 @@ void Configure::parseCmdLine()
         cout << "See the README file for a list of supported operating systems and compilers." << endl;
     } else {
         if (dictionary[ "QMAKESPEC" ].endsWith("-icc") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc.net") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc2002") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc2003") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc2005") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc2008") ||
-            dictionary[ "QMAKESPEC" ].endsWith("-msvc2010") ||
             dictionary[ "QMAKESPEC" ].endsWith("-msvc2012") ||
             dictionary[ "QMAKESPEC" ].endsWith("-msvc2013") ||
             dictionary[ "QMAKESPEC" ].endsWith("-msvc2015")) {
             if (dictionary[ "MAKE" ].isEmpty()) dictionary[ "MAKE" ] = "nmake";
             dictionary[ "QMAKEMAKEFILE" ] = "Makefile.win32";
-        } else if (dictionary[ "QMAKESPEC" ] == QString("win32-g++")) {
+        } else if (dictionary[ "QMAKESPEC" ].startsWith(QLatin1String("win32-g++"))) {
             if (dictionary[ "MAKE" ].isEmpty()) dictionary[ "MAKE" ] = "mingw32-make";
             dictionary[ "QMAKEMAKEFILE" ] = "Makefile.unix";
         } else {
@@ -1700,8 +1698,6 @@ void Configure::applySpecSpecifics()
         dictionary[ "STYLE_WINDOWSCE" ]     = "yes";
         dictionary[ "STYLE_WINDOWSMOBILE" ] = "yes";
         dictionary[ "OPENGL" ]              = "no";
-        dictionary[ "SSL" ]                 = "no";
-        dictionary[ "OPENSSL" ]             = "no";
         dictionary[ "RTTI" ]                = "no";
         dictionary[ "SSE2" ]                = "no";
         dictionary[ "SSE3" ]                = "no";
@@ -1710,6 +1706,7 @@ void Configure::applySpecSpecifics()
         dictionary[ "SSE4_2" ]              = "no";
         dictionary[ "AVX" ]                 = "no";
         dictionary[ "AVX2" ]                = "no";
+        dictionary[ "AVX512" ]              = "no";
         dictionary[ "CE_CRT" ]              = "yes";
         dictionary[ "LARGE_FILE" ]          = "no";
         dictionary[ "ANGLE" ]               = "no";
@@ -1736,7 +1733,7 @@ void Configure::applySpecSpecifics()
         dictionary[ "ANGLE" ]               = "no";
 
         dictionary["DECORATIONS"]           = "default windows styled";
-    } else if ((platform() == QNX) || (platform() == BLACKBERRY)) {
+    } else if (platform() == QNX) {
         dictionary["STACK_PROTECTOR_STRONG"] = "auto";
         dictionary["SLOG2"]                 = "auto";
         dictionary["QNX_IMF"]               = "auto";
@@ -1746,6 +1743,7 @@ void Configure::applySpecSpecifics()
         dictionary[ "ANGLE" ]               = "no";
         dictionary[ "DYNAMICGL" ]           = "no";
         dictionary[ "FONT_CONFIG" ]         = "auto";
+        dictionary[ "POLL" ]                = "poll";
     } else if (platform() == ANDROID) {
         dictionary[ "REDUCE_EXPORTS" ]      = "yes";
         dictionary[ "BUILD" ]               = "release";
@@ -1758,6 +1756,7 @@ void Configure::applySpecSpecifics()
         dictionary[ "QT_XKBCOMMON" ]        = "no";
         dictionary["ANDROID_STYLE_ASSETS"]  = "yes";
         dictionary[ "STYLE_ANDROID" ]       = "yes";
+        dictionary[ "POLL" ]                = "poll";
     }
 }
 
@@ -1825,7 +1824,7 @@ bool Configure::displayHelp()
         desc("OPENSOURCE", "opensource", "-opensource",   "Compile and link the Open-Source Edition of Qt.");
         desc("COMMERCIAL", "commercial", "-commercial",   "Compile and link the Commercial Edition of Qt.\n");
 
-        desc(        "-c++std <edition>",               "Compile Qt with C++ standard edition (c++98, c++11, c++14, c++1z)\n"
+        desc(        "-c++std <edition>",               "Compile Qt with C++ standard edition (c++11, c++14, c++1z)\n"
                                                         "Default: highest supported. This option is not supported for MSVC.\n");
 
         desc("USE_GOLD_LINKER", "yes", "-use-gold-linker",                  "Link using the GNU gold linker (gcc only).");
@@ -1966,6 +1965,10 @@ bool Configure::displayHelp()
         desc("LIBJPEG", "qt",    "-qt-libjpeg",         "Use the libjpeg bundled with Qt.");
         desc("LIBJPEG", "system","-system-libjpeg",     "Use libjpeg from the operating system.\nSee http://www.ijg.org\n");
 
+        desc("DOUBLECONVERSION", "no",     "-no-doubleconversion",     "Use sscanf_l and snprintf_l for (imprecise) double conversion.");
+        desc("DOUBLECONVERSION", "qt",     "-qt-doubleconversion",     "Use the libdouble-conversion bundled with Qt.");
+        desc("DOUBLECONVERSION", "system", "-system-doubleconversion", "Use the libdouble-conversion provided by the system.");
+
         desc("FREETYPE", "no",   "-no-freetype",        "Do not compile in Freetype2 support.");
         desc("FREETYPE", "yes",  "-qt-freetype",        "Use the libfreetype bundled with Qt.");
         desc("FREETYPE", "system","-system-freetype",   "Use the libfreetype provided by the system.\n");
@@ -1982,7 +1985,7 @@ bool Configure::displayHelp()
                                                         "by setting the QT_HARFBUZZ environment variable to \"old\".\n"
                                                         "See http://www.harfbuzz.org\n");
 
-        if ((platform() == QNX) || (platform() == BLACKBERRY)) {
+        if (platform() == QNX) {
             desc("SLOG2", "yes",  "-slog2",             "Compile with slog2 support.");
             desc("SLOG2", "no",  "-no-slog2",           "Do not compile with slog2 support.");
             desc("QNX_IMF", "yes",  "-imf",             "Compile with imf support.");
@@ -2028,6 +2031,8 @@ bool Configure::displayHelp()
         desc("AVX", "yes",      "-avx",                 "Compile with use of AVX instructions.");
         desc("AVX2", "no",      "-no-avx2",             "Do not compile with use of AVX2 instructions.");
         desc("AVX2", "yes",     "-avx2",                "Compile with use of AVX2 instructions.\n");
+        desc("AVX512", "no",    "-no-avx512",           "Do not compile with use of AVX512 instructions.");
+        desc("AVX512", "yes",   "-avx512",              "Compile with use of AVX512 instructions.\n");
         desc("SSL", "no",        "-no-ssl",             "Do not compile support for SSL.");
         desc("SSL", "yes",       "-ssl",                "Enable run-time SSL support.");
         desc("OPENSSL", "no",    "-no-openssl",         "Do not compile support for OpenSSL.");
@@ -2172,11 +2177,6 @@ bool Configure::checkAngleAvailability(QString *errorMessage /* = 0 */) const
     // it is also  present in MinGW.
     const QString directXSdk = Environment::detectDirectXSdk();
     const Compiler compiler = Environment::compilerFromQMakeSpec(dictionary[QStringLiteral("QMAKESPEC")]);
-    if (compiler >= CC_MSVC2005 && compiler <= CC_MSVC2008) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("ANGLE is no longer supported for this compiler.");
-        return false;
-    }
     if (compiler < CC_MSVC2012 && directXSdk.isEmpty()) {
         if (errorMessage)
             *errorMessage = QStringLiteral("There is no Direct X SDK installed or the environment variable \"DXSDK_DIR\" is not set.");
@@ -2214,6 +2214,24 @@ bool Configure::checkAngleAvailability(QString *errorMessage /* = 0 */) const
         return false;
     }
     return true;
+}
+
+QString Configure::checkAvx512Availability()
+{
+    static const char avx512features[][5] = { "cd", "er", "pf", "bw", "dq", "vl", "ifma", "vbmi" };
+
+    // try AVX512 Foundation. No Foundation, nothing else works.
+    if (!tryCompileProject("common/avx512", "AVX512=F"))
+        return QString();
+
+    QString available = "avx512f";
+    for (int i = 0; i < sizeof(avx512features)/sizeof(avx512features[0]); ++i) {
+        if (tryCompileProject("common/avx512", QStringLiteral("AVX512=%0").arg(avx512features[i]).toUpper())) {
+            available += " avx512";
+            available += avx512features[i];
+        }
+    }
+    return available;
 }
 
 /*!
@@ -2272,7 +2290,7 @@ bool Configure::checkAvailability(const QString &part)
         available = true; // Built in, we have a fork
     else if (part == "SQL_SQLITE_LIB") {
         if (dictionary[ "SQL_SQLITE_LIB" ] == "system") {
-            if ((platform() == QNX) || (platform() == BLACKBERRY)) {
+            if (platform() == QNX) {
                 available = true;
                 dictionary[ "QT_LFLAGS_SQLITE" ] += "-lsqlite3 -lz";
             } else {
@@ -2350,20 +2368,21 @@ bool Configure::checkAvailability(const QString &part)
     } else if (part == "CUPS") {
         available = (platform() != WINDOWS) && (platform() != WINDOWS_CE) && (platform() != WINDOWS_RT) && tryCompileProject("unix/cups");
     } else if (part == "STACK_PROTECTOR_STRONG") {
-        available = (platform() == QNX || platform() == BLACKBERRY) && compilerSupportsFlag("qcc -fstack-protector-strong");
+        available = (platform() == QNX) && compilerSupportsFlag("qcc -fstack-protector-strong");
     } else if (part == "SLOG2") {
         available = tryCompileProject("unix/slog2");
     } else if (part == "QNX_IMF") {
         available = tryCompileProject("unix/qqnx_imf");
     } else if (part == "PPS") {
-        available = (platform() == QNX || platform() == BLACKBERRY) && tryCompileProject("unix/pps");
+        available = (platform() == QNX) && tryCompileProject("unix/pps");
     } else if (part == "LGMON") {
-        available = (platform() == QNX || platform() == BLACKBERRY)
-                    && tryCompileProject("unix/lgmon");
+        available = (platform() == QNX) && tryCompileProject("unix/lgmon");
     } else if (part == "NEON") {
         available = dictionary["QT_CPU_FEATURES"].contains("neon");
     } else if (part == "FONT_CONFIG") {
         available = tryCompileProject("unix/fontconfig");
+    } else if (part == "DOUBLECONVERSION") {
+        available = tryCompileProject("unix/doubleconversion");
     }
 
     return available;
@@ -2381,7 +2400,10 @@ void Configure::autoDetection()
 
     if (dictionary["C++STD"] == "auto" && !dictionary["QMAKESPEC"].contains("msvc")) {
         if (!tryCompileProject("common/c++11")) {
-            dictionary["C++STD"] = "c++98";
+            dictionary["DONE"] = "error";
+            cout << "ERROR: Qt requires a C++11 compiler and yours does not seem to be that." << endl
+                 << "Please upgrade." << endl;
+            return;
         } else if (!tryCompileProject("common/c++14")) {
             dictionary["C++STD"] = "c++11";
         } else if (!tryCompileProject("common/c++1z")) {
@@ -2491,6 +2513,8 @@ void Configure::autoDetection()
         dictionary["AVX"] = checkAvailability("AVX") ? "yes" : "no";
     if (dictionary["AVX2"] == "auto")
         dictionary["AVX2"] = checkAvailability("AVX2") ? "yes" : "no";
+    if (dictionary["AVX512"] == "auto")
+        dictionary["AVX512"] = checkAvx512Availability();
     if (dictionary["NEON"] == "auto")
         dictionary["NEON"] = checkAvailability("NEON") ? "yes" : "no";
     if (dictionary["SSL"] == "auto") {
@@ -2556,11 +2580,11 @@ void Configure::autoDetection()
     if (dictionary["STACK_PROTECTOR_STRONG"] == "auto")
         dictionary["STACK_PROTECTOR_STRONG"] = checkAvailability("STACK_PROTECTOR_STRONG") ? "yes" : "no";
 
-    if ((platform() == QNX || platform() == BLACKBERRY) && dictionary["SLOG2"] == "auto") {
+    if (platform() == QNX && dictionary["SLOG2"] == "auto") {
         dictionary["SLOG2"] = checkAvailability("SLOG2") ? "yes" : "no";
     }
 
-    if ((platform() == QNX || platform() == BLACKBERRY) && dictionary["QNX_IMF"] == "auto") {
+    if (platform() == QNX && dictionary["QNX_IMF"] == "auto") {
         dictionary["QNX_IMF"] = checkAvailability("QNX_IMF") ? "yes" : "no";
     }
 
@@ -2568,7 +2592,7 @@ void Configure::autoDetection()
         dictionary["PPS"] = checkAvailability("PPS") ? "yes" : "no";
     }
 
-    if ((platform() == QNX || platform() == BLACKBERRY) && dictionary["LGMON"] == "auto") {
+    if (platform() == QNX && dictionary["LGMON"] == "auto") {
         dictionary["LGMON"] = checkAvailability("LGMON") ? "yes" : "no";
     }
 
@@ -2577,6 +2601,9 @@ void Configure::autoDetection()
 
     if (dictionary["FONT_CONFIG"] == "auto")
         dictionary["FONT_CONFIG"] = checkAvailability("FONT_CONFIG") ? "yes" : "no";
+
+    if (dictionary["DOUBLECONVERSION"] == "auto")
+        dictionary["DOUBLECONVERSION"] = checkAvailability("DOUBLECONVERSION") ? "system" : "qt";
 
     if (dictionary["DIRECTWRITE"] == "auto")
         dictionary["DIRECTWRITE"] = checkAvailability("DIRECTWRITE") ? "yes" : "no";
@@ -2633,9 +2660,8 @@ bool Configure::verifyConfiguration()
              << "Oracle driver, as the current build will most likely fail." << endl;
         prompt = true;
     }
-    if (dictionary["QMAKESPEC"].endsWith("win32-msvc.net")) {
-        cout << "WARNING: The makespec win32-msvc.net is deprecated. Consider using" << endl
-             << "win32-msvc2002 or win32-msvc2003 instead." << endl;
+    if (dictionary["QMAKESPEC"].endsWith("win32-msvc2008") || dictionary["QMAKESPEC"].endsWith("win32-msvc2010")) {
+        cout << "ERROR: Qt cannot be compiled with Visual Studio 2008 or 2010." << endl;
         prompt = true;
     }
     if (0 != dictionary["ARM_FPU_TYPE"].size()) {
@@ -2823,6 +2849,14 @@ void Configure::generateOutputVars()
         qtConfig += "png";
     if (dictionary[ "LIBPNG" ] == "system")
         qtConfig += "system-png";
+
+    // Double conversion -----------------------------------------------
+    if (dictionary[ "DOUBLECONVERSION" ] == "qt")
+        qtConfig += "doubleconversion";
+    else if (dictionary[ "DOUBLECONVERSION" ] == "system")
+        qtConfig += "system-doubleconversion";
+    else if (dictionary[ "DOUBLECONVERSION" ] == "no")
+        qtConfig += "no-doubleconversion";
 
     // Text rendering --------------------------------------------------
     if (dictionary[ "FREETYPE" ] == "yes")
@@ -3049,6 +3083,9 @@ void Configure::generateOutputVars()
     if (dictionary["REDUCE_EXPORTS"] == "yes")
         qtConfig += "reduce_exports";
 
+    if (!dictionary["POLL"].isEmpty())
+        qtConfig += "poll_" + dictionary["POLL"];
+
     // We currently have no switch for QtConcurrent, so add it unconditionally.
     qtConfig += "concurrent";
 
@@ -3208,6 +3245,8 @@ void Configure::generateCachefile()
             moduleStream << " avx";
         if (dictionary[ "AVX2" ] == "yes")
             moduleStream << " avx2";
+        if (!dictionary[ "AVX512" ].isEmpty())
+            moduleStream << ' ' << dictionary[ "AVX512" ];
         if (dictionary[ "NEON" ] == "yes")
             moduleStream << " neon";
         if (dictionary[ "LARGE_FILE" ] == "yes")
@@ -3687,6 +3726,8 @@ void Configure::generateConfigfiles()
             tmpStream << "#define QT_COMPILER_SUPPORTS_AVX 1" << endl;
         if (dictionary[ "AVX2" ] == "yes")
             tmpStream << "#define QT_COMPILER_SUPPORTS_AVX2 1" << endl;
+        foreach (const QString &avx512feature, dictionary[ "AVX512" ].split(' ', QString::SkipEmptyParts))
+            tmpStream << "#define QT_COMPILER_SUPPRTS_" << avx512feature.toUpper() << " 1" << endl;
 
         if (dictionary["QREAL"] != "double") {
             tmpStream << "#define QT_COORD_TYPE " << dictionary["QREAL"] << endl;
@@ -3703,7 +3744,6 @@ void Configure::generateConfigfiles()
         if (dictionary["STYLE_WINDOWSVISTA"] != "yes")   qconfigList += "QT_NO_STYLE_WINDOWSVISTA";
         if (dictionary["STYLE_WINDOWSCE"] != "yes")   qconfigList += "QT_NO_STYLE_WINDOWSCE";
         if (dictionary["STYLE_WINDOWSMOBILE"] != "yes")   qconfigList += "QT_NO_STYLE_WINDOWSMOBILE";
-        if (dictionary["STYLE_GTK"] != "yes")         qconfigList += "QT_NO_STYLE_GTK";
 
         if (dictionary["GIF"] == "yes")              qconfigList += "QT_BUILTIN_GIF_READER=1";
         if (dictionary["PNG"] != "yes")              qconfigList += "QT_NO_IMAGEFORMAT_PNG";
@@ -3853,13 +3893,19 @@ void Configure::displayConfig()
     sout << "Link Time Code Generation..." << dictionary[ "LTCG" ] << endl;
     sout << "Accessibility support......." << dictionary[ "ACCESSIBILITY" ] << endl;
     sout << "RTTI support................" << dictionary[ "RTTI" ] << endl;
-    sout << "SSE2 support................" << dictionary[ "SSE2" ] << endl;
-    sout << "SSE3 support................" << dictionary[ "SSE3" ] << endl;
-    sout << "SSSE3 support..............." << dictionary[ "SSSE3" ] << endl;
-    sout << "SSE4.1 support.............." << dictionary[ "SSE4_1" ] << endl;
-    sout << "SSE4.2 support.............." << dictionary[ "SSE4_2" ] << endl;
-    sout << "AVX support................." << dictionary[ "AVX" ] << endl;
-    sout << "AVX2 support................" << dictionary[ "AVX2" ] << endl;
+    sout << "SSE support................."
+         << (dictionary[ "SSE2" ] == "no" ? "<none>" : "SSE2")
+         << (dictionary[ "SSE3" ] == "no" ? "" : " SSE3")
+         << (dictionary[ "SSSE3" ] == "no" ? "" : " SSSE3")
+         << (dictionary[ "SSE4_1" ] == "no" ? "" : " SSE4.1")
+         << (dictionary[ "SSE4_2" ] == "no" ? "" : " SSE4.2")
+         << endl;
+    sout << "AVX support................."
+         << (dictionary[ "AVX" ] == "no" ? "<none>" : "AVX")
+         << (dictionary[ "AVX2" ] == "no" ? "" : " AVX2")
+         << endl;
+    sout << "AVX512 support.............."
+         << (dictionary[ "AVX512" ].isEmpty() ? QString("<none>") : dictionary[ "AVX512" ].toUpper()) << endl;
     sout << "NEON support................" << dictionary[ "NEON" ] << endl;
     sout << "OpenGL support.............." << dictionary[ "OPENGL" ] << endl;
     sout << "Large File support.........." << dictionary[ "LARGE_FILE" ] << endl;
@@ -3893,12 +3939,13 @@ void Configure::displayConfig()
     sout << "    GIF support............." << dictionary[ "GIF" ] << endl;
     sout << "    JPEG support............" << dictionary[ "JPEG" ] << endl;
     sout << "    PNG support............." << dictionary[ "PNG" ] << endl;
+    sout << "    DoubleConversion........" << dictionary[ "DOUBLECONVERSION" ] << endl;
     sout << "    FreeType support........" << dictionary[ "FREETYPE" ] << endl;
     sout << "    Fontconfig support......" << dictionary[ "FONT_CONFIG" ] << endl;
     sout << "    HarfBuzz support........" << dictionary[ "HARFBUZZ" ] << endl;
     sout << "    PCRE support............" << dictionary[ "PCRE" ] << endl;
     sout << "    ICU support............." << dictionary[ "ICU" ] << endl;
-    if ((platform() == QNX) || (platform() == BLACKBERRY)) {
+    if (platform() == QNX) {
         sout << "    SLOG2 support..........." << dictionary[ "SLOG2" ] << endl;
         sout << "    IMF support............." << dictionary[ "QNX_IMF" ] << endl;
         sout << "    PPS support............." << dictionary[ "PPS" ] << endl;
@@ -4013,14 +4060,6 @@ void Configure::displayConfig()
              << "and " << dictionary["QT_HOST_ARCH"] << " for the host architecture (note that these two" << endl
              << "will be the same unless you are cross-compiling)." << endl
              << endl;
-    }
-    if (dictionary["C++STD"] == "c++98") {
-        sout << endl
-             << "NOTE: The -no-c++11 / -c++-level c++98 option is deprecated." << endl
-             << endl
-             << "Qt 5.7 will require C++11 support. The options are in effect for this" << endl
-             << "Qt 5.6 build, but you should update your build scripts to remove the" << endl
-             << "option and, if necessary, upgrade your compiler." << endl;
     }
     if (dictionary["RELEASE_TOOLS"] == "yes" && dictionary["BUILD"] != "debug" ) {
         sout << endl
@@ -4319,10 +4358,10 @@ void Configure::buildQmake()
                        << "QT_MAJOR_VERSION = " << dictionary["VERSION_MAJOR"] << endl
                        << "QT_MINOR_VERSION = " << dictionary["VERSION_MINOR"] << endl
                        << "QT_PATCH_VERSION = " << dictionary["VERSION_PATCH"] << endl;
-                if (dictionary[ "QMAKESPEC" ] == QString("win32-g++")) {
-                    stream << "QMAKESPEC = $(SOURCE_PATH)\\mkspecs\\win32-g++" << endl
+                if (dictionary[ "QMAKESPEC" ].startsWith("win32-g++")) {
+                    stream << "QMAKESPEC = $(SOURCE_PATH)\\mkspecs\\" << dictionary[ "QMAKESPEC" ] << endl
                            << "EXTRA_CFLAGS = -DUNICODE -ffunction-sections" << endl
-                           << "EXTRA_CXXFLAGS = -DUNICODE -ffunction-sections" << endl
+                           << "EXTRA_CXXFLAGS = -std=c++11 -DUNICODE -ffunction-sections" << endl
                            << "EXTRA_LFLAGS = -Wl,--gc-sections" << endl
                            << "QTOBJS = qfilesystemengine_win.o \\" << endl
                            << "         qfilesystemiterator_win.o \\" << endl
@@ -4678,8 +4717,6 @@ QString Configure::platformName() const
         return QStringLiteral("Qt for Windows Runtime");
     case QNX:
         return QStringLiteral("Qt for QNX");
-    case BLACKBERRY:
-        return QStringLiteral("Qt for Blackberry");
     case ANDROID:
         return QStringLiteral("Qt for Android");
     case OTHER:
@@ -4698,8 +4735,6 @@ QString Configure::qpaPlatformName() const
         return QStringLiteral("winrt");
     case QNX:
         return QStringLiteral("qnx");
-    case BLACKBERRY:
-        return QStringLiteral("blackberry");
     case ANDROID:
         return QStringLiteral("android");
     case OTHER:
@@ -4720,9 +4755,6 @@ int Configure::platform() const
 
     if (xQMakeSpec.contains("qnx"))
         return QNX;
-
-    if (xQMakeSpec.contains("blackberry"))
-        return BLACKBERRY;
 
     if (xQMakeSpec.contains("android"))
         return ANDROID;

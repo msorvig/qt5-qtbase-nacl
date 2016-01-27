@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 CONFIG -= app_bundle debug_and_release_target
 QT = core-private testlib network
 SOURCES = ../tst_qprocess.cpp
@@ -19,4 +18,3 @@ TEST_HELPER_INSTALLS += \
     "../testProcessSpacesArgs/one space" \
     "../testProcessSpacesArgs/two space s" \
     "../test Space In Name/testSpaceInName"
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

@@ -4,4 +4,4 @@ SUBDIRS = \
 
 !winrt: SUBDIRS += crashonexit
 
-CONFIG += ordered parallel_test
+CONFIG += ordered

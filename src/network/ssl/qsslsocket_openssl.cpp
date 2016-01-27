@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2014 Governikus GmbH & Co. KG
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -78,12 +84,7 @@
 
 QT_BEGIN_NAMESPACE
 
-#if defined(Q_OS_MACX)
-#define kSecTrustSettingsDomainSystem 2 // so we do not need to include the header file
-    PtrSecCertificateCopyData QSslSocketPrivate::ptrSecCertificateCopyData = 0;
-    PtrSecTrustSettingsCopyCertificates QSslSocketPrivate::ptrSecTrustSettingsCopyCertificates = 0;
-    PtrSecTrustCopyAnchorCertificates QSslSocketPrivate::ptrSecTrustCopyAnchorCertificates = 0;
-#elif defined(Q_OS_WIN)
+#if defined(Q_OS_WIN)
     PtrCertOpenSystemStoreW QSslSocketPrivate::ptrCertOpenSystemStoreW = 0;
     PtrCertFindCertificateInStore QSslSocketPrivate::ptrCertFindCertificateInStore = 0;
     PtrCertCloseStore QSslSocketPrivate::ptrCertCloseStore = 0;
@@ -359,8 +360,7 @@ bool QSslSocketBackendPrivate::initSslContext()
         // create a deep copy of our configuration
         QSslConfigurationPrivate *configurationCopy = new QSslConfigurationPrivate(configuration);
         configurationCopy->ref.store(0);              // the QSslConfiguration constructor refs up
-        sslContextPointer = QSharedPointer<QSslContext>(
-                    QSslContext::fromConfiguration(mode, configurationCopy, allowRootCertOnDemandLoading));
+        sslContextPointer = QSslContext::sharedFromConfiguration(mode, configurationCopy, allowRootCertOnDemandLoading);
     }
 
     if (sslContextPointer->error() != QSslError::NoError) {
@@ -506,23 +506,7 @@ void QSslSocketPrivate::ensureCiphersAndCertsLoaded()
 
 #ifndef QT_NO_LIBRARY
     //load symbols needed to receive certificates from system store
-#if defined(Q_OS_MACX)
-    QLibrary securityLib("/System/Library/Frameworks/Security.framework/Versions/Current/Security");
-    if (securityLib.load()) {
-        ptrSecCertificateCopyData = (PtrSecCertificateCopyData) securityLib.resolve("SecCertificateCopyData");
-        if (!ptrSecCertificateCopyData)
-            qCWarning(lcSsl, "could not resolve symbols in security library"); // should never happen
-
-        ptrSecTrustSettingsCopyCertificates = (PtrSecTrustSettingsCopyCertificates) securityLib.resolve("SecTrustSettingsCopyCertificates");
-        if (!ptrSecTrustSettingsCopyCertificates) { // method was introduced in Leopard, use legacy method if it's not there
-            ptrSecTrustCopyAnchorCertificates = (PtrSecTrustCopyAnchorCertificates) securityLib.resolve("SecTrustCopyAnchorCertificates");
-            if (!ptrSecTrustCopyAnchorCertificates)
-                qCWarning(lcSsl, "could not resolve symbols in security library"); // should never happen
-        }
-    } else {
-        qCWarning(lcSsl, "could not load security library");
-    }
-#elif defined(Q_OS_WIN)
+#if defined(Q_OS_WIN)
     HINSTANCE hLib = LoadLibraryW(L"Crypt32");
     if (hLib) {
 #if defined(Q_OS_WINCE)
@@ -680,6 +664,7 @@ void QSslSocketPrivate::resetDefaultEllipticCurves()
     setDefaultSupportedEllipticCurves(curves);
 }
 
+#ifndef Q_OS_DARWIN // Apple implementation in qsslsocket_mac_shared.cpp
 QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
 {
     ensureInitialized();
@@ -688,43 +673,7 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
     timer.start();
 #endif
     QList<QSslCertificate> systemCerts;
-#if defined(Q_OS_MACX)
-    CFArrayRef cfCerts;
-    OSStatus status = 1;
-
-    CFDataRef SecCertificateCopyData (
-       SecCertificateRef certificate
-    );
-
-    if (ptrSecCertificateCopyData) {
-        if (ptrSecTrustSettingsCopyCertificates)
-            status = ptrSecTrustSettingsCopyCertificates(kSecTrustSettingsDomainSystem, &cfCerts);
-        else if (ptrSecTrustCopyAnchorCertificates)
-            status = ptrSecTrustCopyAnchorCertificates(&cfCerts);
-        if (!status) {
-            CFIndex size = CFArrayGetCount(cfCerts);
-            for (CFIndex i = 0; i < size; ++i) {
-                SecCertificateRef cfCert = (SecCertificateRef)CFArrayGetValueAtIndex(cfCerts, i);
-                CFDataRef data;
-
-                data = ptrSecCertificateCopyData(cfCert);
-
-                if (data == NULL) {
-                    qCWarning(lcSsl, "error retrieving a CA certificate from the system store");
-                } else {
-                    QByteArray rawCert = QByteArray::fromRawData((const char *)CFDataGetBytePtr(data), CFDataGetLength(data));
-                    systemCerts.append(QSslCertificate::fromData(rawCert, QSsl::Der));
-                    CFRelease(data);
-                }
-            }
-            CFRelease(cfCerts);
-        }
-        else {
-           // no detailed error handling here
-           qCWarning(lcSsl, "could not retrieve system CA certificates");
-        }
-    }
-#elif defined(Q_OS_WIN)
+#if defined(Q_OS_WIN)
     if (ptrCertOpenSystemStoreW && ptrCertFindCertificateInStore && ptrCertCloseStore) {
         HCERTSTORE hSystemStore;
 #if defined(Q_OS_WINCE)
@@ -801,6 +750,7 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
 
     return systemCerts;
 }
+#endif // Q_OS_DARWIN
 
 void QSslSocketBackendPrivate::startClientEncryption()
 {
@@ -1620,6 +1570,14 @@ void QSslSocketBackendPrivate::continueHandshake()
             configuration.nextNegotiatedProtocol.clear();
     }
 #endif // OPENSSL_VERSION_NUMBER >= 0x1000100fL ...
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (q_SSLeay() >= 0x10002000L && mode == QSslSocket::SslClientMode) {
+        EVP_PKEY *key;
+        if (q_SSL_get_server_tmp_key(ssl, &key))
+            configuration.ephemeralServerKey = QSslKey(key, QSsl::PublicKey);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L ...
 
     connectionEncrypted = true;
     emit q->encrypted();

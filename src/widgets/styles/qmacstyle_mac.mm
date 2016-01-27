@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -36,7 +42,7 @@
   .../doc/src/qstyles.qdoc.
 */
 
-#include <Cocoa/Cocoa.h>
+#include <AppKit/AppKit.h>
 
 #include "qmacstyle_mac_p.h"
 #include "qmacstyle_mac_p_p.h"
@@ -118,14 +124,13 @@ QT_NAMESPACE_ALIAS_OBJC_CLASS(NotificationReceiver);
 - (void)scrollBarStyleDidChange:(NSNotification *)notification
 {
     Q_UNUSED(notification);
+
+    // purge destroyed scroll bars:
+    QMacStylePrivate::scrollBars.removeAll(QPointer<QObject>());
+
     QEvent event(QEvent::StyleChange);
-    QMutableVectorIterator<QPointer<QObject> > it(QMacStylePrivate::scrollBars);
-    while (it.hasNext()) {
-        if (!it.next())
-            it.remove();
-        else
-            QCoreApplication::sendEvent(it.value(), &event);
-    }
+    for (const auto &o : QMacStylePrivate::scrollBars)
+        QCoreApplication::sendEvent(o, &event);
 }
 @end
 
@@ -1108,6 +1113,17 @@ static void qt_drawFocusRingOnPath(CGContextRef cg, NSBezierPath *focusRingPath)
     [focusRingPath fill];
     [NSGraphicsContext restoreGraphicsState];
     CGContextRestoreGState(cg);
+}
+
+QAquaWidgetSize QMacStylePrivate::effectiveAquaSizeConstrain(const QStyleOption *option,
+                                                            const QWidget *widg,
+                                                            QStyle::ContentsType ct,
+                                                            QSize szHint, QSize *insz) const
+{
+    QAquaWidgetSize sz = aquaSizeConstrain(option, widg, ct, szHint, insz);
+    if (sz == QAquaSizeUnknown)
+        return QAquaSizeLarge;
+    return sz;
 }
 
 QAquaWidgetSize QMacStylePrivate::aquaSizeConstrain(const QStyleOption *option, const QWidget *widg,
@@ -2475,32 +2491,9 @@ int QMacStyle::pixelMetric(PixelMetric metric, const QStyleOption *opt, const QW
         ret = 0;
         break;
     case PM_TitleBarHeight:
-        if (const QStyleOptionTitleBar *tb = qstyleoption_cast<const QStyleOptionTitleBar *>(opt)) {
-            HIThemeWindowDrawInfo wdi;
-            wdi.version = qt_mac_hitheme_version;
-            wdi.state = kThemeStateActive;
-            wdi.windowType = QtWinType;
-            if (tb->titleBarState)
-                wdi.attributes = kThemeWindowHasFullZoom | kThemeWindowHasCloseBox
-                                  | kThemeWindowHasCollapseBox;
-            else if (tb->titleBarFlags & Qt::WindowSystemMenuHint)
-                wdi.attributes = kThemeWindowHasCloseBox;
-            else
-                wdi.attributes = 0;
-            wdi.titleHeight = tb->rect.height();
-            wdi.titleWidth = tb->rect.width();
-            QCFType<HIShapeRef> region;
-            HIRect hirect = qt_hirectForQRect(tb->rect);
-            if (hirect.size.width <= 0)
-                hirect.size.width = 100;
-            if (hirect.size.height <= 0)
-                hirect.size.height = 30;
-
-            HIThemeGetWindowShape(&hirect, &wdi, kWindowTitleBarRgn, &region);
-            HIRect rect;
-            ptrHIShapeGetBounds(region, &rect);
-            ret = int(rect.size.height);
-        }
+        // Always use NSTitledWindowMask since we never need any other type of window here
+        ret = int([NSWindow frameRectForContentRect:NSZeroRect
+                                          styleMask:NSTitledWindowMask].size.height);
         break;
     case PM_TabBarTabVSpace:
         ret = 4;
@@ -2530,29 +2523,10 @@ int QMacStyle::pixelMetric(PixelMetric metric, const QStyleOption *opt, const QW
         }
         break;
     case PM_ScrollBarExtent: {
-        if ([NSScroller preferredScrollerStyle] == NSScrollerStyleOverlay) {
-            switch (d->aquaSizeConstrain(opt, widget)) {
-            case QAquaSizeUnknown:
-            case QAquaSizeLarge:
-                ret = QSysInfo::macVersion() >= QSysInfo::MV_10_8 ? 16 : 9;
-                break;
-            case QAquaSizeMini:
-            case QAquaSizeSmall:
-                ret =  QSysInfo::macVersion() >= QSysInfo::MV_10_8 ? 14 : 7;
-                break;
-            }
-            break;
-        }
-        switch (d->aquaSizeConstrain(opt, widget)) {
-        case QAquaSizeUnknown:
-        case QAquaSizeLarge:
-            GetThemeMetric(kThemeMetricScrollBarWidth, &ret);
-            break;
-        case QAquaSizeMini:
-        case QAquaSizeSmall:
-            GetThemeMetric(kThemeMetricSmallScrollBarWidth, &ret);
-            break;
-        }
+        const QAquaWidgetSize size = d->effectiveAquaSizeConstrain(opt, widget);
+        ret = static_cast<SInt32>([NSScroller
+            scrollerWidthForControlSize:static_cast<NSControlSize>(size)
+                          scrollerStyle:[NSScroller preferredScrollerStyle]]);
         break; }
     case PM_IndicatorHeight: {
         switch (d->aquaSizeConstrain(opt, widget)) {

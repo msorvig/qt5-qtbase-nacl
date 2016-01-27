@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -442,14 +437,14 @@ public slots:
     void threadProgress(int v)
     {
         ++count;
-        QVERIFY(v == count);
+        QCOMPARE(v, count);
 
         QCoreApplication::postEvent(this, new QEvent(QEvent::MaxUser), -1);
     }
 
     void threadFinished()
     {
-        QVERIFY(count == 7);
+        QCOMPARE(count, 7);
         count = 0;
         thread->deleteLater();
 
@@ -898,6 +893,7 @@ void tst_QCoreApplication::threadedEventDelivery()
     QCOMPARE(receiver.recordedEvents.contains(QEvent::User + 1), eventsReceived);
 }
 
+#ifndef QT_NO_LIBRARY
 void tst_QCoreApplication::addRemoveLibPaths()
 {
     QStringList paths = QCoreApplication::libraryPaths();
@@ -922,8 +918,9 @@ void tst_QCoreApplication::addRemoveLibPaths()
     QStringList replace;
     replace << currentDir << paths[0];
     QCoreApplication::setLibraryPaths(replace);
-    QVERIFY(QCoreApplication::libraryPaths() == replace);
+    QCOMPARE(QCoreApplication::libraryPaths(), replace);
 }
+#endif
 
 static void createQObjectOnDestruction()
 {

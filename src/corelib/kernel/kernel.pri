@@ -153,7 +153,13 @@ unix|integrity {
             kernel/qcore_unix_p.h \
             kernel/qcrashhandler_p.h \
             kernel/qeventdispatcher_unix_p.h \
+            kernel/qpoll_p.h \
             kernel/qtimerinfo_unix_p.h
+
+    contains(QT_CONFIG, poll_select): SOURCES += kernel/qpoll.cpp
+    contains(QT_CONFIG, poll_poll): DEFINES += QT_HAVE_POLL
+    contains(QT_CONFIG, poll_ppoll): DEFINES += QT_HAVE_POLL QT_HAVE_PPOLL
+    contains(QT_CONFIG, poll_pollts): DEFINES += QT_HAVE_POLL QT_HAVE_POLLTS
 
     contains(QT_CONFIG, glib) {
         SOURCES += \
@@ -184,13 +190,6 @@ vxworks {
                 kernel/qfunctions_vxworks.cpp
         HEADERS += \
                 kernel/qfunctions_vxworks.h
-}
-
-blackberry {
-        SOURCES += \
-                kernel/qeventdispatcher_blackberry.cpp
-        HEADERS += \
-                kernel/qeventdispatcher_blackberry_p.h
 }
 
 qqnx_pps {

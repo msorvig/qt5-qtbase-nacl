@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -46,7 +41,6 @@ class tst_QListWidget : public QObject
 
 public:
     tst_QListWidget();
-    ~tst_QListWidget();
 
     enum ModelChanged {
         RowsAboutToBeInserted,
@@ -59,13 +53,10 @@ public:
         ColumnsRemoved
     };
 
-public slots:
+private slots:
     void initTestCase();
     void cleanupTestCase();
     void init();
-    void cleanup();
-
-private slots:
     void addItem();
     void addItem2();
     void addItems();
@@ -162,10 +153,6 @@ tst_QListWidget::tst_QListWidget(): testWidget(0), rcParent(8), rcFirst(8,0), rc
 {
 }
 
-tst_QListWidget::~tst_QListWidget()
-{
-}
-
 void tst_QListWidget::initTestCase()
 {
     testWidget = new QListWidget();
@@ -210,10 +197,6 @@ void tst_QListWidget::checkDefaultValues()
     QCOMPARE(testWidget->count(), 0);
 }
 
-void tst_QListWidget::cleanup()
-{
-}
-
 void tst_QListWidget::populate()
 {
     addItem();
@@ -230,7 +213,7 @@ void tst_QListWidget::populate()
 void tst_QListWidget::addItem()
 {
     int count = testWidget->count();
-    QString label = QString("%1").arg(count);
+    const QString label = QString::number(count);
     testWidget->addItem(label);
     QCOMPARE(testWidget->count(), ++count);
     QCOMPARE(testWidget->item(testWidget->count()-1)->text(), label);
@@ -244,7 +227,7 @@ void tst_QListWidget::addItem2()
     testWidget->addItem(0);
     QCOMPARE(testWidget->count(), count);
 
-    QListWidgetItem *item = new QListWidgetItem(QString("%1").arg(count));
+    QListWidgetItem *item = new QListWidgetItem(QString::number(count));
     item->setFlags(item->flags() | Qt::ItemIsEditable);
     testWidget->addItem(item);
     QCOMPARE(testWidget->count(), ++count);
@@ -261,10 +244,10 @@ void tst_QListWidget::addItems()
     QCOMPARE(testWidget->count(), count);
 
     QStringList stringList;
-    QString label = QString("%1").arg(count);
-    stringList << QString("%1").arg(testWidget->count() + 1)
-               << QString("%1").arg(testWidget->count() + 2)
-               << QString("%1").arg(testWidget->count() + 3)
+    QString label = QString::number(count);
+    stringList << QString::number(testWidget->count() + 1)
+               << QString::number(testWidget->count() + 2)
+               << QString::number(testWidget->count() + 3)
                << label;
     testWidget->addItems(stringList);
     QCOMPARE(testWidget->count(), count + stringList.count());
@@ -276,7 +259,7 @@ void tst_QListWidget::openPersistentEditor()
 {
     // Boundary checking
     testWidget->openPersistentEditor(0);
-    QListWidgetItem *item = new QListWidgetItem(QString("%1").arg(testWidget->count()));
+    QListWidgetItem *item = new QListWidgetItem(QString::number(testWidget->count()));
     testWidget->openPersistentEditor(item);
 
     int childCount = testWidget->viewport()->children().count();
@@ -290,7 +273,7 @@ void tst_QListWidget::closePersistentEditor()
     // Boundary checking
     int childCount = testWidget->viewport()->children().count();
     testWidget->closePersistentEditor(0);
-    QListWidgetItem *item = new QListWidgetItem(QString("%1").arg(testWidget->count()));
+    QListWidgetItem *item = new QListWidgetItem(QString::number(testWidget->count()));
     testWidget->closePersistentEditor(item);
     QCOMPARE(childCount, testWidget->viewport()->children().count());
 
@@ -316,7 +299,7 @@ void tst_QListWidget::setItemHidden()
         if (testWidget->isItemHidden(testWidget->item(i)))
             totalHidden++;
 
-    QListWidgetItem *item = new QListWidgetItem(QString("%1").arg(testWidget->count()));
+    QListWidgetItem *item = new QListWidgetItem(QString::number(testWidget->count()));
     testWidget->addItem(item);
 
     // Check that nothing else changed
@@ -362,7 +345,7 @@ void tst_QListWidget::setCurrentItem()
 {
     QFETCH(int, fill);
     for (int i = 0; i < fill; ++i)
-        testWidget->addItem(QString("%1").arg(i));
+        testWidget->addItem(QString::number(i));
 
     // Boundary checking
     testWidget->setCurrentItem((QListWidgetItem *)0);
@@ -394,7 +377,7 @@ void tst_QListWidget::setCurrentRow()
 {
     QFETCH(int, fill);
     for (int i = 0; i < fill; ++i)
-        testWidget->addItem(QString("%1").arg(i));
+        testWidget->addItem(QString::number(i));
 
     // Boundary checking
     testWidget->setCurrentRow(-1);
@@ -455,7 +438,7 @@ void tst_QListWidget::editItem()
 {
     // Boundary checking
     testWidget->editItem(0);
-    QListWidgetItem *item = new QListWidgetItem(QString("%1").arg(testWidget->count()));
+    QListWidgetItem *item = new QListWidgetItem(QString::number(testWidget->count()));
     testWidget->editItem(item);
 
     QFETCH(bool, editable);
@@ -650,7 +633,7 @@ void tst_QListWidget::item()
         QCOMPARE(item, static_cast<QListWidgetItem*>(0));
         QCOMPARE(testWidget->count(), 3);
     } else {
-        QCOMPARE(item->text(), QString("item%1").arg(row));
+        QCOMPARE(item->text(), QStringLiteral("item") + QString::number(row));
         QCOMPARE(testWidget->count(), 3);
     }
 }
@@ -683,7 +666,7 @@ void tst_QListWidget::takeItem()
         QCOMPARE(item, static_cast<QListWidgetItem*>(0));
         QCOMPARE(testWidget->count(), 3);
     } else {
-        QCOMPARE(item->text(), QString("item%1").arg(row));
+        QCOMPARE(item->text(), QStringLiteral("item") + QString::number(row));
         QCOMPARE(testWidget->count(), 2);
     }
 
@@ -746,7 +729,7 @@ void tst_QListWidget::selectedItems()
 
     //insert items
     for (int i=0; i<itemCount; ++i)
-        new QListWidgetItem(QString("Item%1").arg(i), testWidget);
+        new QListWidgetItem(QStringLiteral("Item") + QString::number(i), testWidget);
 
     //test the selection
     testWidget->setSelectionMode(QListWidget::SingleSelection);
@@ -1245,8 +1228,8 @@ void tst_QListWidget::insertItemsWithSorting_data()
         QStringList ascendingItems;
         QStringList reverseItems;
         for (int i = 'a'; i <= 'z'; ++i) {
-            ascendingItems << QString("%0").arg(QLatin1Char(i));
-            reverseItems << QString("%0").arg(QLatin1Char('z' - i + 'a'));
+            ascendingItems << QString(1, QLatin1Char(i));
+            reverseItems << QString(1, QLatin1Char('z' - i + 'a'));
             ascendingRows << i - 'a';
             reverseRows << 'z' - i + 'a';
         }
@@ -1490,7 +1473,7 @@ void tst_QListWidget::fastScroll()
     QWidget topLevel;
     MyListWidget widget(&topLevel);
     for (int i = 0; i < 50; ++i)
-        widget.addItem(QString("Item %1").arg(i));
+        widget.addItem(QStringLiteral("Item ") + QString::number(i));
 
     topLevel.resize(300, 300); // toplevel needs to be wide enough for the item
     topLevel.show();

@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -65,17 +60,9 @@ class tst_QTableView : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QTableView();
-    virtual ~tst_QTableView();
-
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
-
 private slots:
+    void initTestCase();
+
     void getSetCheck();
 
     void noDelegate();
@@ -214,6 +201,8 @@ private slots:
 
     void changeHeaderData();
     void viewOptions();
+
+    void taskQTBUG_7232_AllowUserToControlSingleStep();
 };
 
 // Testing get/set functions
@@ -325,8 +314,10 @@ public:
             return QVariant();
         }
 
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-            return QString("[%1,%2,%3]").arg(idx.row()).arg(idx.column()).arg(0);
+        if (role == Qt::DisplayRole || role == Qt::EditRole) {
+            return QLatin1Char('[') + QString::number(idx.row()) + QLatin1Char(',')
+                + QString::number(idx.column()) + QLatin1String(",0]");
+        }
 
         return QVariant();
     }
@@ -415,7 +406,8 @@ public:
 
     void reset()
     {
-        QAbstractTableModel::reset();
+        beginResetModel();
+        endResetModel();
     }
 
     int row_count;
@@ -527,31 +519,11 @@ public:
     QSize hint;
 };
 
-tst_QTableView::tst_QTableView()
-{
-}
-
-tst_QTableView::~tst_QTableView()
-{
-}
-
 void tst_QTableView::initTestCase()
 {
 #ifdef Q_OS_WINCE //disable magic for WindowsCE
     qApp->setAutoMaximizeThreshold(-1);
 #endif
-}
-
-void tst_QTableView::cleanupTestCase()
-{
-}
-
-void tst_QTableView::init()
-{
-}
-
-void tst_QTableView::cleanup()
-{
 }
 
 void tst_QTableView::noDelegate()
@@ -3606,7 +3578,11 @@ public:
     {
         return QVariant();
     }
-    void res() { reset(); }
+    void res()
+    {
+        beginResetModel();
+        endResetModel();
+    }
 
     int rows;
     int columns;
@@ -3797,7 +3773,7 @@ public:
                           int role = Qt::DisplayRole) const
     {
         if (role == Qt::DisplayRole)
-            return QString("%1 - %2").arg(index.column()).arg(index.row());
+            return QString::number(index.column()) + QLatin1String(" - ") + QString::number(index.row());
         return QVariant();
     }
 
@@ -3919,12 +3895,12 @@ void tst_QTableView::task227953_setRootIndex()
 
     //setup the first table as a child of the first item
     for ( int row = 0; row < 40; ++row ) {
-        item1.appendRow(QList<QStandardItem*>() << new QStandardItem(QString("row %0").arg(row)));
+        item1.appendRow(QList<QStandardItem*>() << new QStandardItem(QLatin1String("row ") + QString::number(row)));
     }
 
     //setup the second table as a child of the second item
     for ( int row = 0; row < 10; ++row ) {
-        item2.appendRow(QList<QStandardItem*>() << new QStandardItem(QString("row %0").arg(row)));
+        item2.appendRow(QList<QStandardItem*>() << new QStandardItem(QLatin1String("row ") + QString::number(row)));
     }
 
     tableView.setModel(&model);
@@ -4474,6 +4450,42 @@ void tst_QTableView::taskQTBUG_30653_doItemsLayout()
     int doItemsLayoutOffset = view.verticalHeader()->offset();
 
     QCOMPARE(scrollToBottomOffset, doItemsLayoutOffset);
+}
+
+void tst_QTableView::taskQTBUG_7232_AllowUserToControlSingleStep()
+{
+    // When we set the scrollMode to ScrollPerPixel it will adjust the scrollbars singleStep automatically
+    // Setting a singlestep on a scrollbar should however imply that the user takes control (and it is not changed by geometry updates).
+    // Setting a singlestep to -1 return to an automatic control of the singleStep.
+    QTableView t;
+    t.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    t.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    QStandardItemModel model(200, 200);
+    t.setModel(&model);
+    t.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&t));
+    t.setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    t.setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+    t.setGeometry(200, 200, 200, 200);
+    int vStep1 = t.verticalScrollBar()->singleStep();
+    int hStep1 = t.horizontalScrollBar()->singleStep();
+    QVERIFY(vStep1 > 1);
+    QVERIFY(hStep1 > 1);
+
+    t.verticalScrollBar()->setSingleStep(1);
+    t.setGeometry(300, 300, 300, 300);
+    QCOMPARE(t.verticalScrollBar()->singleStep(), 1);
+
+    t.horizontalScrollBar()->setSingleStep(1);
+    t.setGeometry(400, 400, 400, 400);
+    QCOMPARE(t.horizontalScrollBar()->singleStep(), 1);
+
+    t.setGeometry(200, 200, 200, 200);
+    t.verticalScrollBar()->setSingleStep(-1);
+    t.horizontalScrollBar()->setSingleStep(-1);
+    QCOMPARE(vStep1, t.verticalScrollBar()->singleStep());
+    QCOMPARE(hStep1, t.horizontalScrollBar()->singleStep());
 }
 
 QTEST_MAIN(tst_QTableView)

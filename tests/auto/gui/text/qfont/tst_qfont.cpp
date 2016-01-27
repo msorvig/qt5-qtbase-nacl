@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -50,13 +45,6 @@ class tst_QFont : public QObject
 {
 Q_OBJECT
 
-public:
-    tst_QFont();
-    virtual ~tst_QFont();
-
-public slots:
-    void init();
-    void cleanup();
 private slots:
     void getSetCheck();
     void exactMatch();
@@ -113,27 +101,6 @@ void tst_QFont::getSetCheck()
     QCOMPARE(QFont::StyleStrategy(QFont::NoAntialias), obj1.styleStrategy());
     obj1.setStyleStrategy(QFont::StyleStrategy(QFont::OpenGLCompatible));
     QCOMPARE(QFont::StyleStrategy(QFont::OpenGLCompatible), obj1.styleStrategy());
-}
-
-tst_QFont::tst_QFont()
-{
-}
-
-tst_QFont::~tst_QFont()
-{
-
-}
-
-void tst_QFont::init()
-{
-// TODO: Add initialization code here.
-// This will be executed immediately before each test is run.
-}
-
-void tst_QFont::cleanup()
-{
-// TODO: Add cleanup code here.
-// This will be executed immediately after each test is run.
 }
 
 void tst_QFont::exactMatch()
@@ -504,7 +471,7 @@ void tst_QFont::isCopyOf()
 
 void tst_QFont::insertAndRemoveSubstitutions()
 {
-    QFont::removeSubstitution("BogusFontFamily");
+    QFont::removeSubstitutions("BogusFontFamily");
     // make sure it is empty before we start
     QVERIFY(QFont::substitutes("BogusFontFamily").isEmpty());
     QVERIFY(QFont::substitutes("bogusfontfamily").isEmpty());
@@ -521,7 +488,7 @@ void tst_QFont::insertAndRemoveSubstitutions()
     QCOMPARE(QFont::substitutes("BogusFontFamily").count(), 3);
     QCOMPARE(QFont::substitutes("bogusfontfamily").count(), 3);
 
-    QFont::removeSubstitution("BogusFontFamily");
+    QFont::removeSubstitutions("BogusFontFamily");
     // make sure it is empty again
     QVERIFY(QFont::substitutes("BogusFontFamily").isEmpty());
     QVERIFY(QFont::substitutes("bogusfontfamily").isEmpty());
@@ -679,7 +646,7 @@ static inline QByteArray msgNotAcceptableFont(const QString &defaultFamily, cons
 {
     QString res = QString::fromLatin1("Font family '%1' is not one of the following acceptable results: ").arg(defaultFamily);
     Q_FOREACH (const QString &family, acceptableFamilies)
-        res += QString::fromLatin1("\n %1").arg(family);
+        res += QLatin1String("\n ") + family;
     return res.toLocal8Bit();
 }
 

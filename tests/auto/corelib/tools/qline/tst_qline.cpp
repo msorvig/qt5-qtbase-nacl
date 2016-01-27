@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -179,7 +174,7 @@ void tst_QLine::testIntersection_data()
         a = a.translated(1, 1);
         b = b.translated(1, 1);
 
-        QTest::newRow(qPrintable(QString::fromLatin1("rotation-%0").arg(i)))
+        QTest::newRow(("rotation-" + QByteArray::number(i)).constData())
             << (double)a.x1() << (double)a.y1() << (double)a.x2() << (double)a.y2()
             << (double)b.x1() << (double)b.y1() << (double)b.x2() << (double)b.y2()
             << int(QLineF::BoundedIntersection)
@@ -332,7 +327,7 @@ void tst_QLine::testAngle_data()
                               << 135.0;
 
     for (int i=0; i<180; ++i) {
-        QTest::newRow(QString("angle:%1").arg(i).toLatin1())
+        QTest::newRow(("angle:" + QByteArray::number(i)).constData())
             << 0.0 << 0.0 << double(cos(i*M_2PI/360)) << double(sin(i*M_2PI/360))
             << 0.0 << 0.0 << 1.0 << 0.0
             << double(i);
@@ -460,7 +455,7 @@ void tst_QLine::testAngleTo_data()
 
     for (int i = 0; i < 360; ++i) {
         const QLineF l = QLineF::fromPolar(1, i);
-        QTest::newRow(QString("angle:%1").arg(i).toLatin1())
+        QTest::newRow(("angle:" + QByteArray::number(i)).constData())
             << qreal(0.0) << qreal(0.0) << qreal(1.0) << qreal(0.0)
             << qreal(0.0) << qreal(0.0) << l.p2().x() << l.p2().y()
             << qreal(i);

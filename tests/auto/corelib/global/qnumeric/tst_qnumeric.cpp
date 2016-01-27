@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -55,6 +51,7 @@ private slots:
     void addOverflow();
     void mulOverflow_data();
     void mulOverflow();
+    void signedOverflow();
 };
 
 void tst_QNumeric::fuzzyCompare_data()
@@ -105,6 +102,18 @@ void tst_QNumeric::qNan()
     QVERIFY(qIsNaN(nan));
     QVERIFY(qIsNaN(nan + 1));
     QVERIFY(qIsNaN(-nan));
+
+    Q_STATIC_ASSERT(sizeof(double) == 8);
+#ifdef Q_LITTLE_ENDIAN
+    const uchar bytes[] = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x7f };
+#else
+    const uchar bytes[] = { 0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+#endif
+    memcpy(&nan, bytes, 8);
+    QVERIFY(!qIsFinite(nan));
+    QVERIFY(!qIsInf(nan));
+    QVERIFY(qIsNaN(nan));
+
     double inf = qInf();
     QVERIFY(inf > 0);
     QVERIFY(-inf < 0);
@@ -364,6 +373,36 @@ void tst_QNumeric::mulOverflow()
         MulOverflowDispatch<ulong>()();     // not really 48-bit
     if (size == 64)
         MulOverflowDispatch<quint64>()();
+}
+
+void tst_QNumeric::signedOverflow()
+{
+    const int minInt = std::numeric_limits<int>::min();
+    const int maxInt = std::numeric_limits<int>::max();
+    int r;
+
+    QCOMPARE(add_overflow(minInt + 1, int(-1), &r), false);
+    QCOMPARE(add_overflow(minInt, int(-1), &r), true);
+    QCOMPARE(add_overflow(minInt, minInt, &r), true);
+    QCOMPARE(add_overflow(maxInt - 1, int(1), &r), false);
+    QCOMPARE(add_overflow(maxInt, int(1), &r), true);
+    QCOMPARE(add_overflow(maxInt, maxInt, &r), true);
+
+    QCOMPARE(sub_overflow(minInt + 1, int(1), &r), false);
+    QCOMPARE(sub_overflow(minInt, int(1), &r), true);
+    QCOMPARE(sub_overflow(minInt, maxInt, &r), true);
+    QCOMPARE(sub_overflow(maxInt - 1, int(-1), &r), false);
+    QCOMPARE(sub_overflow(maxInt, int(-1), &r), true);
+    QCOMPARE(sub_overflow(maxInt, minInt, &r), true);
+
+    QCOMPARE(mul_overflow(minInt, int(1), &r), false);
+    QCOMPARE(mul_overflow(minInt, int(-1), &r), true);
+    QCOMPARE(mul_overflow(minInt, int(2), &r), true);
+    QCOMPARE(mul_overflow(minInt, minInt, &r), true);
+    QCOMPARE(mul_overflow(maxInt, int(1), &r), false);
+    QCOMPARE(mul_overflow(maxInt, int(-1), &r), false);
+    QCOMPARE(mul_overflow(maxInt, int(2), &r), true);
+    QCOMPARE(mul_overflow(maxInt, maxInt, &r), true);
 }
 
 QTEST_APPLESS_MAIN(tst_QNumeric)

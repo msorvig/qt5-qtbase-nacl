@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -53,49 +59,26 @@
 #include "QtCore/qvarlengtharray.h"
 #include "private/qtimerinfo_unix_p.h"
 
-#if !defined(Q_OS_VXWORKS)
-#  include <sys/time.h>
-#  if (!defined(Q_OS_HPUX) || defined(__ia64)) && !defined(Q_OS_NACL)
-#    include <sys/select.h>
-#  endif
-#endif
-
 QT_BEGIN_NAMESPACE
 
-struct QSockNot
-{
-    QSocketNotifier *obj;
-    int fd;
-    fd_set *queue;
-};
-
-class QSockNotType
-{
-public:
-    QSockNotType();
-    ~QSockNotType();
-
-    typedef QPodList<QSockNot*, 32> List;
-
-    List list;
-    fd_set select_fds;
-    fd_set enabled_fds;
-    fd_set pending_fds;
-
-};
-
 class QEventDispatcherUNIXPrivate;
+
+struct Q_CORE_EXPORT QSocketNotifierSetUNIX Q_DECL_FINAL
+{
+    inline QSocketNotifierSetUNIX() Q_DECL_NOTHROW;
+
+    inline bool isEmpty() const Q_DECL_NOTHROW;
+    inline short events() const Q_DECL_NOTHROW;
+
+    QSocketNotifier *notifiers[3];
+};
+
+Q_DECLARE_TYPEINFO(QSocketNotifierSetUNIX, Q_PRIMITIVE_TYPE);
 
 //### the pepper platform plugin inherits QEventDispatcherUNIX and overrides registerSocketNotifier etc
 #ifdef Q_OS_NACL
 # undef Q_DECL_FINAL
 # define Q_DECL_FINAL
-#endif
-
-#ifdef Q_OS_QNX
-#  define FINAL_EXCEPT_BLACKBERRY
-#else
-#  define FINAL_EXCEPT_BLACKBERRY Q_DECL_FINAL
 #endif
 
 class Q_CORE_EXPORT QEventDispatcherUNIX : public QAbstractEventDispatcher
@@ -110,8 +93,8 @@ public:
     bool processEvents(QEventLoop::ProcessEventsFlags flags) Q_DECL_OVERRIDE;
     bool hasPendingEvents() Q_DECL_OVERRIDE;
 
-    void registerSocketNotifier(QSocketNotifier *notifier) FINAL_EXCEPT_BLACKBERRY;
-    void unregisterSocketNotifier(QSocketNotifier *notifier) FINAL_EXCEPT_BLACKBERRY;
+    void registerSocketNotifier(QSocketNotifier *notifier) Q_DECL_FINAL;
+    void unregisterSocketNotifier(QSocketNotifier *notifier) Q_DECL_FINAL;
 
     void registerTimer(int timerId, int interval, Qt::TimerType timerType, QObject *object) Q_DECL_FINAL;
     bool unregisterTimer(int timerId) Q_DECL_FINAL;
@@ -120,21 +103,12 @@ public:
 
     int remainingTime(int timerId) Q_DECL_FINAL;
 
-    void wakeUp() FINAL_EXCEPT_BLACKBERRY;
+    void wakeUp() Q_DECL_FINAL;
     void interrupt() Q_DECL_FINAL;
     void flush() Q_DECL_OVERRIDE;
 
 protected:
     QEventDispatcherUNIX(QEventDispatcherUNIXPrivate &dd, QObject *parent = 0);
-
-    void setSocketNotifierPending(QSocketNotifier *notifier);
-
-    int activateTimers();
-    int activateSocketNotifiers();
-
-    virtual int select(int nfds,
-                       fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
-                       timespec *timeout);
 };
 
 class Q_CORE_EXPORT QEventDispatcherUNIXPrivate : public QAbstractEventDispatcherPrivate
@@ -145,31 +119,56 @@ public:
     QEventDispatcherUNIXPrivate();
     ~QEventDispatcherUNIXPrivate();
 
-    int doSelect(QEventLoop::ProcessEventsFlags flags, timespec *timeout);
-    virtual int initThreadWakeUp() FINAL_EXCEPT_BLACKBERRY;
-    virtual int processThreadWakeUp(int nsel) FINAL_EXCEPT_BLACKBERRY;
+    int processThreadWakeUp(const pollfd &pfd);
 
-    bool mainThread;
+    int activateTimers();
+
+    void markPendingSocketNotifiers();
+    int activateSocketNotifiers();
+    void setSocketNotifierPending(QSocketNotifier *notifier);
 
     // note for eventfd(7) support:
     // if thread_pipe[1] is -1, then eventfd(7) is in use and is stored in thread_pipe[0]
     int thread_pipe[2];
 
-    // highest fd for all socket notifiers
-    int sn_highest;
-    // 3 socket notifier types - read, write and exception
-    QSockNotType sn_vec[3];
+    QVector<pollfd> pollfds;
+
+    QHash<int, QSocketNotifierSetUNIX> socketNotifiers;
+    QVector<QSocketNotifier *> pendingNotifiers;
 
     QTimerInfoList timerList;
-
-    // pending socket notifiers list
-    QSockNotType::List sn_pending_list;
 
     QAtomicInt wakeUps;
     QAtomicInt interrupt; // bool
 };
 
-#undef FINAL_EXCEPT_BLACKBERRY
+inline QSocketNotifierSetUNIX::QSocketNotifierSetUNIX() Q_DECL_NOTHROW
+{
+    notifiers[0] = 0;
+    notifiers[1] = 0;
+    notifiers[2] = 0;
+}
+
+inline bool QSocketNotifierSetUNIX::isEmpty() const Q_DECL_NOTHROW
+{
+    return !notifiers[0] && !notifiers[1] && !notifiers[2];
+}
+
+inline short QSocketNotifierSetUNIX::events() const Q_DECL_NOTHROW
+{
+    short result = 0;
+
+    if (notifiers[0])
+        result |= POLLIN;
+
+    if (notifiers[1])
+        result |= POLLOUT;
+
+    if (notifiers[2])
+        result |= POLLPRI;
+
+    return result;
+}
 
 QT_END_NAMESPACE
 

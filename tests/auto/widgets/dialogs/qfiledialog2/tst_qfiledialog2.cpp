@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -93,14 +88,12 @@ Q_OBJECT
 
 public:
     tst_QFileDialog2();
-    virtual ~tst_QFileDialog2();
 
-public slots:
+private slots:
     void initTestCase();
     void init();
     void cleanup();
 
-private slots:
 #ifdef QT_BUILD_INTERNAL
     void deleteDirAndFiles();
     void listRoot();
@@ -158,10 +151,6 @@ tst_QFileDialog2::tst_QFileDialog2()
 #if defined(Q_OS_WINCE)
     qApp->setAutoMaximizeThreshold(-1);
 #endif
-}
-
-tst_QFileDialog2::~tst_QFileDialog2()
-{
 }
 
 void tst_QFileDialog2::cleanupSettingsFile()
@@ -521,7 +510,7 @@ protected:
             path = parentIndex.child(source_row,0).data(Qt::DisplayRole).toString();
 
             do {
-              path = parentIndex.data(Qt::DisplayRole).toString() + "/" + path;
+              path = parentIndex.data(Qt::DisplayRole).toString() + QLatin1Char('/') + path;
               parentIndex = parentIndex.parent();
             } while(parentIndex.isValid());
 
@@ -916,7 +905,7 @@ void tst_QFileDialog2::task228844_ensurePreviousSorting()
 #else
     QTest::qWait(500);
 #endif
-    QCOMPARE(fd2.selectedFiles().first(), current.absolutePath() + QChar('/') + QLatin1String("g"));
+    QCOMPARE(fd2.selectedFiles().first(), current.absolutePath() + QLatin1String("/g"));
 
     QNonNativeFileDialog fd3(0, "This is a third file dialog", tempFile->fileName());
     fd3.restoreState(fd.saveState());
@@ -1162,7 +1151,7 @@ void tst_QFileDialog2::task257579_sideBarWithNonCleanUrls()
     QLatin1String dirname("autotest_task257579");
     dir.rmdir(dirname); //makes sure it doesn't exist any more
     QVERIFY(dir.mkdir(dirname));
-    QString url = QString::fromLatin1("%1/%2/..").arg(dir.absolutePath()).arg(dirname);
+    QString url = dir.absolutePath() + QLatin1Char('/') + dirname + QLatin1String("/..");
     QNonNativeFileDialog fd;
     fd.setSidebarUrls(QList<QUrl>() << QUrl::fromLocalFile(url));
     QSidebar *sidebar = fd.findChild<QSidebar*>("sidebar");

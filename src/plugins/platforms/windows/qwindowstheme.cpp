@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -501,28 +507,43 @@ QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) con
     const int scaleFactor = primaryScreen ? qRound(QHighDpiScaling::factor(primaryScreen)) : 1;
     const QSizeF pixmapSize = size * scaleFactor;
     int resourceId = -1;
+    int stockId = SIID_INVALID;
+    UINT stockFlags = 0;
     LPCTSTR iconName = 0;
     switch (sp) {
     case DriveCDIcon:
+        stockId = SIID_DRIVECD;
+        resourceId = 12;
+        break;
     case DriveDVDIcon:
+        stockId = SIID_DRIVEDVD;
         resourceId = 12;
         break;
     case DriveNetIcon:
+        stockId = SIID_DRIVENET;
         resourceId = 10;
         break;
     case DriveHDIcon:
+        stockId = SIID_DRIVEFIXED;
         resourceId = 9;
         break;
     case DriveFDIcon:
+        stockId = SIID_DRIVE35;
         resourceId = 7;
         break;
-    case FileIcon:
     case FileLinkIcon:
+        stockFlags = SHGSI_LINKOVERLAY;
+        // Fall through
+    case FileIcon:
+        stockId = SIID_DOCNOASSOC;
         resourceId = 1;
         break;
-    case DirIcon:
     case DirLinkIcon:
+        stockFlags = SHGSI_LINKOVERLAY;
+        // Fall through
     case DirClosedIcon:
+    case DirIcon:
+        stockId = SIID_FOLDER;
         resourceId = 4;
         break;
     case DesktopIcon:
@@ -531,54 +552,68 @@ QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) con
     case ComputerIcon:
         resourceId = 16;
         break;
-    case DirOpenIcon:
     case DirLinkOpenIcon:
+        stockFlags = SHGSI_LINKOVERLAY;
+        // Fall through
+    case DirOpenIcon:
+        stockId = SIID_FOLDEROPEN;
         resourceId = 5;
         break;
     case FileDialogNewFolder:
+        stockId = SIID_FOLDER;
         resourceId = 319;
         break;
     case DirHomeIcon:
         resourceId = 235;
         break;
     case TrashIcon:
+        stockId = SIID_RECYCLER;
         resourceId = 191;
         break;
 #ifndef Q_OS_WINCE
     case MessageBoxInformation:
+        stockId = SIID_INFO;
         iconName = IDI_INFORMATION;
         break;
     case MessageBoxWarning:
+        stockId = SIID_WARNING;
         iconName = IDI_WARNING;
         break;
     case MessageBoxCritical:
+        stockId = SIID_ERROR;
         iconName = IDI_ERROR;
         break;
     case MessageBoxQuestion:
+        stockId = SIID_HELP;
         iconName = IDI_QUESTION;
         break;
     case VistaShield:
+        stockId = SIID_SHIELD;
+        break;
+#endif
+    default:
+        break;
+    }
+
+#ifndef Q_OS_WINCE
+    if (stockId != SIID_INVALID) {
         if (QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA
-            && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)) {
-            if (!QWindowsContext::shell32dll.sHGetStockIconInfo)
-                return QPixmap();
+            && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
+            && QWindowsContext::shell32dll.sHGetStockIconInfo) {
             QPixmap pixmap;
             SHSTOCKICONINFO iconInfo;
             memset(&iconInfo, 0, sizeof(iconInfo));
             iconInfo.cbSize = sizeof(iconInfo);
-            const int iconSize = pixmapSize.width() > 16 ? SHGFI_LARGEICON : SHGFI_SMALLICON;
-            if (QWindowsContext::shell32dll.sHGetStockIconInfo(SIID_SHIELD, SHGFI_ICON | iconSize, &iconInfo) == S_OK) {
+            stockFlags |= (pixmapSize.width() > 16 ? SHGFI_LARGEICON : SHGFI_SMALLICON);
+            if (QWindowsContext::shell32dll.sHGetStockIconInfo(stockId, SHGFI_ICON | stockFlags, &iconInfo) == S_OK) {
                 pixmap = qt_pixmapFromWinHICON(iconInfo.hIcon);
                 pixmap.setDevicePixelRatio(scaleFactor);
                 DestroyIcon(iconInfo.hIcon);
                 return pixmap;
             }
         }
-        break;
-#endif
-    default:
-        break;
     }
+#endif
 
     if (resourceId != -1) {
         QPixmap pixmap = loadIconFromShell32(resourceId, pixmapSize);

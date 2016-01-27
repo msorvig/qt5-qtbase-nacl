@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -50,6 +56,7 @@
 #include "QtCore/qobjectdefs.h"
 #include "QtCore/qstring.h"
 #include "private/qringbuffer_p.h"
+#include "QtCore/qvector.h"
 #ifndef QT_NO_QOBJECT
 #include "private/qobject_p.h"
 #endif
@@ -57,146 +64,10 @@
 QT_BEGIN_NAMESPACE
 
 #ifndef QIODEVICE_BUFFERSIZE
-#define QIODEVICE_BUFFERSIZE Q_INT64_C(16384)
+#define QIODEVICE_BUFFERSIZE 16384
 #endif
 
 Q_CORE_EXPORT int qt_subtract_from_timeout(int timeout, int elapsed);
-
-// This is QIODevice's read buffer, optimized for read(), isEmpty() and getChar()
-class QIODevicePrivateLinearBuffer
-{
-public:
-    QIODevicePrivateLinearBuffer(int) : len(0), first(0), buf(0), capacity(0) {
-    }
-    ~QIODevicePrivateLinearBuffer() {
-        delete [] buf;
-    }
-    void clear() {
-        len = 0;
-        delete [] buf;
-        buf = 0;
-        first = buf;
-        capacity = 0;
-    }
-    qint64 size() const {
-        return len;
-    }
-    bool isEmpty() const {
-        return len == 0;
-    }
-    void skip(qint64 n) {
-        if (n >= len) {
-            clear();
-        } else {
-            len -= n;
-            first += n;
-        }
-    }
-    int getChar() {
-        if (len == 0)
-            return -1;
-        int ch = uchar(*first);
-        len--;
-        first++;
-        return ch;
-    }
-    qint64 read(char* target, qint64 size) {
-        qint64 r = qMin(size, len);
-        if (r) {
-            memcpy(target, first, r);
-            len -= r;
-            first += r;
-        }
-        return r;
-    }
-    qint64 peek(char* target, qint64 size) {
-        qint64 r = qMin(size, len);
-        if (r)
-            memcpy(target, first, r);
-        return r;
-    }
-    char* reserve(qint64 size) {
-        makeSpace(size + len, freeSpaceAtEnd);
-        char* writePtr = first + len;
-        len += size;
-        return writePtr;
-    }
-    void chop(qint64 size) {
-        if (size >= len) {
-            clear();
-        } else {
-            len -= size;
-        }
-    }
-    QByteArray readAll() {
-        QByteArray retVal(first, len);
-        clear();
-        return retVal;
-    }
-    qint64 readLine(char* target, qint64 size) {
-        qint64 r = qMin(size, len);
-        char* eol = static_cast<char*>(memchr(first, '\n', r));
-        if (eol)
-            r = 1+(eol-first);
-        memcpy(target, first, r);
-        len -= r;
-        first += r;
-        return r;
-    }
-    bool canReadLine() const {
-        return first && memchr(first, '\n', len);
-    }
-    void ungetChar(char c) {
-        if (first == buf) {
-            // underflow, the existing valid data needs to move to the end of the (potentially bigger) buffer
-            makeSpace(len+1, freeSpaceAtStart);
-        }
-        first--;
-        len++;
-        *first = c;
-    }
-    void ungetBlock(const char* block, qint64 size) {
-        if ((first - buf) < size) {
-            // underflow, the existing valid data needs to move to the end of the (potentially bigger) buffer
-            makeSpace(len + size, freeSpaceAtStart);
-        }
-        first -= size;
-        len += size;
-        memcpy(first, block, size);
-    }
-
-private:
-    enum FreeSpacePos {freeSpaceAtStart, freeSpaceAtEnd};
-    void makeSpace(size_t required, FreeSpacePos where) {
-        size_t newCapacity = qMax(capacity, size_t(QIODEVICE_BUFFERSIZE));
-        while (newCapacity < required)
-            newCapacity *= 2;
-        const size_t moveOffset = (where == freeSpaceAtEnd) ? 0 : newCapacity - size_t(len);
-        if (newCapacity > capacity) {
-            // allocate more space
-            char* newBuf = new char[newCapacity];
-            if (first)
-                memmove(newBuf + moveOffset, first, len);
-            delete [] buf;
-            buf = newBuf;
-            capacity = newCapacity;
-        } else {
-            // shift any existing data to make space
-            memmove(buf + moveOffset, first, len);
-        }
-        first = buf + moveOffset;
-    }
-
-private:
-    // length of the unread data
-    qint64 len;
-    // start of the unread data
-    char* first;
-    // the allocated buffer
-    char* buf;
-    // allocated buffer size
-    size_t capacity;
-};
 
 class Q_CORE_EXPORT QIODevicePrivate
 #ifndef QT_NO_QOBJECT
@@ -212,9 +83,52 @@ public:
     QIODevice::OpenMode openMode;
     QString errorString;
 
-    QIODevicePrivateLinearBuffer buffer;
+    QVector<QRingBuffer> readBuffers;
+    QVector<QRingBuffer> writeBuffers;
+
+    class QRingBufferRef {
+        QRingBuffer *m_buf;
+        inline QRingBufferRef() : m_buf(Q_NULLPTR) { }
+        friend class QIODevicePrivate;
+    public:
+        // wrap functions from QRingBuffer
+        inline qint64 nextDataBlockSize() const { return (m_buf ? m_buf->nextDataBlockSize() : Q_INT64_C(0)); }
+        inline const char *readPointer() const { return (m_buf ? m_buf->readPointer() : Q_NULLPTR); }
+        inline const char *readPointerAtPosition(qint64 pos, qint64 &length) const { Q_ASSERT(m_buf); return m_buf->readPointerAtPosition(pos, length); }
+        inline void free(qint64 bytes) { Q_ASSERT(m_buf); m_buf->free(bytes); }
+        inline char *reserve(qint64 bytes) { Q_ASSERT(m_buf); return m_buf->reserve(bytes); }
+        inline char *reserveFront(qint64 bytes) { Q_ASSERT(m_buf); return m_buf->reserveFront(bytes); }
+        inline void truncate(qint64 pos) { Q_ASSERT(m_buf); m_buf->truncate(pos); }
+        inline void chop(qint64 bytes) { Q_ASSERT(m_buf); m_buf->chop(bytes); }
+        inline bool isEmpty() const { return !m_buf || m_buf->isEmpty(); }
+        inline int getChar() { return (m_buf ? m_buf->getChar() : -1); }
+        inline void putChar(char c) { Q_ASSERT(m_buf); m_buf->putChar(c); }
+        inline void ungetChar(char c) { Q_ASSERT(m_buf); m_buf->ungetChar(c); }
+        inline qint64 size() const { return (m_buf ? m_buf->size() : Q_INT64_C(0)); }
+        inline void clear() { if (m_buf) m_buf->clear(); }
+        inline qint64 indexOf(char c) const { return (m_buf ? m_buf->indexOf(c, m_buf->size()) : Q_INT64_C(-1)); }
+        inline qint64 indexOf(char c, qint64 maxLength, qint64 pos = 0) const { return (m_buf ? m_buf->indexOf(c, maxLength, pos) : Q_INT64_C(-1)); }
+        inline qint64 read(char *data, qint64 maxLength) { return (m_buf ? m_buf->read(data, maxLength) : Q_INT64_C(0)); }
+        inline QByteArray read() { return (m_buf ? m_buf->read() : QByteArray()); }
+        inline qint64 peek(char *data, qint64 maxLength, qint64 pos = 0) const { return (m_buf ? m_buf->peek(data, maxLength, pos) : Q_INT64_C(0)); }
+        inline void append(const QByteArray &qba) { Q_ASSERT(m_buf); m_buf->append(qba); }
+        inline qint64 skip(qint64 length) { return (m_buf ? m_buf->skip(length) : Q_INT64_C(0)); }
+        inline qint64 readLine(char *data, qint64 maxLength) { return (m_buf ? m_buf->readLine(data, maxLength) : Q_INT64_C(-1)); }
+        inline bool canReadLine() const { return m_buf && m_buf->canReadLine(); }
+    };
+
+    QRingBufferRef buffer;
+    QRingBufferRef writeBuffer;
     qint64 pos;
     qint64 devicePos;
+    int readChannelCount;
+    int writeChannelCount;
+    int currentReadChannel;
+    int currentWriteChannel;
+    int readBufferChunkSize;
+    int writeBufferChunkSize;
+    qint64 transactionPos;
+    bool transactionStarted;
     bool baseReadLineDataCalled;
 
     virtual bool putCharHelper(char c);
@@ -231,6 +145,26 @@ public:
             accessMode = q_func()->isSequential() ? Sequential : RandomAccess;
         return accessMode == Sequential;
     }
+
+    inline bool isBufferEmpty() const
+    {
+        return buffer.isEmpty() || (transactionStarted && isSequential()
+                                    && transactionPos == buffer.size());
+    }
+    void seekBuffer(qint64 newPos);
+
+    inline void setCurrentReadChannel(int channel)
+    {
+        buffer.m_buf = (channel < readBuffers.size() ? &readBuffers[channel] : nullptr);
+        currentReadChannel = channel;
+    }
+    inline void setCurrentWriteChannel(int channel)
+    {
+        writeBuffer.m_buf = (channel < writeBuffers.size() ? &writeBuffers[channel] : nullptr);
+        currentWriteChannel = channel;
+    }
+    void setReadChannelCount(int count);
+    void setWriteChannelCount(int count);
 
     virtual qint64 peek(char *data, qint64 maxSize);
     virtual QByteArray peek(qint64 maxSize);

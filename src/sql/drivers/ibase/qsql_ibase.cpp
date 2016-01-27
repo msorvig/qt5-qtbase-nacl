@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -345,36 +351,37 @@ class QIBaseResultPrivate;
 
 class QIBaseResult : public QSqlCachedResult
 {
-    friend class QIBaseResultPrivate;
+    Q_DECLARE_PRIVATE(QIBaseResult)
 
 public:
     explicit QIBaseResult(const QIBaseDriver* db);
-    virtual ~QIBaseResult();
 
-    bool prepare(const QString& query);
-    bool exec();
-    QVariant handle() const;
+    bool prepare(const QString &query) Q_DECL_OVERRIDE;
+    bool exec() Q_DECL_OVERRIDE;
+    QVariant handle() const Q_DECL_OVERRIDE;
 
 protected:
-    bool gotoNext(QSqlCachedResult::ValueCache& row, int rowIdx);
-    bool reset (const QString& query);
-    int size();
-    int numRowsAffected();
-    QSqlRecord record() const;
-
-private:
-    QIBaseResultPrivate* d;
+    bool gotoNext(QSqlCachedResult::ValueCache& row, int rowIdx) Q_DECL_OVERRIDE;
+    bool reset (const QString &query) Q_DECL_OVERRIDE;
+    int size() Q_DECL_OVERRIDE;
+    int numRowsAffected() Q_DECL_OVERRIDE;
+    QSqlRecord record() const Q_DECL_OVERRIDE;
 };
 
-class QIBaseResultPrivate
+class QIBaseResultPrivate: public QSqlCachedResultPrivate
 {
+    Q_DECLARE_PUBLIC(QIBaseResult)
+
 public:
-    QIBaseResultPrivate(QIBaseResult *d, const QIBaseDriver *ddb);
+    Q_DECLARE_SQLDRIVER_PRIVATE(QIBaseDriver)
+
+    QIBaseResultPrivate(QIBaseResult *q, const QIBaseDriver *drv);
     ~QIBaseResultPrivate() { cleanup(); }
 
     void cleanup();
     bool isError(const char *msg, QSqlError::ErrorType typ = QSqlError::UnknownError)
     {
+        Q_Q(QIBaseResult);
         QString imsg;
         ISC_LONG sqlcode;
         if (!getIBaseError(imsg, status, sqlcode, tc))
@@ -395,8 +402,6 @@ public:
     bool writeArray(int i, const QList<QVariant> &list);
 
 public:
-    QIBaseResult *q;
-    const QIBaseDriver *db;
     ISC_STATUS status[20];
     isc_tr_handle trans;
     //indicator whether we have a local transaction or a transaction on driver level
@@ -410,14 +415,22 @@ public:
 };
 
 
-QIBaseResultPrivate::QIBaseResultPrivate(QIBaseResult *d, const QIBaseDriver *ddb):
-    q(d), db(ddb), trans(0), stmt(0), ibase(ddb->d_func()->ibase), sqlda(0), inda(0), queryType(-1), tc(ddb->d_func()->tc)
+QIBaseResultPrivate::QIBaseResultPrivate(QIBaseResult *q, const QIBaseDriver *drv)
+    : QSqlCachedResultPrivate(q, drv),
+      trans(0),
+      localTransaction(!drv_d_func()->ibase),
+      stmt(0),
+      ibase(drv_d_func()->ibase),
+      sqlda(0),
+      inda(0),
+      queryType(-1),
+      tc(drv_d_func()->tc)
 {
-    localTransaction = (ddb->d_func()->ibase == 0);
 }
 
 void QIBaseResultPrivate::cleanup()
 {
+    Q_Q(QIBaseResult);
     commit();
     if (!localTransaction)
         trans = 0;
@@ -779,6 +792,7 @@ static char* createArrayBuffer(char *buffer, const QList<QVariant> &list,
 
 bool QIBaseResultPrivate::writeArray(int column, const QList<QVariant> &list)
 {
+    Q_Q(QIBaseResult);
     QString error;
     ISC_QUAD *arrayId = (ISC_QUAD*) inda->sqlvar[column].sqldata;
     ISC_ARRAY_DESC desc;
@@ -854,9 +868,9 @@ bool QIBaseResultPrivate::transaction()
 {
     if (trans)
         return true;
-    if (db->d_func()->trans) {
+    if (drv_d_func()->trans) {
         localTransaction = false;
-        trans = db->d_func()->trans;
+        trans = drv_d_func()->trans;
         return true;
     }
     localTransaction = true;
@@ -887,19 +901,14 @@ bool QIBaseResultPrivate::commit()
 
 //////////
 
-QIBaseResult::QIBaseResult(const QIBaseDriver* db):
-    QSqlCachedResult(db)
+QIBaseResult::QIBaseResult(const QIBaseDriver *db)
+    : QSqlCachedResult(*new QIBaseResultPrivate(this, db))
 {
-    d = new QIBaseResultPrivate(this, db);
-}
-
-QIBaseResult::~QIBaseResult()
-{
-    delete d;
 }
 
 bool QIBaseResult::prepare(const QString& query)
 {
+    Q_D(QIBaseResult);
 //     qDebug("prepare: %s", qPrintable(query));
     if (!driver() || !driver()->isOpen() || driver()->isOpenError())
         return false;
@@ -976,6 +985,7 @@ bool QIBaseResult::prepare(const QString& query)
 
 bool QIBaseResult::exec()
 {
+    Q_D(QIBaseResult);
     bool ok = true;
 
     if (!d->trans)
@@ -1113,6 +1123,7 @@ bool QIBaseResult::reset (const QString& query)
 
 bool QIBaseResult::gotoNext(QSqlCachedResult::ValueCache& row, int rowIdx)
 {
+    Q_D(QIBaseResult);
     ISC_STATUS stat = 0;
 
     // Stored Procedures are special - they populate our d->sqlda when executing,
@@ -1307,6 +1318,7 @@ int QIBaseResult::size()
 
 int QIBaseResult::numRowsAffected()
 {
+    Q_D(QIBaseResult);
     static char acCountInfo[] = {isc_info_sql_records};
     char cCountType;
     bool bIsProcedure = false;
@@ -1361,6 +1373,7 @@ int QIBaseResult::numRowsAffected()
 
 QSqlRecord QIBaseResult::record() const
 {
+    Q_D(const QIBaseResult);
     QSqlRecord rec;
     if (!isActive() || !d->sqlda)
         return rec;
@@ -1374,7 +1387,7 @@ QSqlRecord QIBaseResult::record() const
         f.setPrecision(qAbs(v.sqlscale));
         f.setRequiredStatus((v.sqltype & 1) == 0 ? QSqlField::Required : QSqlField::Optional);
         if(v.sqlscale < 0) {
-            QSqlQuery q(new QIBaseResult(d->db));
+            QSqlQuery q(driver()->createResult());
             q.setForwardOnly(true);
             q.exec(QLatin1String("select b.RDB$FIELD_PRECISION, b.RDB$FIELD_SCALE, b.RDB$FIELD_LENGTH, a.RDB$NULL_FLAG "
                     "FROM RDB$RELATION_FIELDS a, RDB$FIELDS b "
@@ -1400,6 +1413,7 @@ QSqlRecord QIBaseResult::record() const
 
 QVariant QIBaseResult::handle() const
 {
+    Q_D(const QIBaseResult);
     return QVariant(qRegisterMetaType<isc_stmt_handle>("isc_stmt_handle"), &d->stmt);
 }
 
@@ -1910,7 +1924,7 @@ void QIBaseDriver::qHandleEventNotification(void *updatedResultBuffer)
                                     (isc_callback)qEventCallback,
 #endif
                                    eBuffer->resultBuffer);
-            if (status[0] == 1 && status[1]) {
+            if (Q_UNLIKELY(status[0] == 1 && status[1])) {
                 qCritical("QIBaseDriver::qHandleEventNotification: could not resubscribe to '%s'",
                     qPrintable(i.key()));
             }

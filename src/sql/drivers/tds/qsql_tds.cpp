@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -131,6 +137,8 @@ QSqlError qMakeError(const QString& err, QSqlError::ErrorType type, int errNo = 
 
 class QTDSDriverPrivate : public QSqlDriverPrivate
 {
+    Q_DECLARE_PUBLIC(QTDSDriver)
+
 public:
     QTDSDriverPrivate() : QSqlDriverPrivate(), login(0), initialized(false) { dbmsType = QSqlDriver::Sybase; }
     LOGINREC* login;  // login information
@@ -150,6 +158,8 @@ class QTDSResultPrivate;
 
 class QTDSResult : public QSqlCachedResult
 {
+    Q_DECLARE_PRIVATE(QTDSResult)
+
 public:
     explicit QTDSResult(const QTDSDriver* db);
     ~QTDSResult();
@@ -157,20 +167,23 @@ public:
 
 protected:
     void cleanup();
-    bool reset (const QString& query);
-    int size();
-    int numRowsAffected();
-    bool gotoNext(QSqlCachedResult::ValueCache &values, int index);
-    QSqlRecord record() const;
-
-private:
-    QTDSResultPrivate* d;
+    bool reset(const QString &query) Q_DECL_OVERRIDE;
+    int size() Q_DECL_OVERRIDE;
+    int numRowsAffected() Q_DECL_OVERRIDE;
+    bool gotoNext(QSqlCachedResult::ValueCache &values, int index) Q_DECL_OVERRIDE;
+    QSqlRecord record() const Q_DECL_OVERRIDE;
 };
 
-class QTDSResultPrivate
+class QTDSResultPrivate: public QSqlCachedResultPrivate
 {
+    Q_DECLARE_PUBLIC(QTDSResult)
+
 public:
-    QTDSResultPrivate():login(0), dbproc(0) {}
+    Q_DECLARE_SQLDRIVER_PRIVATE(QTDSDriver)
+    QTDSResultPrivate(QTDSResult *q, const QTDSDriver *drv)
+        : QSqlCachedResultPrivate(q, drv),
+          login(0),
+          dbproc(0) {}
     LOGINREC* login;  // login information
     DBPROCESS* dbproc; // connection from app to server
     QSqlError lastError;
@@ -316,15 +329,15 @@ QVariant::Type qFieldType(QTDSResultPrivate* d, int i)
 
 
 QTDSResult::QTDSResult(const QTDSDriver* db)
-    : QSqlCachedResult(db)
+    : QSqlCachedResult(*new QTDSResultPrivate(this, db))
 {
-    d = new QTDSResultPrivate();
-    d->login = db->d_func()->login;
+    Q_D(QTDSResult);
+    d->login = d->drv_d_func()->login;
 
-    d->dbproc = dbopen(d->login, const_cast<char*>(db->d_func()->hostName.toLatin1().constData()));
+    d->dbproc = dbopen(d->login, const_cast<char*>(d->drv_d_func()->hostName.toLatin1().constData()));
     if (!d->dbproc)
         return;
-    if (dbuse(d->dbproc, const_cast<char*>(db->d_func()->db.toLatin1().constData())) == FAIL)
+    if (dbuse(d->dbproc, const_cast<char*>(d->drv_d_func()->db.toLatin1().constData())) == FAIL)
         return;
 
     // insert d in error handler dict
@@ -335,15 +348,16 @@ QTDSResult::QTDSResult(const QTDSDriver* db)
 
 QTDSResult::~QTDSResult()
 {
+    Q_D(QTDSResult);
     cleanup();
     if (d->dbproc)
         dbclose(d->dbproc);
     errs()->remove(d->dbproc);
-    delete d;
 }
 
 void QTDSResult::cleanup()
 {
+    Q_D(QTDSResult);
     d->clearErrorMsgs();
     d->rec.clear();
     for (int i = 0; i < d->buffer.size(); ++i)
@@ -358,6 +372,7 @@ void QTDSResult::cleanup()
 
 QVariant QTDSResult::handle() const
 {
+    Q_D(const QTDSResult);
     return QVariant(qRegisterMetaType<DBPROCESS *>("DBPROCESS*"), &d->dbproc);
 }
 
@@ -368,6 +383,7 @@ static inline bool qIsNull(const QTDSColumnData &p)
 
 bool QTDSResult::gotoNext(QSqlCachedResult::ValueCache &values, int index)
 {
+    Q_D(QTDSResult);
     STATUS stat = dbnextrow(d->dbproc);
     if (stat == NO_MORE_ROWS) {
         setAt(QSql::AfterLastRow);
@@ -427,6 +443,7 @@ bool QTDSResult::gotoNext(QSqlCachedResult::ValueCache &values, int index)
 
 bool QTDSResult::reset (const QString& query)
 {
+    Q_D(QTDSResult);
     cleanup();
     if (!driver() || !driver()-> isOpen() || driver()->isOpenError())
         return false;
@@ -515,6 +532,7 @@ int QTDSResult::size()
 
 int QTDSResult::numRowsAffected()
 {
+    Q_D(const QTDSResult);
 #ifdef DBNTWIN32
     if (dbiscount(d->dbproc)) {
         return DBCOUNT(d->dbproc);
@@ -527,6 +545,7 @@ int QTDSResult::numRowsAffected()
 
 QSqlRecord QTDSResult::record() const
 {
+    Q_D(const QTDSResult);
     return d->rec;
 }
 

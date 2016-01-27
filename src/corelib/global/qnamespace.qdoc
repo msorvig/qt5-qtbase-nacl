@@ -120,12 +120,20 @@
            widgets stay non-native unless specifically set by the
            Qt::WA_NativeWindow attribute.
 
-    \value AA_MacPluginApplication Stops the Qt mac application from doing
-           specific initializations that do not necessarily make sense when using Qt
-           to author a plugin. This includes avoiding loading our nib for the main
-           menu and not taking possession of the native menu bar. When setting this
+    \value AA_PluginApplication Indicates that Qt is used to author a plugin. Depending
+           on the operating system, it suppresses specific initializations that do not
+           necessarily make sense in the plugin case.
+
+           For example on OS X, this includes avoiding loading our nib for the main
+           menu and not taking possession of the native menu bar. Setting this
            attribute to true will also set the AA_DontUseNativeMenuBar attribute
            to true. It also disables native event filters.
+
+           This attribute has been added in Qt 5.7. It must be set before
+           \l {QGuiApplication}{Q(Gui)Application} is constructed.
+
+     \value AA_MacPluginApplication This attribute has been deprecated.
+           Use AA_PluginApplication instead.
 
     \value AA_DontUseNativeMenuBar All menubars created while this attribute is
            set to true won't be used as a native menubar (e.g, the menubar at
@@ -214,6 +222,13 @@
            be affected. This corresponds to setting the QT_AUTO_SCREEN_SCALE_FACTOR
            environment variable to 0. This value has been added in Qt 5.6. This
            attribute must be set before Q(Gui)Application is constructed.
+
+    \value AA_UseStyleSheetPropagationInWidgetStyles By default, Qt Style Sheets
+           disable regular QWidget palette and font propagation. When this flag
+           is enabled, font and palette changes propagate as though the user had
+           manually called the corresponding QWidget methods. See
+           \l{The Style Sheet Syntax#Inheritance}{The Style Sheet Syntax - Inheritance}
+           for more details. This value has been added in Qt 5.7.
 
     The following values are obsolete:
 
@@ -2094,8 +2109,8 @@
                          another process or by manually using native code.
 
     \value CoverWindow Indicates that the window represents a cover window,
-                       which is shown when the application is minimized
-                       on the BlackBerry platform for instance.
+                       which is shown when the application is minimized on
+                       some platforms.
 
     There are also a number of flags which you can use to customize
     the appearance of top-level windows. These have no effect on other

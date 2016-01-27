@@ -1,6 +1,5 @@
 
 CONFIG += testcase
-CONFIG += parallel_test
 QT += widgets testlib
 HEADERS += ddhelper.h
 SOURCES += tst_windowsmobile.cpp ddhelper.cpp
@@ -22,4 +21,3 @@ wincewm*: {
 
 
 
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

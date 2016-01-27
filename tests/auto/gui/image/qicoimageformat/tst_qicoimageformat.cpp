@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -38,17 +33,8 @@ class tst_QIcoImageFormat : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QIcoImageFormat();
-    virtual ~tst_QIcoImageFormat();
-
-
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
 private slots:
+    void initTestCase();
     void format();
     void canRead_data();
     void canRead();
@@ -69,36 +55,11 @@ private:
     QString m_IconPath;
 };
 
-
-tst_QIcoImageFormat::tst_QIcoImageFormat()
-{
-}
-
-tst_QIcoImageFormat::~tst_QIcoImageFormat()
-{
-
-}
-
-void tst_QIcoImageFormat::init()
-{
-
-}
-
-void tst_QIcoImageFormat::cleanup()
-{
-
-}
-
 void tst_QIcoImageFormat::initTestCase()
 {
     m_IconPath = QFINDTESTDATA("icons");
     if (m_IconPath.isEmpty())
         QFAIL("Cannot find icons directory containing testdata!");
-}
-
-void tst_QIcoImageFormat::cleanupTestCase()
-{
-
 }
 
 void tst_QIcoImageFormat::format()
@@ -141,7 +102,7 @@ void tst_QIcoImageFormat::canRead()
     QFETCH(QString, fileName);
     QFETCH(int, isValid);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
     QCOMPARE(reader.canRead(), (isValid == 0 ? false : true));
 }
 
@@ -175,7 +136,7 @@ void tst_QIcoImageFormat::SequentialFile()
     QFETCH(QString, fileName);
     QFETCH(int, isValid);
 
-    QSequentialFile *file = new QSequentialFile(m_IconPath + "/" + fileName);
+    QSequentialFile *file = new QSequentialFile(m_IconPath + QLatin1Char('/') + fileName);
     QVERIFY(file);
     QVERIFY(file->open(QFile::ReadOnly));
     QImageReader reader(file);
@@ -212,7 +173,7 @@ void tst_QIcoImageFormat::imageCount()
     QFETCH(QString, fileName);
     QFETCH(int, count);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
     QCOMPARE(reader.imageCount(), count);
 
 }
@@ -240,7 +201,7 @@ void tst_QIcoImageFormat::jumpToNextImage()
     QFETCH(QString, fileName);
     QFETCH(int, count);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
     bool bJumped = reader.jumpToImage(0);
     while (bJumped) {
         count--;
@@ -263,7 +224,7 @@ void tst_QIcoImageFormat::loopCount()
     QFETCH(QString, fileName);
     QFETCH(int, count);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
     QCOMPARE(reader.loopCount(), count);
 }
 
@@ -291,7 +252,7 @@ void tst_QIcoImageFormat::nextImageDelay()
     QFETCH(QString, fileName);
     QFETCH(int, count);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
     if (count == -1) {
         QCOMPARE(reader.nextImageDelay(), 0);
     } else {
@@ -320,7 +281,7 @@ void tst_QIcoImageFormat::pngCompression()
     QFETCH(int, width);
     QFETCH(int, height);
 
-    QImageReader reader(m_IconPath + "/" + fileName);
+    QImageReader reader(m_IconPath + QLatin1Char('/') + fileName);
 
     QImage image;
     reader.jumpToImage(index);

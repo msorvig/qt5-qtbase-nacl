@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -77,6 +83,8 @@ static QVariant::Type nameToType(const QString& typeName)
 
 class QSQLite2DriverPrivate : public QSqlDriverPrivate
 {
+    Q_DECLARE_PUBLIC(QSQLite2Driver)
+
 public:
     QSQLite2DriverPrivate();
     sqlite *access;
@@ -93,39 +101,37 @@ class QSQLite2ResultPrivate;
 
 class QSQLite2Result : public QSqlCachedResult
 {
+    Q_DECLARE_PRIVATE(QSQLite2Result)
     friend class QSQLite2Driver;
-    friend class QSQLite2ResultPrivate;
+
 public:
     explicit QSQLite2Result(const QSQLite2Driver* db);
     ~QSQLite2Result();
-    QVariant handle() const;
+    QVariant handle() const Q_DECL_OVERRIDE;
 
 protected:
-    bool gotoNext(QSqlCachedResult::ValueCache& row, int idx);
-    bool reset (const QString& query);
-    int size();
-    int numRowsAffected();
-    QSqlRecord record() const;
-    void detachFromResultSet();
-    void virtual_hook(int id, void *data);
-
-private:
-    QSQLite2ResultPrivate* d;
+    bool gotoNext(QSqlCachedResult::ValueCache &row, int idx) Q_DECL_OVERRIDE;
+    bool reset(const QString &query) Q_DECL_OVERRIDE;
+    int size() Q_DECL_OVERRIDE;
+    int numRowsAffected() Q_DECL_OVERRIDE;
+    QSqlRecord record() const Q_DECL_OVERRIDE;
+    void detachFromResultSet() Q_DECL_OVERRIDE;
+    void virtual_hook(int id, void *data) Q_DECL_OVERRIDE;
 };
 
-class QSQLite2ResultPrivate
+class QSQLite2ResultPrivate: public QSqlCachedResultPrivate
 {
+    Q_DECLARE_PUBLIC(QSQLite2Result)
+
 public:
-    QSQLite2ResultPrivate(QSQLite2Result *res);
+    Q_DECLARE_SQLDRIVER_PRIVATE(QSQLite2Driver);
+    QSQLite2ResultPrivate(QSQLite2Result *q, const QSQLite2Driver *drv);
     void cleanup();
     bool fetchNext(QSqlCachedResult::ValueCache &values, int idx, bool initialFetch);
     bool isSelect();
     // initializes the recordInfo and the cache
     void init(const char **cnames, int numCols);
     void finalize();
-
-    QSQLite2Result* q;
-    sqlite *access;
 
     // and we have too keep our own struct for the data (sqlite works via
     // callback.
@@ -134,20 +140,24 @@ public:
 
     bool skippedStatus; // the status of the fetchNext() that's skipped
     bool skipRow; // skip the next fetchNext()?
-    bool utf8;
     QSqlRecord rInf;
     QVector<QVariant> firstRow;
 };
 
 static const uint initial_cache_size = 128;
 
-QSQLite2ResultPrivate::QSQLite2ResultPrivate(QSQLite2Result* res) : q(res), access(0), currentTail(0),
-    currentMachine(0), skippedStatus(false), skipRow(false), utf8(false)
+QSQLite2ResultPrivate::QSQLite2ResultPrivate(QSQLite2Result *q, const QSQLite2Driver *drv)
+    : QSqlCachedResultPrivate(q, drv),
+      currentTail(0),
+      currentMachine(0),
+      skippedStatus(false),
+      skipRow(false)
 {
 }
 
 void QSQLite2ResultPrivate::cleanup()
 {
+    Q_Q(QSQLite2Result);
     finalize();
     rInf.clear();
     currentTail = 0;
@@ -161,6 +171,7 @@ void QSQLite2ResultPrivate::cleanup()
 
 void QSQLite2ResultPrivate::finalize()
 {
+    Q_Q(QSQLite2Result);
     if (!currentMachine)
         return;
 
@@ -178,6 +189,7 @@ void QSQLite2ResultPrivate::finalize()
 // called on first fetch
 void QSQLite2ResultPrivate::init(const char **cnames, int numCols)
 {
+    Q_Q(QSQLite2Result);
     if (!cnames)
         return;
 
@@ -204,6 +216,7 @@ void QSQLite2ResultPrivate::init(const char **cnames, int numCols)
 
 bool QSQLite2ResultPrivate::fetchNext(QSqlCachedResult::ValueCache &values, int idx, bool initialFetch)
 {
+    Q_Q(QSQLite2Result);
     // may be caching.
     const char **fvals;
     const char **cnames;
@@ -250,7 +263,7 @@ bool QSQLite2ResultPrivate::fetchNext(QSqlCachedResult::ValueCache &values, int 
         if (idx < 0 && !initialFetch)
             return true;
         for (i = 0; i < colNum; ++i)
-            values[i + idx] = utf8 ? QString::fromUtf8(fvals[i]) : QString::fromLatin1(fvals[i]);
+            values[i + idx] = drv_d_func()->utf8 ? QString::fromUtf8(fvals[i]) : QString::fromLatin1(fvals[i]);
         return true;
     case SQLITE_DONE:
         if (rInf.isEmpty())
@@ -270,17 +283,14 @@ bool QSQLite2ResultPrivate::fetchNext(QSqlCachedResult::ValueCache &values, int 
 }
 
 QSQLite2Result::QSQLite2Result(const QSQLite2Driver* db)
-: QSqlCachedResult(db)
+    : QSqlCachedResult(*new QSQLite2ResultPrivate(this, db))
 {
-    d = new QSQLite2ResultPrivate(this);
-    d->access = db->d_func()->access;
-    d->utf8 = db->d_func()->utf8;
 }
 
 QSQLite2Result::~QSQLite2Result()
 {
+    Q_D(QSQLite2Result);
     d->cleanup();
-    delete d;
 }
 
 void QSQLite2Result::virtual_hook(int id, void *data)
@@ -293,6 +303,7 @@ void QSQLite2Result::virtual_hook(int id, void *data)
 */
 bool QSQLite2Result::reset (const QString& query)
 {
+    Q_D(QSQLite2Result);
     // this is where we build a query.
     if (!driver())
         return false;
@@ -304,8 +315,8 @@ bool QSQLite2Result::reset (const QString& query)
     // Um, ok.  callback based so.... pass private static function for this.
     setSelect(false);
     char *err = 0;
-    int res = sqlite_compile(d->access,
-                                d->utf8 ? query.toUtf8().constData()
+    int res = sqlite_compile(d->drv_d_func()->access,
+                                d->drv_d_func()->utf8 ? query.toUtf8().constData()
                                         : query.toLatin1().constData(),
                                 &(d->currentTail),
                                 &(d->currentMachine),
@@ -336,6 +347,7 @@ bool QSQLite2Result::reset (const QString& query)
 
 bool QSQLite2Result::gotoNext(QSqlCachedResult::ValueCache& row, int idx)
 {
+    Q_D(QSQLite2Result);
     return d->fetchNext(row, idx, false);
 }
 
@@ -346,11 +358,13 @@ int QSQLite2Result::size()
 
 int QSQLite2Result::numRowsAffected()
 {
-    return sqlite_changes(d->access);
+    Q_D(QSQLite2Result);
+    return sqlite_changes(d->drv_d_func()->access);
 }
 
 QSqlRecord QSQLite2Result::record() const
 {
+    Q_D(const QSQLite2Result);
     if (!isActive() || !isSelect())
         return QSqlRecord();
     return d->rInf;
@@ -358,11 +372,13 @@ QSqlRecord QSQLite2Result::record() const
 
 void QSQLite2Result::detachFromResultSet()
 {
+    Q_D(QSQLite2Result);
     d->finalize();
 }
 
 QVariant QSQLite2Result::handle() const
 {
+    Q_D(const QSQLite2Result);
     return QVariant::fromValue(d->currentMachine);
 }
 

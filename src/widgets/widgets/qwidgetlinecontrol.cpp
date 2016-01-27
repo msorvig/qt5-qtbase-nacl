@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -147,10 +153,7 @@ void QWidgetLineControl::copy(QClipboard::Mode mode) const
 {
     QString t = selectedText();
     if (!t.isEmpty() && m_echoMode == QLineEdit::Normal) {
-        disconnect(QApplication::clipboard(), SIGNAL(selectionChanged()), this, 0);
         QApplication::clipboard()->setText(t, mode);
-        connect(QApplication::clipboard(), SIGNAL(selectionChanged()),
-                   this, SLOT(_q_clipboardChanged()));
     }
 }
 
@@ -309,7 +312,7 @@ void QWidgetLineControl::setSelection(int start, int length)
 {
     commitPreedit();
 
-    if(start < 0 || start > (int)m_text.length()){
+    if (Q_UNLIKELY(start < 0 || start > m_text.size())) {
         qWarning("QWidgetLineControl::setSelection: Invalid start position");
         return;
     }
@@ -337,10 +340,6 @@ void QWidgetLineControl::setSelection(int start, int length)
     }
     emit selectionChanged();
     emitCursorPositionChanged();
-}
-
-void QWidgetLineControl::_q_clipboardChanged()
-{
 }
 
 void QWidgetLineControl::_q_deleteSelected()
@@ -1523,14 +1522,7 @@ void QWidgetLineControl::timerEvent(QTimerEvent *event)
 #ifndef QT_NO_SHORTCUT
 void QWidgetLineControl::processShortcutOverrideEvent(QKeyEvent *ke)
 {
-    if (isReadOnly())
-        return;
-
     if (ke == QKeySequence::Copy
-        || ke == QKeySequence::Paste
-        || ke == QKeySequence::Cut
-        || ke == QKeySequence::Redo
-        || ke == QKeySequence::Undo
         || ke == QKeySequence::MoveToNextWord
         || ke == QKeySequence::MoveToPreviousWord
         || ke == QKeySequence::MoveToEndOfLine
@@ -1544,22 +1536,35 @@ void QWidgetLineControl::processShortcutOverrideEvent(QKeyEvent *ke)
         || ke == QKeySequence::SelectEndOfBlock
         || ke == QKeySequence::SelectStartOfDocument
         || ke == QKeySequence::SelectAll
-        || ke == QKeySequence::SelectEndOfDocument
-        || ke == QKeySequence::DeleteCompleteLine) {
+        || ke == QKeySequence::SelectEndOfDocument) {
         ke->accept();
+    } else if (ke == QKeySequence::Paste
+               || ke == QKeySequence::Cut
+               || ke == QKeySequence::Redo
+               || ke == QKeySequence::Undo
+               || ke == QKeySequence::DeleteCompleteLine) {
+        if (!isReadOnly())
+            ke->accept();
     } else if (ke->modifiers() == Qt::NoModifier || ke->modifiers() == Qt::ShiftModifier
                || ke->modifiers() == Qt::KeypadModifier) {
         if (ke->key() < Qt::Key_Escape) {
-            ke->accept();
+            if (!isReadOnly())
+                ke->accept();
         } else {
             switch (ke->key()) {
             case Qt::Key_Delete:
+            case Qt::Key_Backspace:
+                if (!isReadOnly())
+                    ke->accept();
+                break;
+
             case Qt::Key_Home:
             case Qt::Key_End:
-            case Qt::Key_Backspace:
             case Qt::Key_Left:
             case Qt::Key_Right:
                 ke->accept();
+                break;
+
             default:
                 break;
             }

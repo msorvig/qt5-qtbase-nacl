@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1513,7 +1508,7 @@ void tst_QWidget::mapFromAndTo()
     subWindow2->setGeometry(75, 75, 100, 100);
     subSubWindow->setGeometry(10, 10, 10, 10);
 
-#if !defined(Q_OS_WINCE) && !defined(Q_OS_QNX) || defined(Q_OS_BLACKBERRY)
+#if !defined(Q_OS_WINCE) && !defined(Q_OS_QNX)
     //update visibility
     if (windowMinimized) {
         if (!windowHidden) {
@@ -5655,7 +5650,7 @@ void tst_QWidget::setToolTip()
     for (int pass = 0; pass < 2; ++pass) {
         QCursor::setPos(0, 0);
         QScopedPointer<QWidget> popup(new QWidget(0, Qt::Popup));
-        popup->setObjectName(QString::fromLatin1("tst_qwidget setToolTip #%1").arg(pass));
+        popup->setObjectName(QLatin1String("tst_qwidget setToolTip #") + QString::number(pass));
         popup->setWindowTitle(popup->objectName());
         popup->setGeometry(50, 50, 150, 50);
         QFrame *frame = new QFrame(popup.data());
@@ -7361,7 +7356,7 @@ void tst_QWidget::updateWhileMinimized()
 {
     if (m_platform == QStringLiteral("wayland"))
         QSKIP("Wayland: This fails. Figure out why.");
-#if defined(Q_OS_QNX) && !defined(Q_OS_BLACKBERRY)
+#if defined(Q_OS_QNX)
     QSKIP("Platform does not support showMinimized()");
 #endif
     UpdateWidget widget;
@@ -7913,7 +7908,7 @@ void tst_QWidget::doubleRepaint()
    // Minmize: Should not trigger a repaint.
    widget.showMinimized();
    QTest::qWait(10);
-#if defined(Q_OS_QNX) && !defined(Q_OS_BLACKBERRY)
+#if defined(Q_OS_QNX)
     QEXPECT_FAIL("", "Platform does not support showMinimized()", Continue);
 #endif
    QCOMPARE(widget.numPaintEvents, 0);

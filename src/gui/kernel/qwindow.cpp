@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -212,7 +218,7 @@ void QWindowPrivate::init()
 
     // If your application aborts here, you are probably creating a QWindow
     // before the screen list is populated.
-    if (!parentWindow && !topLevelScreen) {
+    if (Q_UNLIKELY(!parentWindow && !topLevelScreen)) {
         qFatal("Cannot create window: no screens available");
         exit(1);
     }
@@ -392,6 +398,9 @@ void QWindowPrivate::create(bool recursive)
     if (platformWindow)
         return;
 
+    if (q->parent())
+        q->parent()->create();
+
     platformWindow = QGuiApplicationPrivate::platformIntegration()->createPlatformWindow(q);
     Q_ASSERT(platformWindow);
 
@@ -403,13 +412,21 @@ void QWindowPrivate::create(bool recursive)
     QObjectList childObjects = q->children();
     for (int i = 0; i < childObjects.size(); i ++) {
         QObject *object = childObjects.at(i);
-        if (object->isWindowType()) {
-            QWindow *window = static_cast<QWindow *>(object);
-            if (recursive)
-                window->d_func()->create(true);
-            if (window->d_func()->platformWindow)
-                window->d_func()->platformWindow->setParent(platformWindow);
-        }
+        if (!object->isWindowType())
+            continue;
+
+        QWindow *childWindow = static_cast<QWindow *>(object);
+        if (recursive)
+            childWindow->d_func()->create(recursive);
+
+        // The child may have had deferred creation due to this window not being created
+        // at the time setVisible was called, so we re-apply the visible state, which
+        // may result in creating the child, and emitting the appropriate signals.
+        if (childWindow->isVisible())
+            childWindow->setVisible(true);
+
+        if (QPlatformWindow *childPlatformWindow = childWindow->d_func()->platformWindow)
+            childPlatformWindow->setParent(this->platformWindow);
     }
 
     QPlatformSurfaceEvent e(QPlatformSurfaceEvent::SurfaceCreated);
@@ -474,14 +491,23 @@ void QWindow::setVisible(bool visible)
 {
     Q_D(QWindow);
 
-    if (d->visible == visible)
+    if (d->visible != visible) {
+        d->visible = visible;
+        emit visibleChanged(visible);
+        d->updateVisibility();
+    } else if (d->platformWindow) {
+        // Visibility hasn't changed, and the platform window is in sync
         return;
-    d->visible = visible;
-    emit visibleChanged(visible);
-    d->updateVisibility();
+    }
 
-    if (!d->platformWindow)
-        create();
+    if (!d->platformWindow) {
+        // If we have a parent window, but the parent hasn't been created yet, we
+        // can defer creation until the parent is created or we're re-parented.
+        if (parent() && !parent()->handle())
+            return;
+        else
+            create();
+    }
 
     if (visible) {
         // remove posted quit events when showing a new window
@@ -520,6 +546,7 @@ void QWindow::setVisible(bool visible)
     if (visible && (d->hasCursor || QGuiApplication::overrideCursor()))
         d->applyCursor();
 #endif
+
     d->platformWindow->setVisible(visible);
 
     if (!visible) {
@@ -616,12 +643,17 @@ void QWindow::setParent(QWindow *parent)
     else
         d->connectToScreen(newScreen);
 
+    // If we were set visible, but not created because we were a child, and we're now
+    // re-parented into a created parent, or to being a top level, we need re-apply the
+    // visibility state, which will also create.
+    if (isVisible() && (!parent || parent->handle()))
+        setVisible(true);
+
     if (d->platformWindow) {
-        if (parent && parent->d_func()->platformWindow) {
-            d->platformWindow->setParent(parent->d_func()->platformWindow);
-        } else {
-            d->platformWindow->setParent(0);
-        }
+        if (parent)
+            parent->create();
+
+        d->platformWindow->setParent(parent ? parent->d_func()->platformWindow : 0);
     }
 
     QGuiApplicationPrivate::updateBlockedStatus(this);
@@ -1654,8 +1686,12 @@ void QWindow::destroy()
         QGuiApplicationPrivate::currentMouseWindow = parent();
     if (QGuiApplicationPrivate::currentMousePressWindow == this)
         QGuiApplicationPrivate::currentMousePressWindow = parent();
-    if (QGuiApplicationPrivate::tabletPressTarget == this)
-        QGuiApplicationPrivate::tabletPressTarget = parent();
+
+    for (int i = 0; i < QGuiApplicationPrivate::tabletDevicePoints.size(); ++i) {
+        QGuiApplicationPrivate::TabletPointData &pointData = QGuiApplicationPrivate::tabletDevicePoints[i];
+        if (pointData.target == this)
+            pointData.target = parent();
+    }
 
     bool wasVisible = isVisible();
     d->visibilityOnDestroy = wasVisible && d->platformWindow;

@@ -1,38 +1,43 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
 #include "qsql_db2_p.h"
-#include <QtSql/private/qsqldriver_p.h>
 #include <qcoreapplication.h>
 #include <qdatetime.h>
 #include <qsqlfield.h>
@@ -43,6 +48,8 @@
 #include <qvarlengtharray.h>
 #include <qvector.h>
 #include <QDebug>
+#include <QtSql/private/qsqldriver_p.h>
+#include <QtSql/private/qsqlresult_p.h>
 
 #if defined(Q_CC_BOR)
 // DB2's sqlsystm.h (included through sqlcli1.h) defines the SQL_BIGINT_TYPE
@@ -65,6 +72,8 @@ static const SQLSMALLINT qParamType[4] = { SQL_PARAM_INPUT, SQL_PARAM_INPUT, SQL
 
 class QDB2DriverPrivate : public QSqlDriverPrivate
 {
+    Q_DECLARE_PUBLIC(QDB2Driver)
+
 public:
     QDB2DriverPrivate() : QSqlDriverPrivate(), hEnv(0), hDbc(0) { dbmsType = QSqlDriver::DB2; }
     SQLHANDLE hEnv;
@@ -72,10 +81,44 @@ public:
     QString user;
 };
 
-class QDB2ResultPrivate
+class QDB2ResultPrivate;
+
+class QDB2Result: public QSqlResult
 {
+    Q_DECLARE_PRIVATE(QDB2Result)
+
 public:
-    QDB2ResultPrivate(const QDB2DriverPrivate* d): dp(d), hStmt(0)
+    QDB2Result(const QDB2Driver *drv);
+    ~QDB2Result();
+    bool prepare(const QString &query) Q_DECL_OVERRIDE;
+    bool exec() Q_DECL_OVERRIDE;
+    QVariant handle() const Q_DECL_OVERRIDE;
+
+protected:
+    QVariant data(int field) Q_DECL_OVERRIDE;
+    bool reset(const QString &query) Q_DECL_OVERRIDE;
+    bool fetch(int i) Q_DECL_OVERRIDE;
+    bool fetchNext() Q_DECL_OVERRIDE;
+    bool fetchFirst() Q_DECL_OVERRIDE;
+    bool fetchLast() Q_DECL_OVERRIDE;
+    bool isNull(int i) Q_DECL_OVERRIDE;
+    int size() Q_DECL_OVERRIDE;
+    int numRowsAffected() Q_DECL_OVERRIDE;
+    QSqlRecord record() const Q_DECL_OVERRIDE;
+    void virtual_hook(int id, void *data) Q_DECL_OVERRIDE;
+    void detachFromResultSet() Q_DECL_OVERRIDE;
+    bool nextResult() Q_DECL_OVERRIDE;
+};
+
+class QDB2ResultPrivate: public QSqlResultPrivate
+{
+    Q_DECLARE_PUBLIC(QDB2Result)
+
+public:
+    Q_DECLARE_SQLDRIVER_PRIVATE(QDB2Driver)
+    QDB2ResultPrivate(QDB2Result *q, const QDB2Driver *drv)
+        : QSqlResultPrivate(q, drv),
+          hStmt(0)
     {}
     ~QDB2ResultPrivate()
     {
@@ -94,7 +137,6 @@ public:
         valueCache.clear();
     }
 
-    const QDB2DriverPrivate* dp;
     SQLHANDLE hStmt;
     QSqlRecord recInf;
     QVector<QVariant*> valueCache;
@@ -140,8 +182,8 @@ static QString qDB2Warn(const QDB2DriverPrivate* d)
 
 static QString qDB2Warn(const QDB2ResultPrivate* d)
 {
-    return (qWarnDB2Handle(SQL_HANDLE_ENV, d->dp->hEnv) + QLatin1Char(' ')
-             + qWarnDB2Handle(SQL_HANDLE_DBC, d->dp->hDbc)
+    return (qWarnDB2Handle(SQL_HANDLE_ENV, d->drv_d_func()->hEnv) + QLatin1Char(' ')
+             + qWarnDB2Handle(SQL_HANDLE_DBC, d->drv_d_func()->hDbc)
              + qWarnDB2Handle(SQL_HANDLE_STMT, d->hStmt));
 }
 
@@ -466,7 +508,7 @@ static bool qMakeStatement(QDB2ResultPrivate* d, bool forwardOnly, bool setForwa
     SQLRETURN r;
     if (!d->hStmt) {
         r = SQLAllocHandle(SQL_HANDLE_STMT,
-                            d->dp->hDbc,
+                            d->drv_d_func()->hDbc,
                             &d->hStmt);
         if (r != SQL_SUCCESS) {
             qSqlWarning(QLatin1String("QDB2Result::reset: Unable to allocate statement handle"), d);
@@ -505,30 +547,31 @@ static bool qMakeStatement(QDB2ResultPrivate* d, bool forwardOnly, bool setForwa
 
 QVariant QDB2Result::handle() const
 {
+    Q_D(const QDB2Result);
     return QVariant(qRegisterMetaType<SQLHANDLE>("SQLHANDLE"), &d->hStmt);
 }
 
 /************************************/
 
-QDB2Result::QDB2Result(const QDB2Driver* dr, const QDB2DriverPrivate* dp)
-    : QSqlResult(dr)
+QDB2Result::QDB2Result(const QDB2Driver *drv)
+    : QSqlResult(*new QDB2ResultPrivate(this, drv))
 {
-    d = new QDB2ResultPrivate(dp);
 }
 
 QDB2Result::~QDB2Result()
 {
+    Q_D(const QDB2Result);
     if (d->hStmt) {
         SQLRETURN r = SQLFreeHandle(SQL_HANDLE_STMT, d->hStmt);
         if (r != SQL_SUCCESS)
             qSqlWarning(QLatin1String("QDB2Driver: Unable to free statement handle ")
                         + QString::number(r), d);
     }
-    delete d;
 }
 
 bool QDB2Result::reset (const QString& query)
 {
+    Q_D(QDB2Result);
     setActive(false);
     setAt(QSql::BeforeFirstRow);
     SQLRETURN r;
@@ -565,6 +608,7 @@ bool QDB2Result::reset (const QString& query)
 
 bool QDB2Result::prepare(const QString& query)
 {
+    Q_D(QDB2Result);
     setActive(false);
     setAt(QSql::BeforeFirstRow);
     SQLRETURN r;
@@ -589,6 +633,7 @@ bool QDB2Result::prepare(const QString& query)
 
 bool QDB2Result::exec()
 {
+    Q_D(QDB2Result);
     QList<QByteArray> tmpStorage; // holds temporary ptrs
     QVarLengthArray<SQLINTEGER, 32> indicators(boundValues().count());
 
@@ -840,6 +885,7 @@ bool QDB2Result::exec()
 
 bool QDB2Result::fetch(int i)
 {
+    Q_D(QDB2Result);
     if (isForwardOnly() && i < at())
         return false;
     if (i == at())
@@ -874,6 +920,7 @@ bool QDB2Result::fetch(int i)
 
 bool QDB2Result::fetchNext()
 {
+    Q_D(QDB2Result);
     SQLRETURN r;
     d->clearValueCache();
     r = SQLFetchScroll(d->hStmt,
@@ -891,6 +938,7 @@ bool QDB2Result::fetchNext()
 
 bool QDB2Result::fetchFirst()
 {
+    Q_D(QDB2Result);
     if (isForwardOnly() && at() != QSql::BeforeFirstRow)
         return false;
     if (isForwardOnly())
@@ -912,6 +960,7 @@ bool QDB2Result::fetchFirst()
 
 bool QDB2Result::fetchLast()
 {
+    Q_D(QDB2Result);
     d->clearValueCache();
 
     int i = at();
@@ -943,6 +992,7 @@ bool QDB2Result::fetchLast()
 
 QVariant QDB2Result::data(int field)
 {
+    Q_D(QDB2Result);
     if (field >= d->recInf.count()) {
         qWarning("QDB2Result::data: column %d out of range", field);
         return QVariant();
@@ -1049,6 +1099,7 @@ QVariant QDB2Result::data(int field)
 
 bool QDB2Result::isNull(int i)
 {
+    Q_D(const QDB2Result);
     if (i >= d->valueCache.size())
         return true;
 
@@ -1059,6 +1110,7 @@ bool QDB2Result::isNull(int i)
 
 int QDB2Result::numRowsAffected()
 {
+    Q_D(const QDB2Result);
     SQLINTEGER affectedRowCount = 0;
     SQLRETURN r = SQLRowCount(d->hStmt, &affectedRowCount);
     if (r == SQL_SUCCESS || r == SQL_SUCCESS_WITH_INFO)
@@ -1075,6 +1127,7 @@ int QDB2Result::size()
 
 QSqlRecord QDB2Result::record() const
 {
+    Q_D(const QDB2Result);
     if (isActive())
         return d->recInf;
     return QSqlRecord();
@@ -1082,6 +1135,7 @@ QSqlRecord QDB2Result::record() const
 
 bool QDB2Result::nextResult()
 {
+    Q_D(QDB2Result);
     setActive(false);
     setAt(QSql::BeforeFirstRow);
     d->recInf.clear();
@@ -1117,6 +1171,7 @@ void QDB2Result::virtual_hook(int id, void *data)
 
 void QDB2Result::detachFromResultSet()
 {
+    Q_D(QDB2Result);
     if (d->hStmt)
         SQLCloseCursor(d->hStmt);
 }
@@ -1132,8 +1187,8 @@ QDB2Driver::QDB2Driver(Qt::HANDLE env, Qt::HANDLE con, QObject* parent)
     : QSqlDriver(*new QDB2DriverPrivate, parent)
 {
     Q_D(QDB2Driver);
-    d->hEnv = (SQLHANDLE)env;
-    d->hDbc = (SQLHANDLE)con;
+    d->hEnv = reinterpret_cast<intptr_t>(env);
+    d->hDbc = reinterpret_cast<intptr_t>(con);
     if (env && con) {
         setOpen(true);
         setOpenError(false);
@@ -1197,10 +1252,10 @@ bool QDB2Driver::open(const QString& db, const QString& user, const QString& pas
                          tmp.toLocal8Bit().constData());
                 continue;
             }
-            r = SQLSetConnectAttr(d->hDbc, SQL_ATTR_ACCESS_MODE, (SQLPOINTER) v, 0);
+            r = SQLSetConnectAttr(d->hDbc, SQL_ATTR_ACCESS_MODE, reinterpret_cast<SQLPOINTER>(v), 0);
         } else if (opt == QLatin1String("SQL_ATTR_LOGIN_TIMEOUT")) {
             v = val.toUInt();
-            r = SQLSetConnectAttr(d->hDbc, SQL_ATTR_LOGIN_TIMEOUT, (SQLPOINTER) v, 0);
+            r = SQLSetConnectAttr(d->hDbc, SQL_ATTR_LOGIN_TIMEOUT, reinterpret_cast<SQLPOINTER>(v), 0);
         } else if (opt.compare(QLatin1String("PROTOCOL"), Qt::CaseInsensitive) == 0) {
                         protocol = tmp;
         }
@@ -1278,8 +1333,7 @@ void QDB2Driver::close()
 
 QSqlResult *QDB2Driver::createResult() const
 {
-    Q_D(const QDB2Driver);
-    return new QDB2Result(this, d);
+    return new QDB2Result(this);
 }
 
 QSqlRecord QDB2Driver::record(const QString& tableName) const
@@ -1506,6 +1560,7 @@ bool QDB2Driver::hasFeature(DriverFeature f) const
         case LastInsertId:
         case SimpleLocking:
         case EventNotifications:
+        case CancelQuery:
             return false;
         case BLOB:
         case Transactions:
@@ -1572,7 +1627,7 @@ bool QDB2Driver::setAutoCommit(bool autoCommit)
     SQLUINTEGER ac = autoCommit ? SQL_AUTOCOMMIT_ON : SQL_AUTOCOMMIT_OFF;
     SQLRETURN r  = SQLSetConnectAttr(d->hDbc,
                                       SQL_ATTR_AUTOCOMMIT,
-                                      (SQLPOINTER)ac,
+                                      reinterpret_cast<SQLPOINTER>(ac),
                                       sizeof(ac));
     if (r != SQL_SUCCESS) {
         setLastError(qMakeError(tr("Unable to set autocommit"),

@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -43,10 +38,8 @@
 class tst_QChar : public QObject
 {
     Q_OBJECT
-public slots:
-    void init();
-    void cleanup();
 private slots:
+    void operator_eqeq_int();
     void operators_data();
     void operators();
     void toUpper();
@@ -80,25 +73,30 @@ private slots:
     void normalization_manual();
     void normalizationCorrections();
     void unicodeVersion();
-#if defined(Q_OS_WINCE)
-private:
-    QCoreApplication* app;
-#endif
 };
 
-void tst_QChar::init()
+void tst_QChar::operator_eqeq_int()
 {
-#if defined(Q_OS_WINCE)
-    int argc = 0;
-    app = new QCoreApplication(argc, NULL);
-#endif
-}
+    {
+        const QChar ch = QLatin1Char(' ');
+        QVERIFY(ch != 0);
+        QVERIFY(!(ch == 0));
 
-void tst_QChar::cleanup()
-{
-#if defined(Q_OS_WINCE)
-    delete app;
-#endif
+        QVERIFY(ch == 0x20);
+        QVERIFY(!(ch != 0x20));
+        QVERIFY(0x20 == ch);
+        QVERIFY(!(0x20 != ch));
+    }
+    {
+        const QChar ch = QLatin1Char('\0');
+        QVERIFY(ch == 0);
+        QVERIFY(!(ch != 0));
+
+        QVERIFY(ch != 0x20);
+        QVERIFY(!(ch == 0x20));
+        QVERIFY(0x20 != ch);
+        QVERIFY(!(0x20 == ch));
+    }
 }
 
 void tst_QChar::operators_data()
@@ -239,8 +237,8 @@ void tst_QChar::isDigit_data()
 
     for (ushort ucs = 0; ucs < 256; ++ucs) {
         bool isDigit = (ucs <= '9' && ucs >= '0');
-        QString tag = QString::fromLatin1("0x%0").arg(QString::number(ucs, 16));
-        QTest::newRow(tag.toLatin1()) << ucs << isDigit;
+        const QByteArray tag = "0x" + QByteArray::number(ucs, 16);
+        QTest::newRow(tag.constData()) << ucs << isDigit;
     }
 }
 
@@ -266,8 +264,8 @@ void tst_QChar::isLetter_data()
     QTest::addColumn<bool>("expected");
 
     for (ushort ucs = 0; ucs < 256; ++ucs) {
-        QString tag = QString::fromLatin1("0x%0").arg(QString::number(ucs, 16));
-        QTest::newRow(tag.toLatin1()) << ucs << isExpectedLetter(ucs);
+        const QByteArray tag = "0x" + QByteArray::number(ucs, 16);
+        QTest::newRow(tag.constData()) << ucs << isExpectedLetter(ucs);
     }
 }
 
@@ -288,8 +286,8 @@ void tst_QChar::isLetterOrNumber_data()
                 || (ucs >= '0' && ucs <= '9')
                 || ucs == 0xB2 || ucs == 0xB3 || ucs == 0xB9
                 || (ucs >= 0xBC && ucs <= 0xBE);
-        QString tag = QString::fromLatin1("0x%0").arg(QString::number(ucs, 16));
-        QTest::newRow(tag.toLatin1()) << ucs << isLetterOrNumber;
+        const QByteArray tag = "0x" + QByteArray::number(ucs, 16);
+        QTest::newRow(tag.constData()) << ucs << isLetterOrNumber;
     }
 }
 
@@ -403,8 +401,8 @@ void tst_QChar::isSpace_data()
 
     for (ushort ucs = 0; ucs < 256; ++ucs) {
         bool isSpace = (ucs <= 0x0D && ucs >= 0x09) || ucs == 0x20 || ucs == 0xA0 || ucs == 0x85;
-        QString tag = QString::fromLatin1("0x%0").arg(QString::number(ucs, 16));
-        QTest::newRow(tag.toLatin1()) << ucs << isSpace;
+        const QByteArray tag = "0x" + QByteArray::number(ucs, 16);
+        QTest::newRow(tag.constData()) << ucs << isSpace;
     }
 }
 
@@ -760,7 +758,7 @@ void tst_QChar::normalization_data()
         if (comment >= 0)
             line = line.left(comment);
 
-        if (line.startsWith("@")) {
+        if (line.startsWith('@')) {
             if (line.startsWith("@Part") && line.size() > 5 && QChar(line.at(5)).isDigit())
                 part = QChar(line.at(5)).digitValue();
             continue;
@@ -797,8 +795,10 @@ void tst_QChar::normalization_data()
             }
         }
 
-        QString nm = QString("line #%1 (part %2").arg(linenum).arg(part);
-        QTest::newRow(nm.toLatin1()) << columns << part;
+
+        const QByteArray nm = "line #" + QByteArray::number(linenum) + " (part "
+            + QByteArray::number(part);
+        QTest::newRow(nm.constData()) << columns << part;
     }
 }
 

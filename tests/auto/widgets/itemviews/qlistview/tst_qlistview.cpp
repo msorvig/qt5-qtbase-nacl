@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -74,21 +69,22 @@ static inline void setFrameless(QWidget *w)
     w->setWindowFlags(flags);
 }
 
+static QStringList generateList(const QString &prefix, int size)
+{
+    QStringList result;
+    result.reserve(size);
+    for (int i = 0; i < size; ++i)
+        result.append(prefix + QString::number(i));
+    return result;
+}
+
 class tst_QListView : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QListView();
-    virtual ~tst_QListView();
-
-
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
 private slots:
+    void initTestCase();
+    void cleanup();
     void getSetCheck();
     void noDelegate();
     void noModel();
@@ -152,6 +148,7 @@ private slots:
     void taskQTBUG_39902_mutualScrollBars_data();
     void taskQTBUG_39902_mutualScrollBars();
     void horizontalScrollingByVerticalWheelEvents();
+    void taskQTBUG_7232_AllowUserToControlSingleStep();
 };
 
 // Testing get/set functions
@@ -255,7 +252,7 @@ public:
             wrongIndex = true;
             qWarning("got invalid modelIndex %d/%d", idx.row(), idx.column());
         }
-        return QString("%1/%2").arg(idx.row()).arg(idx.column());
+        return QString::number(idx.row()) + QLatin1Char('/') + QString::number(idx.column());
     }
 
     void removeLastRow()
@@ -282,23 +279,7 @@ public:
     mutable bool wrongIndex;
 };
 
-tst_QListView::tst_QListView()
-{
-}
-
-tst_QListView::~tst_QListView()
-{
-}
-
 void tst_QListView::initTestCase()
-{
-}
-
-void tst_QListView::cleanupTestCase()
-{
-}
-
-void tst_QListView::init()
 {
 #ifdef Q_OS_WINCE //disable magic for WindowsCE
     qApp->setAutoMaximizeThreshold(-1);
@@ -309,7 +290,6 @@ void tst_QListView::cleanup()
 {
     QVERIFY(QApplication::topLevelWidgets().isEmpty());
 }
-
 
 void tst_QListView::noDelegate()
 {
@@ -364,10 +344,11 @@ void tst_QListView::cursorMove()
     view.setModel(&model);
 
     for (int j = 0; j < columns; ++j) {
+        const QString postfix = QLatin1Char(',') + QString::number(j) + QLatin1Char(']');
         view.setModelColumn(j);
         for (int i = 0; i < rows; ++i) {
             QModelIndex index = model.index(i, j);
-            model.setData(index, QString("[%1,%2]").arg(i).arg(j));
+            model.setData(index, QLatin1Char('[') + QString::number(i) + postfix);
             view.setCurrentIndex(index);
             QApplication::processEvents();
             QCOMPARE(view.currentIndex(), index);
@@ -468,7 +449,7 @@ void tst_QListView::hideRows()
     QStandardItemModel sim(0);
     QStandardItem *root = new QStandardItem("Root row");
     for (int i=0;i<5;i++)
-        root->appendRow(new QStandardItem(QString("Row %1").arg(i)));
+        root->appendRow(new QStandardItem(QLatin1String("Row ") + QString::number(i)));
     sim.appendRow(root);
     view.setModel(&sim);
     view.setRootIndex(root->index());
@@ -702,9 +683,11 @@ void tst_QListView::singleSelectionRemoveColumn()
     int numCols = 3;
     int numRows = 3;
     QStandardItemModel model(numCols, numRows);
-    for (int r = 0; r < numRows; ++r)
+    for (int r = 0; r < numRows; ++r) {
+        const QString prefix = QString::number(r) + QLatin1Char(',');
         for (int c = 0; c < numCols; ++c)
-            model.setData(model.index(r, c), QString("%1,%2").arg(r).arg(c));
+            model.setData(model.index(r, c), prefix + QString::number(c));
+    }
 
     QListView view;
     view.setModel(&model);
@@ -729,10 +712,11 @@ void tst_QListView::modelColumn()
     int numCols = 3;
     int numRows = 3;
     QStandardItemModel model(numCols, numRows);
-    for (int r = 0; r < numRows; ++r)
+    for (int r = 0; r < numRows; ++r) {
+        const QString prefix = QString::number(r) + QLatin1Char(',');
         for (int c = 0; c < numCols; ++c)
-            model.setData(model.index(r, c), QString("%1,%2").arg(r).arg(c));
-
+            model.setData(model.index(r, c), prefix + QString::number(c));
+    }
 
     QListView view;
     view.setModel(&model);
@@ -811,10 +795,7 @@ void tst_QListView::batchedMode()
 {
     const int rowCount = 3;
 
-    QStringList items;
-    for (int i = 0; i < rowCount; ++i)
-        items << QLatin1String("item ") + QString::number(i);
-    QStringListModel model(items);
+    QStringListModel model(generateList(QLatin1String("item "), rowCount));
 
     QListView view;
     view.setWindowTitle(QTest::currentTestFunction());
@@ -840,11 +821,7 @@ void tst_QListView::batchedMode()
 
 void tst_QListView::setCurrentIndex()
 {
-    QStringList items;
-    int i;
-    for (i=0; i <20; ++i)
-        items << QString("item %1").arg(i);
-    QStringListModel model(items);
+    QStringListModel model(generateList(QLatin1String("item "), 20));
 
     QListView view;
     view.setModel(&model);
@@ -866,7 +843,7 @@ void tst_QListView::setCurrentIndex()
             int offset = sb->value();
 
             // first "scroll" down, verify that we scroll one step at a time
-            i = 0;
+            int i = 0;
             for (i = 0; i < 20; ++i) {
                 QModelIndex idx = model.index(i,0);
                 view.setCurrentIndex(idx);
@@ -1289,7 +1266,7 @@ void tst_QListView::scrollBarRanges()
     QStringListModel model(&lv);
     QStringList list;
     for (int i = 0; i < rowCount; ++i)
-        list << QString::fromLatin1("Item %1").arg(i);
+        list << QLatin1String("Item ") + QString::number(i);
 
     model.setStringList(list);
     lv.setModel(&model);
@@ -1387,17 +1364,13 @@ void tst_QListView::scrollBarAsNeeded()
         QStringList list;
         int i;
         for (i = 0; i < rowCounts[r]; ++i)
-            list << QString::fromLatin1("Item %1").arg(i);
+            list << QLatin1String("Item ") + QString::number(i);
 
         model.setStringList(list);
         QApplication::processEvents();
         QTest::qWait(50);
 
-        QStringList replacement;
-        for (i = 0; i < itemCount; ++i) {
-            replacement << QString::fromLatin1("Item %1").arg(i);
-        }
-        model.setStringList(replacement);
+        model.setStringList(generateList(QLatin1String("Item "), itemCount));
 
         QApplication::processEvents();
 
@@ -1410,10 +1383,9 @@ void tst_QListView::moveItems()
 {
     QStandardItemModel model;
     for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-            QStandardItem* item = new QStandardItem(QString("standard item (%1,%2)").arg(r).arg(c));
-            model.setItem(r, c, item);
-        }
+        const QString prefix = QLatin1String("standard item (") + QString::number(r) + QLatin1Char(',');
+        for (int c = 0; c < 4; ++c)
+            model.setItem(r, c, new QStandardItem(prefix + QString::number(c) + QLatin1Char(')')));
     }
 
     PublicListView view;
@@ -1455,15 +1427,6 @@ void tst_QListView::wordWrap()
     lv.setModel(&model);
     lv.setWordWrap(true);
     lv.setFixedSize(400, 150);
-
-#if defined Q_OS_BLACKBERRY
-    QFont font = lv.font();
-    // On BB10 the root window is stretched over the whole screen
-    // This makes sure that the text will be long enough to produce
-    // a vertical scrollbar
-    font.setPixelSize(50);
-    lv.setFont(font);
-#endif
     lv.showNormal();
     QApplication::processEvents();
 
@@ -1525,9 +1488,10 @@ void tst_QListView::emptyItemSize()
 {
     QStandardItemModel model;
     for (int r = 0; r < 4; ++r) {
-        QStandardItem* item = new QStandardItem(QString("standard item (%1)").arg(r));
-        model.setItem(r, 0, item);
+        const QString text = QLatin1String("standard item (") + QString::number(r) + QLatin1Char(')');
+        model.setItem(r, new QStandardItem(text));
     }
+
     model.setItem(4, 0, new QStandardItem());
 
     PublicListView view;
@@ -1994,12 +1958,7 @@ public:
 
 void tst_QListView::taskQTBUG_9455_wrongScrollbarRanges()
 {
-    QStringList list;
-    const int nrItems = 8;
-    for (int i = 0; i < nrItems; i++)
-        list << QString::asprintf("item %d", i);
-
-    QStringListModel model(list);
+    QStringListModel model(generateList("item ", 8));
     ListView_9455 w;
     setFrameless(&w);
     w.setModel(&model);
@@ -2083,7 +2042,7 @@ void tst_QListView::taskQTBUG_12308_wrongFlowLayout()
         QListWidgetItem *item = new QListWidgetItem();
         item->setText(QString("Item %L1").arg(i));
         lw.addItem(item);
-        if (!item->text().contains(QString::fromLatin1("1")))
+        if (!item->text().contains(QLatin1Char('1')))
             item->setHidden(true);
     }
     lw.show();
@@ -2099,12 +2058,6 @@ void tst_QListView::taskQTBUG_21115_scrollToAndHiddenItems_data()
 
 void tst_QListView::taskQTBUG_21115_scrollToAndHiddenItems()
 {
-#if defined Q_OS_BLACKBERRY
-    // On BB10 we need to create a root window which is automatically stretched
-    // over the whole screen
-    QWindow rootWindow;
-    rootWindow.show();
-#endif
     QFETCH(int, flow);
 
     QListView lv;
@@ -2173,9 +2126,9 @@ void tst_QListView::draggablePaintPairs()
     view.scrollTo(expectedIndex);
     QItemViewPaintPairs pairs = privateClass->draggablePaintPairs(indexList, &rect);
     QCOMPARE(indexList.size(), pairs.size());
-    foreach (const QItemViewPaintPair pair, pairs) {
-        QCOMPARE(rect, pair.first);
-        QCOMPARE(expectedIndex, pair.second);
+    foreach (const QItemViewPaintPair &pair, pairs) {
+        QCOMPARE(rect, pair.rect);
+        QCOMPARE(expectedIndex, pair.index);
     }
 }
 
@@ -2297,12 +2250,6 @@ void tst_QListView::spacing()
 
 void tst_QListView::testScrollToWithHidden()
 {
-#if defined Q_OS_BLACKBERRY
-    // On BB10 we need to create a root window which is automatically stretched
-    // over the whole screen
-    QWindow rootWindow;
-    rootWindow.show();
-#endif
     QListView lv;
 
     QStringListModel model;
@@ -2491,6 +2438,44 @@ void tst_QListView::horizontalScrollingByVerticalWheelEvents()
     int vValue = lv.verticalScrollBar()->value();
     QApplication::sendEvent(lv.viewport(), &wheelDownEvent);
     QVERIFY(lv.verticalScrollBar()->value() > vValue);
+}
+
+void tst_QListView::taskQTBUG_7232_AllowUserToControlSingleStep()
+{
+    // When we set the scrollMode to ScrollPerPixel it will adjust the scrollbars singleStep automatically
+    // Setting a singlestep on a scrollbar should however imply that the user takes control.
+    // Setting a singlestep to -1 return to an automatic control of the singleStep.
+    QListView lv;
+    lv.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    lv.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+
+    QStandardItemModel model(1000, 100);
+    QString str = QString::fromLatin1("This is a long string made to ensure that we get some horizontal scroll (and we want scroll)");
+    model.setData(model.index(0, 0), str);
+    lv.setModel(&model);
+    lv.setGeometry(150, 150, 150, 150);
+    lv.show();
+    lv.setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    lv.setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    QVERIFY(QTest::qWaitForWindowExposed(&lv));
+
+    int vStep1 = lv.verticalScrollBar()->singleStep();
+    int hStep1 = lv.horizontalScrollBar()->singleStep();
+    QVERIFY(lv.verticalScrollBar()->singleStep() > 1);
+    QVERIFY(lv.horizontalScrollBar()->singleStep() > 1);
+
+    lv.verticalScrollBar()->setSingleStep(1);
+    lv.setGeometry(200, 200, 200, 200);
+    QCOMPARE(lv.verticalScrollBar()->singleStep(), 1);
+
+    lv.horizontalScrollBar()->setSingleStep(1);
+    lv.setGeometry(150, 150, 150, 150);
+    QCOMPARE(lv.horizontalScrollBar()->singleStep(), 1);
+
+    lv.verticalScrollBar()->setSingleStep(-1);
+    lv.horizontalScrollBar()->setSingleStep(-1);
+    QCOMPARE(vStep1, lv.verticalScrollBar()->singleStep());
+    QCOMPARE(hStep1, lv.horizontalScrollBar()->singleStep());
 }
 
 QTEST_MAIN(tst_QListView)

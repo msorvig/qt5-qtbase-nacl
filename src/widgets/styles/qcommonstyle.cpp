@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -552,18 +558,31 @@ void QCommonStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, Q
     case PE_IndicatorTabTear:
         if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(opt)) {
             bool rtl = tab->direction == Qt::RightToLeft;
-            QRect rect = tab->rect;
+            const bool horizontal = tab->rect.height() > tab->rect.width();
+            const int margin = 4;
             QPainterPath path;
 
-            rect.setTop(rect.top() + ((tab->state & State_Selected) ? 1 : 3));
-            rect.setBottom(rect.bottom() - ((tab->state & State_Selected) ? 0 : 2));
+            if (horizontal) {
+                QRect rect = tab->rect.adjusted(rtl ? margin : 0, 0, rtl ? 1 : -margin, 0);
+                rect.setTop(rect.top() + ((tab->state & State_Selected) ? 1 : 3));
+                rect.setBottom(rect.bottom() - ((tab->state & State_Selected) ? 0 : 2));
 
-            path.moveTo(QPoint(rtl ? rect.right() : rect.left(), rect.top()));
-            int count = 4;
-            for(int jags = 1; jags <= count; ++jags, rtl = !rtl)
-                path.lineTo(QPoint(rtl ? rect.left() : rect.right(), rect.top() + jags * rect.height()/count));
+                path.moveTo(QPoint(rtl ? rect.right() : rect.left(), rect.top()));
+                int count = 4;
+                for (int jags = 1; jags <= count; ++jags, rtl = !rtl)
+                    path.lineTo(QPoint(rtl ? rect.left() : rect.right(), rect.top() + jags * rect.height()/count));
+            } else {
+                QRect rect = tab->rect.adjusted(0, 0, 0, -margin);
+                rect.setLeft(rect.left() + ((tab->state & State_Selected) ? 1 : 3));
+                rect.setRight(rect.right() - ((tab->state & State_Selected) ? 0 : 2));
 
-            p->setPen(QPen(tab->palette.light(), qreal(.8)));
+                path.moveTo(QPoint(rect.left(), rect.top()));
+                int count = 4;
+                for (int jags = 1; jags <= count; ++jags, rtl = !rtl)
+                    path.lineTo(QPoint(rect.left() + jags * rect.width()/count, rtl ? rect.top() : rect.bottom()));
+            }
+
+            p->setPen(QPen(tab->palette.dark(), qreal(.8)));
             p->setBrush(tab->palette.background());
             p->setRenderHint(QPainter::Antialiasing);
             p->drawPath(path);
@@ -2780,13 +2799,13 @@ QRect QCommonStyle::subElementRect(SubElement sr, const QStyleOption *opt,
             case QTabBar::TriangularNorth:
             case QTabBar::RoundedSouth:
             case QTabBar::TriangularSouth:
-                r.setRect(tab->rect.left(), tab->rect.top(), 4, opt->rect.height());
+                r.setRect(tab->rect.left(), tab->rect.top(), 8, opt->rect.height());
                 break;
             case QTabBar::RoundedWest:
             case QTabBar::TriangularWest:
             case QTabBar::RoundedEast:
             case QTabBar::TriangularEast:
-                r.setRect(tab->rect.left(), tab->rect.top(), opt->rect.width(), 4);
+                r.setRect(tab->rect.left(), tab->rect.top(), opt->rect.width(), 8);
                 break;
             default:
                 break;
@@ -2794,6 +2813,23 @@ QRect QCommonStyle::subElementRect(SubElement sr, const QStyleOption *opt,
             r = visualRect(opt->direction, opt->rect, r);
         }
         break;
+    case SE_TabBarScrollLeftButton: {
+        const bool vertical = opt->rect.width() < opt->rect.height();
+        const Qt::LayoutDirection ld = widget->layoutDirection();
+        const int buttonWidth = qMax(pixelMetric(QStyle::PM_TabBarScrollButtonWidth, 0, widget), QApplication::globalStrut().width());
+        const int buttonOverlap = pixelMetric(QStyle::PM_TabBar_ScrollButtonOverlap, 0, widget);
+
+        r = vertical ? QRect(0, opt->rect.height() - (buttonWidth * 2) + buttonOverlap, opt->rect.width(), buttonWidth)
+            : QStyle::visualRect(ld, opt->rect, QRect(opt->rect.width() - (buttonWidth * 2) + buttonOverlap, 0, buttonWidth, opt->rect.height()));
+        break; }
+    case SE_TabBarScrollRightButton: {
+        const bool vertical = opt->rect.width() < opt->rect.height();
+        const Qt::LayoutDirection ld = widget->layoutDirection();
+        const int buttonWidth = qMax(pixelMetric(QStyle::PM_TabBarScrollButtonWidth, 0, widget), QApplication::globalStrut().width());
+
+        r = vertical ? QRect(0, opt->rect.height() - buttonWidth, opt->rect.width(), buttonWidth)
+            : QStyle::visualRect(ld, opt->rect, QRect(opt->rect.width() - buttonWidth, 0, buttonWidth, opt->rect.height()));
+        break; }
 #endif
     case SE_TreeViewDisclosureItem:
         r = opt->rect;
@@ -5567,6 +5603,11 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
     case SP_FileLinkIcon:
     case SP_DesktopIcon:
     case SP_ComputerIcon:
+    case SP_VistaShield:
+    case SP_MessageBoxInformation:
+    case SP_MessageBoxWarning:
+    case SP_MessageBoxCritical:
+    case SP_MessageBoxQuestion:
         if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
             QPlatformTheme::StandardPixmap sp = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
             for (int size = 16 ; size <= 32 ; size += 16) {
@@ -5588,13 +5629,6 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
                 pixmap = theme->standardPixmap(spOn, pixSize);
                 icon.addPixmap(pixmap, QIcon::Normal, QIcon::On);
             }
-        }
-        break;
-    case SP_VistaShield:
-        if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
-            QPlatformTheme::StandardPixmap sp = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
-            QPixmap pixmap = theme->standardPixmap(sp, QSizeF(32, 32));
-            icon.addPixmap(pixmap);
         }
         break;
     default:

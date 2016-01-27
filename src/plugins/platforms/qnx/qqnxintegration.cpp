@@ -1,31 +1,37 @@
 /***************************************************************************
 **
 ** Copyright (C) 2013 BlackBerry Limited. All rights reserved.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -52,12 +58,7 @@
 #include "qqnxeglwindow.h"
 #endif
 
-#if defined(Q_OS_BLACKBERRY)
-#include "qqnxbpseventfilter.h"
-#include "qqnxnavigatorbps.h"
-#include "qblackberrytheme.h"
-#include "qqnxvirtualkeyboardbps.h"
-#elif defined(QQNX_PPS)
+#if defined(QQNX_PPS)
 #include "qqnxnavigatorpps.h"
 #include "qqnxnavigatoreventnotifier.h"
 #include "qqnxvirtualkeyboardpps.h"
@@ -75,12 +76,7 @@
 #endif
 
 #include "private/qgenericunixfontdatabase_p.h"
-
-#if defined(Q_OS_BLACKBERRY)
-#include "qqnxeventdispatcher_blackberry.h"
-#else
 #include "private/qgenericunixeventdispatcher_p.h"
-#endif
 
 #include <qpa/qplatformwindow.h>
 #include <qpa/qwindowsysteminterface.h>
@@ -120,16 +116,10 @@ static inline QQnxIntegration::Options parseOptions(const QStringList &paramList
         options |= QQnxIntegration::AlwaysFlushScreenContext;
     }
 
-// On Blackberry the first window is treated as a root window
-#ifdef Q_OS_BLACKBERRY
-    if (!paramList.contains(QLatin1String("no-rootwindow"))) {
-        options |= QQnxIntegration::RootWindow;
-    }
-#else
     if (paramList.contains(QLatin1String("rootwindow"))) {
         options |= QQnxIntegration::RootWindow;
     }
-#endif
+
     return options;
 }
 
@@ -147,12 +137,7 @@ QQnxIntegration::QQnxIntegration(const QStringList &paramList)
 #endif
     , m_services(0)
     , m_fontDatabase(new QGenericUnixFontDatabase())
-#if defined(Q_OS_BLACKBERRY)
-    , m_eventDispatcher(new QQnxEventDispatcherBlackberry())
-    , m_bpsEventFilter(0)
-#else
     , m_eventDispatcher(createUnixEventDispatcher())
-#endif
     , m_nativeInterface(new QQnxNativeInterface(this))
     , m_screenEventHandler(new QQnxScreenEventHandler(this))
 #if !defined(QT_NO_CLIPBOARD)
@@ -169,8 +154,7 @@ QQnxIntegration::QQnxIntegration(const QStringList &paramList)
     Q_SCREEN_CRITICALERROR(screen_create_context(&ms_screenContext, SCREEN_APPLICATION_CONTEXT),
                            "Failed to create screen context");
 
-    // Not on BlackBerry, it has specialized event dispatcher which also handles navigator events
-#if !defined(Q_OS_BLACKBERRY) && defined(QQNX_PPS)
+#if defined(QQNX_PPS)
     // Create/start navigator event notifier
     m_navigatorEventNotifier = new QQnxNavigatorEventNotifier(m_navigatorEventHandler);
 
@@ -190,8 +174,7 @@ QQnxIntegration::QQnxIntegration(const QStringList &paramList)
     m_screenEventThread->start();
 #endif
 
-    // Not on BlackBerry, it has specialized event dispatcher which also handles virtual keyboard events
-#if !defined(Q_OS_BLACKBERRY) && defined(QQNX_PPS)
+#if defined(QQNX_PPS)
     // Create/start the keyboard class.
     m_virtualKeyboard = new QQnxVirtualKeyboardPps();
 
@@ -200,9 +183,7 @@ QQnxIntegration::QQnxIntegration(const QStringList &paramList)
     QMetaObject::invokeMethod(m_virtualKeyboard, "start", Qt::QueuedConnection);
 #endif
 
-#if defined(Q_OS_BLACKBERRY)
-    m_navigator = new QQnxNavigatorBps();
-#elif defined(QQNX_PPS)
+#if defined(QQNX_PPS)
     m_navigator = new QQnxNavigatorPps();
 #endif
 
@@ -210,33 +191,7 @@ QQnxIntegration::QQnxIntegration(const QStringList &paramList)
     if (m_navigator)
         m_services = new QQnxServices(m_navigator);
 
-#if defined(Q_OS_BLACKBERRY)
-    QQnxVirtualKeyboardBps* virtualKeyboardBps = new QQnxVirtualKeyboardBps;
-
-#if defined(QQNX_SCREENEVENTTHREAD)
-    m_bpsEventFilter = new QQnxBpsEventFilter(m_navigatorEventHandler, 0, virtualKeyboardBps);
-#else
-    m_bpsEventFilter = new QQnxBpsEventFilter(m_navigatorEventHandler, m_screenEventHandler, virtualKeyboardBps);
-#endif
-
-    m_bpsEventFilter->installOnEventDispatcher(m_eventDispatcher);
-
-    m_virtualKeyboard = virtualKeyboardBps;
-#endif
-
-    // Create displays for all possible screens (which may not be attached). We have to do this
-    // *after* the call to m_bpsEventFilter->installOnEventDispatcher(m_eventDispatcher). The
-    // reason for this is that we have to be registered for NAVIGATOR events before we create the
-    // QQnxScreen objects, and hence the QQnxRootWindow's. It is when the NAVIGATOR service sees
-    // the window creation that it starts sending us messages which results in a race if we
-    // create the displays first.
     createDisplays();
-
-#if !defined(QQNX_SCREENEVENTTHREAD) && defined(Q_OS_BLACKBERRY)
-    // Register for screen domain events with bps
-    Q_FOREACH (QQnxScreen *screen, m_screens)
-        m_bpsEventFilter->registerForScreenEvents(screen);
-#endif
 
     if (m_virtualKeyboard) {
         // TODO check if we need to do this for all screens or only the primary one
@@ -275,7 +230,7 @@ QQnxIntegration::~QQnxIntegration()
 #endif
 
     // Stop/destroy navigator event notifier
-#if !defined(Q_OS_BLACKBERRY) && defined(QQNX_PPS)
+#if defined(QQNX_PPS)
     delete m_navigatorEventNotifier;
 #endif
     delete m_navigatorEventHandler;
@@ -283,13 +238,6 @@ QQnxIntegration::~QQnxIntegration()
 #if defined(QQNX_SCREENEVENTTHREAD)
     // Stop/destroy screen event thread
     delete m_screenEventThread;
-#elif defined(Q_OS_BLACKBERRY)
-    Q_FOREACH (QQnxScreen *screen, m_screens)
-        m_bpsEventFilter->unregisterForScreenEvents(screen);
-#endif
-
-#if defined(Q_OS_BLACKBERRY)
-    delete m_bpsEventFilter;
 #endif
 
     // In case the event-dispatcher was never transferred to QCoreApplication
@@ -450,21 +398,6 @@ QPlatformServices * QQnxIntegration::services() const
     return m_services;
 }
 
-#if defined(Q_OS_BLACKBERRY)
-QStringList QQnxIntegration::themeNames() const
-{
-    return QStringList(QBlackberryTheme::name());
-}
-
-QPlatformTheme *QQnxIntegration::createPlatformTheme(const QString &name) const
-{
-    qIntegrationDebug() << "name =" << name;
-    if (name == QBlackberryTheme::name())
-        return new QBlackberryTheme(this);
-    return 0;
-}
-#endif
-
 QWindow *QQnxIntegration::window(screen_window_t qnxWindow)
 {
     qIntegrationDebug();
@@ -498,7 +431,7 @@ void QQnxIntegration::createDisplays()
                                                 &displayCount);
     Q_SCREEN_CRITICALERROR(result, "Failed to query display count");
 
-    if (displayCount < 1) {
+    if (Q_UNLIKELY(displayCount < 1)) {
         // Never happens, even if there's no display, libscreen returns 1
         qFatal("QQnxIntegration: displayCount=%d", displayCount);
     }
@@ -601,7 +534,7 @@ QQnxIntegration::Options QQnxIntegration::ms_options = 0;
 
 bool QQnxIntegration::supportsNavigatorEvents() const
 {
-    // If QQNX_PPS or Q_OS_BLACKBERRY is defined then we have navigator
+    // If QQNX_PPS is defined then we have navigator
     return m_navigator != 0;
 }
 

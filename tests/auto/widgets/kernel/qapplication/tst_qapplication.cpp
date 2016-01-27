@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -103,13 +98,10 @@ Q_OBJECT
 
 public:
     tst_QApplication();
-    virtual ~tst_QApplication();
 
-public slots:
-    void initTestCase();
-    void init();
-    void cleanup();
 private slots:
+    void initTestCase();
+    void cleanup();
     void sendEventsOnProcessEvents(); // this must be the first test
     void staticSetup();
 
@@ -133,9 +125,11 @@ private slots:
     void testDeleteLater();
     void testDeleteLaterProcessEvents();
 
+#ifndef QT_NO_LIBRARY
     void libraryPaths();
     void libraryPaths_qt_plugin_path();
     void libraryPaths_qt_plugin_path_2();
+#endif
 
     void sendPostedEvents();
 
@@ -245,17 +239,6 @@ tst_QApplication::tst_QApplication()
     // Clean up environment previously to launching test
     qputenv("QT_PLUGIN_PATH", QByteArray());
 #endif
-}
-
-tst_QApplication::~tst_QApplication()
-{
-
-}
-
-void tst_QApplication::init()
-{
-// TODO: Add initialization code here.
-// This will be executed immediately before each test is run.
 }
 
 void tst_QApplication::cleanup()
@@ -398,11 +381,12 @@ void tst_QApplication::setFont_data()
                 if (!sizes.size())
                     sizes = fdb.standardSizes();
                 if (sizes.size() > 0) {
-                    QTest::newRow(QString("data%1a").arg(cnt).toLatin1().constData())
+                    const QByteArray cntB = QByteArray::number(cnt);
+                    QTest::newRow(("data" + cntB + "a").constData())
                         << family
                         << sizes.first()
                         << false;
-                    QTest::newRow(QString("data%1b").arg(cnt).toLatin1().constData())
+                    QTest::newRow(("data" + cntB + "b").constData())
                         << family
                         << sizes.first()
                         << true;
@@ -500,7 +484,7 @@ static QString cstrings2QString( char **args )
     while ( args[i] ) {
         string += args[i];
         if ( args[i+1] )
-            string += " ";
+            string += QLatin1Char(' ');
         ++i;
     }
     return string;
@@ -909,6 +893,7 @@ bool isPathListIncluded(const QStringList &l, const QStringList &r)
     return j == r.count();
 }
 
+#ifndef QT_NO_LIBRARY
 #define QT_TST_QAPP_DEBUG
 void tst_QApplication::libraryPaths()
 {
@@ -1057,16 +1042,16 @@ void tst_QApplication::libraryPaths_qt_plugin_path_2()
 #ifdef Q_OS_UNIX
     QByteArray validPath = QDir("/tmp").canonicalPath().toLatin1();
     QByteArray nonExistentPath = "/nonexistent";
-    QByteArray pluginPath = validPath + ":" + nonExistentPath;
+    QByteArray pluginPath = validPath + ':' + nonExistentPath;
 #elif defined(Q_OS_WIN)
 # ifdef Q_OS_WINCE
     QByteArray validPath = "/Temp";
     QByteArray nonExistentPath = "/nonexistent";
-    QByteArray pluginPath = validPath + ";" + nonExistentPath;
+    QByteArray pluginPath = validPath + ';' + nonExistentPath;
 # else
     QByteArray validPath = "C:\\windows";
     QByteArray nonExistentPath = "Z:\\nonexistent";
-    QByteArray pluginPath = validPath + ";" + nonExistentPath;
+    QByteArray pluginPath = validPath + ';' + nonExistentPath;
 # endif
 #endif
 
@@ -1114,6 +1099,7 @@ void tst_QApplication::libraryPaths_qt_plugin_path_2()
         qputenv("QT_PLUGIN_PATH", QByteArray());
     }
 }
+#endif
 
 class SendPostedEventsTester : public QObject
 {

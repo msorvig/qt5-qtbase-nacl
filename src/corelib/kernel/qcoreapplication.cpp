@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -71,19 +77,14 @@
 #endif
 
 #if defined(Q_OS_UNIX)
-#  if defined(Q_OS_BLACKBERRY)
-#    include "qeventdispatcher_blackberry_p.h"
-#    include <process.h>
-#    include <unistd.h>
-#  elif defined(Q_OS_OSX)
-#    include "qeventdispatcher_cf_p.h"
-#    include "qeventdispatcher_unix_p.h"
-#  else
-#    if !defined(QT_NO_GLIB)
-#      include "qeventdispatcher_glib_p.h"
-#    endif
-#    include "qeventdispatcher_unix_p.h"
+# if defined(Q_OS_OSX)
+#  include "qeventdispatcher_cf_p.h"
+# else
+#  if !defined(QT_NO_GLIB)
+#   include "qeventdispatcher_glib_p.h"
 #  endif
+# endif
+# include "qeventdispatcher_unix_p.h"
 #endif
 #ifdef Q_OS_WIN
 # ifdef Q_OS_WINRT
@@ -349,34 +350,6 @@ struct QCoreApplicationData {
 #endif
     }
 
-#ifdef Q_OS_BLACKBERRY
-    //The QCoreApplicationData struct is only populated on demand, because it is rarely needed and would
-    //affect startup time
-    void loadManifest() {
-        static bool manifestLoadAttempt = false;
-        if (manifestLoadAttempt)
-            return;
-
-        manifestLoadAttempt = true;
-
-        QFile metafile(QStringLiteral("app/META-INF/MANIFEST.MF"));
-        if (!metafile.open(QIODevice::ReadOnly)) {
-            qWarning("Could not open application metafile for reading")
-        } else {
-            while (!metafile.atEnd() && (application.isEmpty() || applicationVersion.isEmpty() || orgName.isEmpty())) {
-                QByteArray line = metafile.readLine();
-                if (line.startsWith("Application-Name:"))
-                    application = QString::fromUtf8(line.mid(18).trimmed());
-                else if (line.startsWith("Application-Version:"))
-                    applicationVersion = QString::fromUtf8(line.mid(21).trimmed());
-                else if (line.startsWith("Package-Author:"))
-                    orgName = QString::fromUtf8(line.mid(16).trimmed());
-            }
-            metafile.close();
-        }
-    }
-#endif
-
     QString orgName, orgDomain;
     QString application; // application name, initially from argv[0], can then be modified.
     QString applicationVersion;
@@ -461,7 +434,7 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv, uint 
     QCoreApplicationPrivate::is_app_closing = false;
 
 #  if defined(Q_OS_UNIX)
-    if (!setuidAllowed && (geteuid() != getuid()))
+    if (Q_UNLIKELY(!setuidAllowed && (geteuid() != getuid())))
         qFatal("FATAL: The application binary appears to be running setuid, this is a security hole.");
 #  endif // Q_OS_UNIX
 
@@ -519,8 +492,6 @@ void QCoreApplicationPrivate::createEventDispatcher()
 #if defined(Q_OS_UNIX)
 #  if defined(Q_OS_NACL_PEPPER)
     eventDispatcher = new QCorePepperEventDispatcher(q);
-#  elif defined(Q_OS_BLACKBERRY)
-    eventDispatcher = new QEventDispatcherBlackberry(q);
 #  elif defined(Q_OS_OSX)
     bool ok = false;
     int value = qEnvironmentVariableIntValue("QT_EVENT_DISPATCHER_CORE_FOUNDATION", &ok);
@@ -613,7 +584,7 @@ void QCoreApplicationPrivate::initLocale()
     if (qt_locale_initialized)
         return;
     qt_locale_initialized = true;
-#ifdef Q_OS_UNIX
+#if defined(Q_OS_UNIX) && !defined(QT_BOOTSTRAPPED)
     setlocale(LC_ALL, "");
 #endif
 }
@@ -2148,33 +2119,6 @@ QString QCoreApplication::applicationFilePath()
 #if defined(Q_OS_WIN)
     QCoreApplicationPrivate::setApplicationFilePath(QFileInfo(qAppFileName()).filePath());
     return *QCoreApplicationPrivate::cachedApplicationFilePath;
-#elif defined(Q_OS_BLACKBERRY)
-    if (!arguments().isEmpty()) { // args is never empty, but the navigator can change behaviour some day
-        QFileInfo fileInfo(arguments().at(0));
-        const bool zygotized = fileInfo.exists();
-        if (zygotized) {
-            // Handle the zygotized case:
-            QCoreApplicationPrivate::setApplicationFilePath(QDir::cleanPath(fileInfo.absoluteFilePath()));
-            return *QCoreApplicationPrivate::cachedApplicationFilePath;
-        }
-    }
-
-    // Handle the non-zygotized case:
-    const size_t maximum_path = static_cast<size_t>(pathconf("/",_PC_PATH_MAX));
-    char buff[maximum_path+1];
-    if (_cmdname(buff)) {
-        QCoreApplicationPrivate::setApplicationFilePath(QDir::cleanPath(QString::fromLocal8Bit(buff)));
-    } else {
-        qWarning("QCoreApplication::applicationFilePath: _cmdname() failed");
-        // _cmdname() won't fail, but just in case, fallback to the old method
-        QDir dir(QStringLiteral("./app/native/"));
-        QStringList executables = dir.entryList(QDir::Executable | QDir::Files);
-        if (!executables.empty()) {
-            //We assume that there is only one executable in the folder
-            QCoreApplicationPrivate::setApplicationFilePath(dir.absoluteFilePath(executables.first()));
-        }
-    }
-    return *QCoreApplicationPrivate::cachedApplicationFilePath;
 #elif defined(Q_OS_MAC)
     QString qAppFileName_str = qAppFileName();
     if(!qAppFileName_str.isEmpty()) {
@@ -2340,9 +2284,6 @@ QStringList QCoreApplication::arguments()
     organizationName(). On all other platforms, QSettings uses
     organizationName() as the organization.
 
-    On BlackBerry this property is read-only. It is obtained from the
-    BAR application descriptor file.
-
     \sa organizationDomain, applicationName
 */
 
@@ -2367,9 +2308,6 @@ void QCoreApplication::setOrganizationName(const QString &orgName)
 
 QString QCoreApplication::organizationName()
 {
-#ifdef Q_OS_BLACKBERRY
-    coreappdata()->loadManifest();
-#endif
     return coreappdata()->orgName;
 }
 
@@ -2420,9 +2358,6 @@ QString QCoreApplication::organizationDomain()
 
     If not set, the application name defaults to the executable name (since 5.0).
 
-    On BlackBerry this property is read-only. It is obtained from the
-    BAR application descriptor file.
-
     \sa organizationName, organizationDomain, applicationVersion, applicationFilePath()
 */
 /*!
@@ -2448,9 +2383,6 @@ void QCoreApplication::setApplicationName(const QString &application)
 
 QString QCoreApplication::applicationName()
 {
-#ifdef Q_OS_BLACKBERRY
-    coreappdata()->loadManifest();
-#endif
     return coreappdata() ? coreappdata()->application : QString();
 }
 
@@ -2464,9 +2396,6 @@ Q_CORE_EXPORT QString qt_applicationName_noFallback()
     \property QCoreApplication::applicationVersion
     \since 4.4
     \brief the version of this application
-
-    On BlackBerry this property is read-only. It is obtained from the
-    BAR application descriptor file.
 
     \sa applicationName, organizationName, organizationDomain
 */
@@ -2489,9 +2418,6 @@ void QCoreApplication::setApplicationVersion(const QString &version)
 
 QString QCoreApplication::applicationVersion()
 {
-#ifdef Q_OS_BLACKBERRY
-    coreappdata()->loadManifest();
-#endif
     return coreappdata()->applicationVersion;
 }
 
@@ -2711,7 +2637,7 @@ void QCoreApplication::removeLibraryPath(const QString &path)
     i.e. MSG or XCB event structs.
 
     \note Native event filters will be disabled in the application when the
-    Qt::AA_MacPluginApplication attribute is set.
+    Qt::AA_PluginApplication attribute is set.
 
     For maximum portability, you should always try to use QEvent
     and QObject::installEventFilter() whenever possible.
@@ -2722,8 +2648,8 @@ void QCoreApplication::removeLibraryPath(const QString &path)
 */
 void QCoreApplication::installNativeEventFilter(QAbstractNativeEventFilter *filterObj)
 {
-    if (QCoreApplication::testAttribute(Qt::AA_MacPluginApplication)) {
-        qWarning("Native event filters are not applied when the Qt::AA_MacPluginApplication attribute is set");
+    if (QCoreApplication::testAttribute(Qt::AA_PluginApplication)) {
+        qWarning("Native event filters are not applied when the Qt::AA_PluginApplication attribute is set");
         return;
     }
 

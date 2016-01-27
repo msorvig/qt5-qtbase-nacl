@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -100,7 +106,7 @@ using namespace ABI::Windows::Storage;
 #define CSIDL_APPDATA           0x001a  // <username>\Application Data
 #endif
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC) && !defined(Q_OS_BLACKBERRY) && !defined(Q_OS_ANDROID)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC) && !defined(Q_OS_ANDROID)
 #define Q_XDG_PLATFORM
 #endif
 
@@ -1073,7 +1079,7 @@ static void initDefaultPaths(QMutexLocker *locker)
 #else
 
 #ifndef QSETTINGS_USE_QSTANDARDPATHS
-        // Non XDG platforms (OS X, iOS, Blackberry, Android...) have used this code path erroneously
+        // Non XDG platforms (OS X, iOS, Android...) have used this code path erroneously
         // for some time now. Moving away from that would require migrating existing settings.
         QString userPath;
         QByteArray env = qgetenv("XDG_CONFIG_HOME");
@@ -1140,7 +1146,6 @@ QConfFileSettingsPrivate::QConfFileSettingsPrivate(QSettings::Format format,
         org = QLatin1String("Unknown Organization");
     }
 
-#if !defined(Q_OS_BLACKBERRY)
     QString appFile = org + QDir::separator() + application + extension;
     QString orgFile = org + extension;
 
@@ -1155,13 +1160,6 @@ QConfFileSettingsPrivate::QConfFileSettingsPrivate(QSettings::Format format,
     if (!application.isEmpty())
         confFiles[F_System | F_Application].reset(QConfFile::fromName(systemPath + appFile, false));
     confFiles[F_System | F_Organization].reset(QConfFile::fromName(systemPath + orgFile, false));
-#else
-    QString confName = getPath(format, QSettings::UserScope) + org;
-    if (!application.isEmpty())
-        confName += QDir::separator() + application;
-    confName += extension;
-    confFiles[SandboxConfFile].reset(QConfFile::fromName(confName, true));
-#endif
 
     for (i = 0; i < NumConfFiles; ++i) {
         if (confFiles[i]) {
@@ -2253,7 +2251,6 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
     stored in the following registry path:
     \c{HKEY_LOCAL_MACHINE\Software\WOW6432node}.
 
-    On BlackBerry only a single file is used (see \l{Platform Limitations}).
     If the file format is NativeFormat, this is "Settings/MySoft/Star Runner.conf"
     in the application's home directory.
 
@@ -2281,7 +2278,6 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
     %COMMON_APPDATA% path is usually \tt{C:\\Documents and
     Settings\\All Users\\Application Data}.
 
-    On BlackBerry only a single file is used (see \l{Platform Limitations}).
     If the file format is IniFormat, this is "Settings/MySoft/Star Runner.ini"
     in the application's home directory.
 
@@ -2386,15 +2382,6 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
        10.8 (Mountain Lion), only root can. However, 10.9 (Mavericks) changes
        that rule again but only for the native format (plist files).
 
-    \li On the BlackBerry platform, applications run in a sandbox. They are not
-       allowed to read or write outside of this sandbox. This involves the
-       following limitations:
-       \list
-       \li As there is only a single scope the scope is simply ignored,
-           i.e. there is no difference between SystemScope and UserScope.
-       \li The \l{Fallback Mechanism} is not applied, i.e. only a single
-          location is considered.
-       \li It is advised against setting and using custom file paths.
        \endlist
 
     \endlist
@@ -2417,14 +2404,24 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
 
     This enum type specifies the storage format used by QSettings.
 
-    \value NativeFormat  Store the settings using the most
-                         appropriate storage format for the platform.
-                         On Windows, this means the system registry;
-                         on OS X and iOS, this means the CFPreferences
-                         API; on Unix, this means textual
-                         configuration files in INI format.
-    \value IniFormat  Store the settings in INI files.
-    \value InvalidFormat Special value returned by registerFormat().
+    \value NativeFormat     Store the settings using the most
+                            appropriate storage format for the platform.
+                            On Windows, this means the system registry;
+                            on OS X and iOS, this means the CFPreferences
+                            API; on Unix, this means textual
+                            configuration files in INI format.
+    \value Registry32Format Windows only: Explicitly access the 32-bit system registry
+                            from a 64-bit application running on 64-bit Windows.
+                            On 32-bit Windows or from a 32-bit application on 64-bit Windows,
+                            this works the same as specifying NativeFormat.
+                            This enum value was added in Qt 5.7.
+    \value Registry64Format Windows only: Explicitly access the 64-bit system registry
+                            from a 32-bit application running on 64-bit Windows.
+                            On 32-bit Windows or from a 64-bit application on 64-bit Windows,
+                            this works the same as specifying NativeFormat.
+                            This enum value was added in Qt 5.7.
+    \value IniFormat        Store the settings in INI files.
+    \value InvalidFormat    Special value returned by registerFormat().
     \omitvalue CustomFormat1
     \omitvalue CustomFormat2
     \omitvalue CustomFormat3

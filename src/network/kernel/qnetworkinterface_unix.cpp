@@ -1,31 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -93,14 +100,8 @@ static QHostAddress addressFromSockaddr(sockaddr *sa, int ifindex = 0, const QSt
             // this is the most likely scenario:
             // a scope ID in a socket is that of the interface this address came from
             address.setScopeId(ifname);
-        } else  if (scope) {
-#ifndef QT_NO_IPV6IFNAME
-            char scopeid[IFNAMSIZ];
-            if (::if_indextoname(scope, scopeid)) {
-                address.setScopeId(QLatin1String(scopeid));
-            } else
-#endif
-                address.setScopeId(QString::number(uint(scope)));
+        } else if (scope) {
+            address.setScopeId(QNetworkInterfaceManager::interfaceNameFromIndex(scope));
         }
     }
     return address;
@@ -122,6 +123,53 @@ static QNetworkInterface::InterfaceFlags convertFlags(uint rawFlags)
     flags |= (rawFlags & IFF_MULTICAST) ? QNetworkInterface::CanMulticast : QNetworkInterface::InterfaceFlag(0);
 #endif
     return flags;
+}
+
+uint QNetworkInterfaceManager::interfaceIndexFromName(const QString &name)
+{
+#ifndef QT_NO_IPV6IFNAME
+    return ::if_nametoindex(name.toLatin1());
+#elif defined(SIOCGIFINDEX)
+    struct ifreq req;
+    int socket = qt_safe_socket(AF_INET, SOCK_STREAM, 0);
+    if (socket < 0)
+        return 0;
+
+    QByteArray name8bit = name.toLatin1();
+    memset(&req, 0, sizeof(ifreq));
+    memcpy(req.ifr_name, name8bit, qMin<int>(name8bit.length() + 1, sizeof(req.ifr_name) - 1));
+
+    uint id = 0;
+    if (qt_safe_ioctl(socket, SIOCGIFINDEX, &req) >= 0)
+        id = req.ifr_ifindex;
+    qt_safe_close(socket);
+    return id;
+#else
+    return 0;
+#endif
+}
+
+QString QNetworkInterfaceManager::interfaceNameFromIndex(uint index)
+{
+#ifndef QT_NO_IPV6IFNAME
+    char buf[IF_NAMESIZE];
+    if (::if_indextoname(index, buf))
+        return QString::fromLatin1(buf);
+#elif defined(SIOCGIFNAME)
+    struct ifreq req;
+    int socket = qt_safe_socket(AF_INET, SOCK_STREAM, 0);
+    if (socket >= 0) {
+        memset(&req, 0, sizeof(ifreq));
+        req.ifr_ifindex = index;
+
+        if (qt_safe_ioctl(socket, SIOCGIFNAME, &req) >= 0) {
+            qt_safe_close(socket);
+            return QString::fromLatin1(req.ifr_name);
+        }
+        qt_safe_close(socket);
+    }
+#endif
+    return QString::number(uint(index));
 }
 
 #ifdef QT_NO_GETIFADDRS
@@ -189,7 +237,11 @@ static QNetworkInterfacePrivate *findInterface(int socket, QList<QNetworkInterfa
     // Get the interface index
 #  ifdef SIOCGIFINDEX
     if (qt_safe_ioctl(socket, SIOCGIFINDEX, &req) >= 0)
+#    if defined(Q_OS_HAIKU)
+        ifindex = req.ifr_index;
+#    else
         ifindex = req.ifr_ifindex;
+#    endif
 #  else
     ifindex = if_nametoindex(req.ifr_name);
 #  endif

@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -128,20 +134,20 @@ public:
 
     QRasterPaintEngine(QPaintDevice *device);
     ~QRasterPaintEngine();
-    bool begin(QPaintDevice *device);
-    bool end();
+    bool begin(QPaintDevice *device) Q_DECL_OVERRIDE;
+    bool end() Q_DECL_OVERRIDE;
 
-    void penChanged();
-    void brushChanged();
-    void brushOriginChanged();
-    void opacityChanged();
-    void compositionModeChanged();
-    void renderHintsChanged();
-    void transformChanged();
-    void clipEnabledChanged();
+    void penChanged() Q_DECL_OVERRIDE;
+    void brushChanged() Q_DECL_OVERRIDE;
+    void brushOriginChanged() Q_DECL_OVERRIDE;
+    void opacityChanged() Q_DECL_OVERRIDE;
+    void compositionModeChanged() Q_DECL_OVERRIDE;
+    void renderHintsChanged() Q_DECL_OVERRIDE;
+    void transformChanged() Q_DECL_OVERRIDE;
+    void clipEnabledChanged() Q_DECL_OVERRIDE;
 
-    void setState(QPainterState *s);
-    QPainterState *createState(QPainterState *orig) const;
+    void setState(QPainterState *s) Q_DECL_OVERRIDE;
+    QPainterState *createState(QPainterState *orig) const Q_DECL_OVERRIDE;
     inline QRasterPaintEngineState *state() {
         return static_cast<QRasterPaintEngineState *>(QPaintEngineEx::state());
     }
@@ -154,42 +160,43 @@ public:
 
     void updateMatrix(const QTransform &matrix);
 
-    void drawPolygon(const QPointF *points, int pointCount, PolygonDrawMode mode);
-    void drawPolygon(const QPoint *points, int pointCount, PolygonDrawMode mode);
-    void fillPath(const QPainterPath &path, QSpanData *fillData);
-    void fillPolygon(const QPointF *points, int pointCount, PolygonDrawMode mode);
+    virtual void fillPath(const QPainterPath &path, QSpanData *fillData);
+    virtual void fillPolygon(const QPointF *points, int pointCount, PolygonDrawMode mode);
 
-    void drawEllipse(const QRectF &rect);
+    void drawPolygon(const QPointF *points, int pointCount, PolygonDrawMode mode) Q_DECL_OVERRIDE;
+    void drawPolygon(const QPoint *points, int pointCount, PolygonDrawMode mode) Q_DECL_OVERRIDE;
 
-    void fillRect(const QRectF &rect, const QBrush &brush);
-    void fillRect(const QRectF &rect, const QColor &color);
+    void drawEllipse(const QRectF &rect) Q_DECL_OVERRIDE;
 
-    void drawRects(const QRect  *rects, int rectCount);
-    void drawRects(const QRectF *rects, int rectCount);
+    void fillRect(const QRectF &rect, const QBrush &brush) Q_DECL_OVERRIDE;
+    void fillRect(const QRectF &rect, const QColor &color) Q_DECL_OVERRIDE;
 
-    void drawPixmap(const QPointF &p, const QPixmap &pm);
-    void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr);
-    void drawImage(const QPointF &p, const QImage &img);
+    void drawRects(const QRect  *rects, int rectCount) Q_DECL_OVERRIDE;
+    void drawRects(const QRectF *rects, int rectCount) Q_DECL_OVERRIDE;
+
+    void drawPixmap(const QPointF &p, const QPixmap &pm) Q_DECL_OVERRIDE;
+    void drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr) Q_DECL_OVERRIDE;
+    void drawImage(const QPointF &p, const QImage &img) Q_DECL_OVERRIDE;
     void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr,
-                   Qt::ImageConversionFlags flags = Qt::AutoColor);
-    void drawTiledPixmap(const QRectF &r, const QPixmap &pm, const QPointF &sr);
-    void drawTextItem(const QPointF &p, const QTextItem &textItem);
+                   Qt::ImageConversionFlags flags = Qt::AutoColor) Q_DECL_OVERRIDE;
+    void drawTiledPixmap(const QRectF &r, const QPixmap &pm, const QPointF &sr) Q_DECL_OVERRIDE;
+    void drawTextItem(const QPointF &p, const QTextItem &textItem) Q_DECL_OVERRIDE;
 
-    void drawLines(const QLine *line, int lineCount);
-    void drawLines(const QLineF *line, int lineCount);
+    void drawLines(const QLine *line, int lineCount) Q_DECL_OVERRIDE;
+    void drawLines(const QLineF *line, int lineCount) Q_DECL_OVERRIDE;
 
-    void drawPoints(const QPointF *points, int pointCount);
-    void drawPoints(const QPoint *points, int pointCount);
+    void drawPoints(const QPointF *points, int pointCount) Q_DECL_OVERRIDE;
+    void drawPoints(const QPoint *points, int pointCount) Q_DECL_OVERRIDE;
 
-    void stroke(const QVectorPath &path, const QPen &pen);
-    void fill(const QVectorPath &path, const QBrush &brush);
+    void stroke(const QVectorPath &path, const QPen &pen) Q_DECL_OVERRIDE;
+    void fill(const QVectorPath &path, const QBrush &brush) Q_DECL_OVERRIDE;
 
-    void clip(const QVectorPath &path, Qt::ClipOperation op);
-    void clip(const QRect &rect, Qt::ClipOperation op);
-    void clip(const QRegion &region, Qt::ClipOperation op);
+    void clip(const QVectorPath &path, Qt::ClipOperation op) Q_DECL_OVERRIDE;
+    void clip(const QRect &rect, Qt::ClipOperation op) Q_DECL_OVERRIDE;
+    void clip(const QRegion &region, Qt::ClipOperation op) Q_DECL_OVERRIDE;
     inline const QClipData *clipData() const;
 
-    void drawStaticTextItem(QStaticTextItem *textItem);
+    void drawStaticTextItem(QStaticTextItem *textItem) Q_DECL_OVERRIDE;
     virtual bool drawCachedGlyphs(int numGlyphs, const glyph_t *glyphs, const QFixedPoint *positions,
                                   QFontEngine *fontEngine);
 
@@ -219,12 +226,12 @@ public:
     QRasterBuffer *rasterBuffer();
     void alphaPenBlt(const void* src, int bpl, int depth, int rx,int ry,int w,int h);
 
-    Type type() const { return Raster; }
+    Type type() const Q_DECL_OVERRIDE { return Raster; }
 
-    QPoint coordinateOffset() const;
+    QPoint coordinateOffset() const Q_DECL_OVERRIDE;
 
-    bool requiresPretransformedGlyphPositions(QFontEngine *fontEngine, const QTransform &m) const;
-    bool shouldDrawCachedGlyphs(QFontEngine *fontEngine, const QTransform &m) const;
+    bool requiresPretransformedGlyphPositions(QFontEngine *fontEngine, const QTransform &m) const Q_DECL_OVERRIDE;
+    bool shouldDrawCachedGlyphs(QFontEngine *fontEngine, const QTransform &m) const Q_DECL_OVERRIDE;
 
 protected:
     QRasterPaintEngine(QRasterPaintEnginePrivate &d, QPaintDevice *);

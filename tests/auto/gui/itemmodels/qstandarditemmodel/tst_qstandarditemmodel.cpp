@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -44,7 +39,6 @@ class tst_QStandardItemModel : public QObject
 
 public:
     tst_QStandardItemModel();
-    virtual ~tst_QStandardItemModel();
 
     enum ModelChanged {
         RowsAboutToBeInserted,
@@ -151,10 +145,8 @@ Q_DECLARE_METATYPE(Qt::Orientation)
 
 tst_QStandardItemModel::tst_QStandardItemModel() : m_model(0), rcParent(8), rcFirst(8,0), rcLast(8,0)
 {
-}
-
-tst_QStandardItemModel::~tst_QStandardItemModel()
-{
+    qRegisterMetaType<QStandardItem*>("QStandardItem*");
+    qRegisterMetaType<Qt::Orientation>("Qt::Orientation");
 }
 
 /*
@@ -169,9 +161,6 @@ tst_QStandardItemModel::~tst_QStandardItemModel()
 */
 void tst_QStandardItemModel::init()
 {
-    qRegisterMetaType<QStandardItem*>("QStandardItem*");
-    qRegisterMetaType<Qt::Orientation>("Qt::Orientation");
-
     m_model = new QStandardItemModel(defaultSize, defaultSize);
     connect(m_model, SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)),
             this, SLOT(rowsAboutToBeInserted(QModelIndex,int,int)));
@@ -256,7 +245,7 @@ void tst_QStandardItemModel::insertRow()
         QCOMPARE(rcLast[RowsInserted], expectedRow);
 
         //check that the inserted item has different DisplayRole than initial items
-        QVERIFY(m_model->data(m_model->index(expectedRow, 0), Qt::DisplayRole).toString() != "initialitem");
+        QVERIFY(m_model->data(m_model->index(expectedRow, 0), Qt::DisplayRole).toString() != QLatin1String("initialitem"));
     } else {
         // We inserted something outside the bounds, do nothing
         QCOMPARE(m_model->rowCount(), defaultSize);
@@ -300,7 +289,7 @@ void tst_QStandardItemModel::insertRowsItems()
     QStandardItemModel *m = qobject_cast<QStandardItemModel*>(m_model);
     QStandardItem *hiddenRoot = m->invisibleRootItem();
     for (int i = 0; i < 3; ++i)
-        items.append(new QStandardItem(QString("%1").arg(i + 10)));
+        items.append(new QStandardItem(QString::number(i + 10)));
     hiddenRoot->appendRows(items);
     QCOMPARE(m_model->rowCount(), rowCount + 3);
     QCOMPARE(m_model->index(rowCount + 0, 0).data().toInt(), 10);
@@ -365,7 +354,7 @@ void tst_QStandardItemModel::insertColumn()
         QCOMPARE(rcLast[ColumnsInserted], expectedColumn);
 
         //check that the inserted item has different DisplayRole than initial items
-        QVERIFY(m_model->data(m_model->index(0, expectedColumn), Qt::DisplayRole).toString() != "initialitem");
+        QVERIFY(m_model->data(m_model->index(0, expectedColumn), Qt::DisplayRole).toString() != QLatin1String("initialitem"));
     } else {
         // We inserted something outside the bounds, do nothing
         QCOMPARE(m_model->columnCount(), defaultSize);
@@ -729,8 +718,8 @@ void tst_QStandardItemModel::data()
         }
     }
 
-    QVERIFY(m_model->data(m_model->index(0, 0), Qt::DisplayRole).toString() == "initialitem");
-    QVERIFY(m_model->data(m_model->index(0, 0), Qt::ToolTipRole).toString() == "tooltip");
+    QCOMPARE(m_model->data(m_model->index(0, 0), Qt::DisplayRole).toString(), QLatin1String("initialitem"));
+    QCOMPARE(m_model->data(m_model->index(0, 0), Qt::ToolTipRole).toString(), QLatin1String("tooltip"));
 
 }
 
@@ -874,7 +863,7 @@ void tst_QStandardItemModel::sort_data()
                                      << "zulu");
     QStringList list;
     for (int i=1000; i < 2000; ++i)
-        list.append(QString("Number: %1").arg(i));
+        list.append(QStringLiteral("Number: ") + QString::number(i));
     QTest::newRow("large set ascending") <<  static_cast<int>(Qt::AscendingOrder) << list << list;
 }
 
@@ -1336,7 +1325,7 @@ void tst_QStandardItemModel::useCase3()
     // create the tree structure first
     QStandardItem *childItem = 0;
     for (int i = 0; i < 100; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QStringLiteral("item ") + QString::number(i));
         if (childItem)
             item->appendRow(childItem);
         childItem = item;
@@ -1466,6 +1455,38 @@ struct FriendlyTreeView : public QTreeView
 #endif
 
 #ifdef QT_BUILD_INTERNAL
+
+static void populateDragAndDropModel(QStandardItemModel &model, int nRow, int nCol)
+{
+    const QString item = QStringLiteral("item ");
+    const QString dash = QStringLiteral(" - ");
+    for (int i = 0; i < nRow; ++i) {
+        const QString iS = QString::number(i);
+        QList<QStandardItem *> colItems1;
+        for (int c = 0 ; c < nCol; c ++)
+            colItems1 << new QStandardItem(item + iS + dash + QString::number(c));
+        model.appendRow(colItems1);
+
+        for (int j = 0; j < nRow; ++j) {
+            const QString jS = QString::number(j);
+            QList<QStandardItem *> colItems2;
+            for (int c = 0 ; c < nCol; c ++)
+                colItems2 << new QStandardItem(item + iS + QLatin1Char('/') + jS + dash + QString::number(c));
+            colItems1.at(0)->appendRow(colItems2);
+
+            for (int k = 0; k < nRow; ++k) {
+                QList<QStandardItem *> colItems3;
+                const QString kS = QString::number(k);
+                for (int c = 0 ; c < nCol; c ++)
+                    colItems3 << new QStandardItem(item + iS + QLatin1Char('/') + jS
+                                                   + QLatin1Char('/') + kS
+                                                   + dash + QString::number(c));
+                colItems2.at(0)->appendRow(colItems3);
+            }
+        }
+    }
+}
+
 void tst_QStandardItemModel::treeDragAndDrop()
 {
     const int nRow = 5;
@@ -1474,47 +1495,8 @@ void tst_QStandardItemModel::treeDragAndDrop()
     QStandardItemModel model;
     QStandardItemModel checkModel;
 
-    for (int i = 0; i < nRow; ++i) {
-        QList<QStandardItem *> colItems1;
-        for (int c = 0 ; c < nCol; c ++)
-            colItems1 << new QStandardItem(QString("item %1 - %0").arg(c).arg(i));
-        model.appendRow(colItems1);
-
-        for (int j = 0; j < nRow; ++j) {
-            QList<QStandardItem *> colItems2;
-            for (int c = 0 ; c < nCol; c ++)
-                colItems2 << new QStandardItem(QString("item %1/%2 - %0").arg(c).arg(i).arg(j));
-            colItems1.at(0)->appendRow(colItems2);
-
-            for (int k = 0; k < nRow; ++k) {
-                QList<QStandardItem *> colItems3;
-                for (int c = 0 ; c < nCol; c ++)
-                    colItems3 << new QStandardItem(QString("item %1/%2/%3 - %0").arg(c).arg(i).arg(j).arg(k));
-                colItems2.at(0)->appendRow(colItems3);
-            }
-        }
-    }
-
-    for (int i = 0; i < nRow; ++i) {
-        QList<QStandardItem *> colItems1;
-        for (int c = 0 ; c < nCol; c ++)
-            colItems1 << new QStandardItem(QString("item %1 - %0").arg(c).arg(i));
-        checkModel.appendRow(colItems1);
-
-        for (int j = 0; j < nRow; ++j) {
-            QList<QStandardItem *> colItems2;
-            for (int c = 0 ; c < nCol; c ++)
-                colItems2 << new QStandardItem(QString("item %1/%2 - %0").arg(c).arg(i).arg(j));
-            colItems1.at(0)->appendRow(colItems2);
-
-            for (int k = 0; k < nRow; ++k) {
-                QList<QStandardItem *> colItems3;
-                for (int c = 0 ; c < nCol; c ++)
-                    colItems3 << new QStandardItem(QString("item %1/%2/%3 - %0").arg(c).arg(i).arg(j).arg(k));
-                colItems2.at(0)->appendRow(colItems3);
-            }
-        }
-    }
+    populateDragAndDropModel(model, nRow, nCol);
+    populateDragAndDropModel(checkModel, nRow, nCol);
 
     QVERIFY(compareModels(&model, &checkModel));
 
@@ -1613,14 +1595,14 @@ void tst_QStandardItemModel::removeRowsAndColumns()
 #define VERIFY_MODEL \
     for (int c = 0; c < col_list.count(); c++) \
         for (int r = 0; r < row_list.count(); r++) \
-            QCOMPARE(model.item(r,c)->text() , row_list[r] + "x" + col_list[c]);
+            QCOMPARE(model.item(r,c)->text() , row_list[r] + QLatin1Char('x') + col_list[c]);
 
     QVector<QString> row_list = QString("1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20").split(',').toVector();
     QVector<QString> col_list = row_list;
     QStandardItemModel model;
     for (int c = 0; c < col_list.count(); c++)
         for (int r = 0; r < row_list.count(); r++)
-            model.setItem(r, c, new QStandardItem(row_list[r] + "x" + col_list[c]));
+            model.setItem(r, c, new QStandardItem(row_list[r] + QLatin1Char('x') + col_list[c]));
     VERIFY_MODEL
 
     row_list.remove(3);
@@ -1642,14 +1624,14 @@ void tst_QStandardItemModel::removeRowsAndColumns()
     QList<QStandardItem *> row_taken = model.takeRow(6);
     QCOMPARE(row_taken.count(), col_list.count());
     for (int c = 0; c < col_list.count(); c++)
-        QCOMPARE(row_taken[c]->text() , row_list[6] + "x" + col_list[c]);
+        QCOMPARE(row_taken[c]->text() , row_list[6] + QLatin1Char('x') + col_list[c]);
     row_list.remove(6);
     VERIFY_MODEL
 
     QList<QStandardItem *> col_taken = model.takeColumn(10);
     QCOMPARE(col_taken.count(), row_list.count());
     for (int r = 0; r < row_list.count(); r++)
-        QCOMPARE(col_taken[r]->text() , row_list[r] + "x" + col_list[10]);
+        QCOMPARE(col_taken[r]->text() , row_list[r] + QLatin1Char('x') + col_list[10]);
     col_list.remove(10);
     VERIFY_MODEL
 }
@@ -1661,7 +1643,7 @@ void tst_QStandardItemModel::itemRoleNames()
     QStandardItemModel model;
     for (int c = 0; c < col_list.count(); c++)
         for (int r = 0; r < row_list.count(); r++)
-            model.setItem(r, c, new QStandardItem(row_list[r] + "x" + col_list[c]));
+            model.setItem(r, c, new QStandardItem(row_list[r] + QLatin1Char('x') + col_list[c]));
     VERIFY_MODEL
 
     QHash<int, QByteArray> newRoleNames;

@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -812,6 +818,85 @@ static QPainterPath qt_graphicsItem_shapeFromPath(const QPainterPath &path, cons
 
 /*!
     \internal
+*/
+QGraphicsItemPrivate::QGraphicsItemPrivate()
+    : z(0),
+      opacity(1.),
+      scene(nullptr),
+      parent(nullptr),
+      transformData(nullptr),
+      graphicsEffect(nullptr),
+      index(-1),
+      siblingIndex(-1),
+      itemDepth(-1),
+      focusProxy(nullptr),
+      subFocusItem(nullptr),
+      focusScopeItem(nullptr),
+      imHints(Qt::ImhNone),
+      panelModality(QGraphicsItem::NonModal),
+      acceptedMouseButtons(0x1f),
+      visible(true),
+      explicitlyHidden(false),
+      enabled(true),
+      explicitlyDisabled(false),
+      selected(false),
+      acceptsHover(false),
+      acceptDrops(false),
+      isMemberOfGroup(false),
+      handlesChildEvents(false),
+      itemDiscovered(false),
+      hasCursor(false),
+      ancestorFlags(0),
+      cacheMode(0),
+      hasBoundingRegionGranularity(false),
+      isWidget(false),
+      dirty(false),
+      dirtyChildren(false),
+      localCollisionHack(false),
+      inSetPosHelper(false),
+      needSortChildren(false),
+      allChildrenDirty(false),
+      fullUpdatePending(false),
+      flags(0),
+      paintedViewBoundingRectsNeedRepaint(false),
+      dirtySceneTransform(true),
+      geometryChanged(true),
+      inDestructor(false),
+      isObject(false),
+      ignoreVisible(false),
+      ignoreOpacity(false),
+      acceptTouchEvents(false),
+      acceptedTouchBeginEvent(false),
+      filtersDescendantEvents(false),
+      sceneTransformTranslateOnly(false),
+      notifyBoundingRectChanged(false),
+      notifyInvalidated(false),
+      mouseSetsFocus(true),
+      explicitActivate(false),
+      wantsActive(false),
+      holesInSiblingIndex(false),
+      sequentialOrdering(true),
+      updateDueToGraphicsEffect(false),
+      scenePosDescendants(false),
+      pendingPolish(false),
+      mayHaveChildWithGraphicsEffect(false),
+      isDeclarativeItem(false),
+      sendParentChangeNotification(false),
+      dirtyChildrenBoundingRect(true),
+      globalStackingOrder(-1),
+      q_ptr(nullptr)
+{
+}
+
+/*!
+    \internal
+*/
+QGraphicsItemPrivate::~QGraphicsItemPrivate()
+{
+}
+
+/*!
+    \internal
 
     Propagates the ancestor flag \a flag with value \a enabled to all this
     item's children. If \a root is false, the flag is also set on this item
@@ -1373,12 +1458,9 @@ void QGraphicsItemCache::purge()
 {
     QPixmapCache::remove(key);
     key = QPixmapCache::Key();
-    QMutableHashIterator<QPaintDevice *, DeviceData> it(deviceData);
-    while (it.hasNext()) {
-        DeviceData &data = it.next().value();
+    const auto &constDeviceData = deviceData; // avoid detach
+    for (const auto &data : constDeviceData)
         QPixmapCache::remove(data.key);
-        data.cacheIndent = QPoint();
-    }
     deviceData.clear();
     allExposed = true;
     exposed.clear();
@@ -1443,7 +1525,8 @@ QGraphicsItem::~QGraphicsItem()
     if (d_ptr->isObject && !d_ptr->gestureContext.isEmpty()) {
         QGraphicsObject *o = static_cast<QGraphicsObject *>(this);
         if (QGestureManager *manager = QGestureManager::instance()) {
-            foreach (Qt::GestureType type, d_ptr->gestureContext.keys())
+            const auto types  = d_ptr->gestureContext.keys(); // FIXME: iterate over the map directly?
+            for (Qt::GestureType type : types)
                 manager->cleanupCachedGestures(o, type);
         }
     }
@@ -2167,11 +2250,13 @@ void QGraphicsItem::setCursor(const QCursor &cursor)
     d_ptr->hasCursor = 1;
     if (d_ptr->scene) {
         d_ptr->scene->d_func()->allItemsUseDefaultCursor = false;
-        foreach (QGraphicsView *view, d_ptr->scene->views()) {
+        const auto views = d_ptr->scene->views();
+        for (QGraphicsView *view : views) {
             view->viewport()->setMouseTracking(true);
             // Note: Some of this logic is duplicated in QGraphicsView's mouse events.
             if (view->underMouse()) {
-                foreach (QGraphicsItem *itemUnderCursor, view->items(view->mapFromGlobal(QCursor::pos()))) {
+                const auto itemsUnderCursor = view->items(view->mapFromGlobal(QCursor::pos()));
+                for (QGraphicsItem *itemUnderCursor : itemsUnderCursor) {
                     if (itemUnderCursor->hasCursor()) {
                         QMetaObject::invokeMethod(view, "_q_setViewportCursor",
                                                   Q_ARG(QCursor, itemUnderCursor->cursor()));
@@ -2210,7 +2295,8 @@ void QGraphicsItem::unsetCursor()
     d_ptr->unsetExtra(QGraphicsItemPrivate::ExtraCursor);
     d_ptr->hasCursor = 0;
     if (d_ptr->scene) {
-        foreach (QGraphicsView *view, d_ptr->scene->views()) {
+        const auto views = d_ptr->scene->views();
+        for (QGraphicsView *view : views) {
             if (view->underMouse() && view->itemAt(view->mapFromGlobal(QCursor::pos())) == this) {
                 QMetaObject::invokeMethod(view, "_q_unsetViewportCursor");
                 break;
@@ -2846,7 +2932,8 @@ QRectF QGraphicsItemPrivate::effectiveBoundingRect(const QRectF &rect) const
             return effect->boundingRectFor(rect);
         QRectF sceneRect = q->mapRectToScene(rect);
         QRectF sceneEffectRect;
-        foreach (QGraphicsView *view, scene->views()) {
+        const auto views = scene->views();
+        for (QGraphicsView *view : views) {
             QRectF deviceRect = view->d_func()->mapRectFromScene(sceneRect);
             QRect deviceEffectRect = effect->boundingRectFor(deviceRect).toAlignedRect();
             sceneEffectRect |= view->d_func()->mapRectToScene(deviceEffectRect);
@@ -5140,7 +5227,8 @@ bool QGraphicsItem::isObscured(const QRectF &rect) const
     QRectF br = boundingRect();
     QRectF testRect = rect.isNull() ? br : rect;
 
-    foreach (QGraphicsItem *item, d->scene->items(mapToScene(br), Qt::IntersectsItemBoundingRect)) {
+    const auto items = d->scene->items(mapToScene(br), Qt::IntersectsItemBoundingRect);
+    for (QGraphicsItem *item : items) {
         if (item == this)
             break;
         if (qt_QGraphicsItem_isObscured(this, item, testRect))
@@ -5262,7 +5350,8 @@ QRegion QGraphicsItem::boundingRegion(const QTransform &itemToDeviceTransform) c
     QTransform unscale = QTransform::fromScale(1 / granularity, 1 / granularity);
     QRegion r;
     QBitmap colorMask = QBitmap::fromImage(mask.createMaskFromColor(0));
-    foreach (const QRect &rect, QRegion( colorMask ).rects()) {
+    const auto rects = QRegion(colorMask).rects();
+    for (const QRect &rect : rects) {
         QRect xrect = unscale.mapRect(rect).translated(deviceRect.topLeft() - QPoint(pad, pad));
         r += xrect.adjusted(-1, -1, 1, 1) & deviceRect;
     }
@@ -6523,7 +6612,8 @@ bool QGraphicsItem::isUnderMouse() const
         return false;
 
     QPoint cursorPos = QCursor::pos();
-    foreach (QGraphicsView *view, d->scene->views()) {
+    const auto views = d->scene->views();
+    for (QGraphicsView *view : views) {
         if (contains(mapFromScene(view->mapToScene(view->mapFromGlobal(cursorPos)))))
             return true;
     }

@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 QT = core testlib
 SOURCES = ../tst_qtextcodec.cpp
 
@@ -12,4 +11,3 @@ win32 {
     }
 }
 TESTDATA += ../*.txt
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

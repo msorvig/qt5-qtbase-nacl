@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -238,6 +233,9 @@ private slots:
 
     void multiTargetTransitionInsideParallelStateGroup();
     void signalTransitionNormalizeSignature();
+#ifdef Q_COMPILER_DELEGATING_CONSTRUCTORS
+    void createPointerToMemberSignalTransition();
+#endif
     void createSignalTransitionWhenRunning();
     void createEventTransitionWhenRunning();
     void signalTransitionSenderInDifferentThread();
@@ -3037,7 +3035,7 @@ void tst_QStateMachine::graphicsSceneEventTransitions()
     QVERIFY(runningSpy.isValid());
     machine.start();
     QTRY_COMPARE(startedSpy.count(), 1);
-    QVERIFY(finishedSpy.count() == 0);
+    QCOMPARE(finishedSpy.count(), 0);
     TEST_RUNNING_CHANGED(true);
     QGraphicsSceneMouseEvent mouseEvent(QEvent::GraphicsSceneMouseMove);
     scene.sendEvent(textItem, &mouseEvent);
@@ -5877,6 +5875,31 @@ void tst_QStateMachine::signalTransitionNormalizeSignature()
     TEST_ACTIVE_CHANGED(s1, 1);
 }
 
+#ifdef Q_COMPILER_DELEGATING_CONSTRUCTORS
+void tst_QStateMachine::createPointerToMemberSignalTransition()
+{
+    QStateMachine machine;
+    QState *s1 = new QState(&machine);
+    DEFINE_ACTIVE_SPY(s1);
+    machine.setInitialState(s1);
+    machine.start();
+    TEST_ACTIVE_CHANGED(s1, 1);
+    QTRY_VERIFY(machine.configuration().contains(s1));
+
+    QState *s2 = new QState(&machine);
+    DEFINE_ACTIVE_SPY(s2);
+    SignalEmitter emitter;
+    QSignalTransition *t1 = new QSignalTransition(&emitter, &SignalEmitter::signalWithNoArg, s1);
+    QCOMPARE(t1->sourceState(), s1);
+    t1->setTargetState(s2);
+    s1->addTransition(t1);
+    emitter.emitSignalWithNoArg();
+    TEST_ACTIVE_CHANGED(s1, 2);
+    TEST_ACTIVE_CHANGED(s2, 1);
+    QTRY_VERIFY(machine.configuration().contains(s2));
+}
+#endif
+
 void tst_QStateMachine::createSignalTransitionWhenRunning()
 {
     QStateMachine machine;
@@ -6159,26 +6182,26 @@ void tst_QStateMachine::childModeConstructor()
     {
         QStateMachine machine(QState::ExclusiveStates);
         QCOMPARE(machine.childMode(), QState::ExclusiveStates);
-        QVERIFY(machine.parent() == 0);
-        QVERIFY(machine.parentState() == 0);
+        QVERIFY(!machine.parent());
+        QVERIFY(!machine.parentState());
     }
     {
         QStateMachine machine(QState::ParallelStates);
         QCOMPARE(machine.childMode(), QState::ParallelStates);
-        QVERIFY(machine.parent() == 0);
-        QVERIFY(machine.parentState() == 0);
+        QVERIFY(!machine.parent());
+        QVERIFY(!machine.parentState());
     }
     {
         QStateMachine machine(QState::ExclusiveStates, this);
         QCOMPARE(machine.childMode(), QState::ExclusiveStates);
         QCOMPARE(machine.parent(), static_cast<QObject *>(this));
-        QVERIFY(machine.parentState() == 0);
+        QVERIFY(!machine.parentState());
     }
     {
         QStateMachine machine(QState::ParallelStates, this);
         QCOMPARE(machine.childMode(), QState::ParallelStates);
         QCOMPARE(machine.parent(), static_cast<QObject *>(this));
-        QVERIFY(machine.parentState() == 0);
+        QVERIFY(!machine.parentState());
     }
     QState state;
     {

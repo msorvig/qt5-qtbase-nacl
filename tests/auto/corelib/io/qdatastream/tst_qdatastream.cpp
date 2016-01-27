@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -187,6 +182,11 @@ private slots:
 
     void floatingPointNaN();
 
+    void transaction_data();
+    void transaction();
+    void nestedTransactionsResult_data();
+    void nestedTransactionsResult();
+
 private:
     void writebool(QDataStream *s);
     void writeQBitArray(QDataStream *s);
@@ -316,7 +316,7 @@ void tst_QDataStream::cleanupTestCase()
 
 static int dataIndex(const QString &tag)
 {
-    int pos = tag.lastIndexOf("_");
+    int pos = tag.lastIndexOf(QLatin1Char('_'));
     if (pos >= 0) {
         int ret = 0;
         QString count = tag.mid(pos + 1);
@@ -353,9 +353,9 @@ void tst_QDataStream::stream_data(int noOfElements)
         for (int b=0; b<2; b++) {
             QString byte_order = b == 0 ? "BigEndian" : "LittleEndian";
 
-            QString tag = device + "_" + byte_order;
+            QString tag = device + QLatin1Char('_') + byte_order;
             for (int e=0; e<noOfElements; e++) {
-                QTest::newRow(qPrintable(tag + QString("_%1").arg(e))) << device << QString(byte_order);
+                QTest::newRow(qPrintable(tag + QLatin1Char('_') + QString::number(e))) << device << byte_order;
             }
         }
     }
@@ -544,7 +544,7 @@ void tst_QDataStream::readQRegExp(QDataStream *s)
     *s >> R;
     QCOMPARE(R, test);
     *s >> V;
-    QVERIFY(V.type() == QVariant::RegExp);
+    QCOMPARE(V.type(), QVariant::RegExp);
     QCOMPARE(V.toRegExp(), test);
 }
 
@@ -812,7 +812,7 @@ void tst_QDataStream::readbool(QDataStream *s)
 
     bool d1;
     *s >> d1;
-    QVERIFY(d1 == expected);
+    QCOMPARE(d1, expected);
 }
 
 // ************************************
@@ -875,7 +875,7 @@ void tst_QDataStream::readQBitArray(QDataStream *s)
 
     QBitArray d1;
     *s >> d1;
-    QVERIFY(d1 == expected);
+    QCOMPARE(d1, expected);
 }
 
 // ************************************
@@ -934,7 +934,7 @@ void tst_QDataStream::readQBrush(QDataStream *s)
     *s >> d2;
 
     QBrush brush = qBrushData(dataIndex(QTest::currentDataTag()));
-    QVERIFY(d2 == brush);
+    QCOMPARE(d2, brush);
 }
 
 // ************************************
@@ -976,7 +976,7 @@ void tst_QDataStream::readQColor(QDataStream *s)
     QColor test(QColorData(dataIndex(QTest::currentDataTag())));
     QColor d3;
     *s >> d3;
-    QVERIFY(d3 == test);
+    QCOMPARE(d3, test);
 }
 
 
@@ -1072,7 +1072,7 @@ void tst_QDataStream::readQCursor(QDataStream *s)
     *s >> d5;
 
     QVERIFY(d5.shape() == test.shape()); //## lacks operator==
-    QVERIFY(d5.hotSpot() == test.hotSpot());
+    QCOMPARE(d5.hotSpot(), test.hotSpot());
     QVERIFY((d5.bitmap() != 0 && test.bitmap() != 0) || (d5.bitmap() == 0 && test.bitmap() == 0));
     if (d5.bitmap() != 0) {
         QPixmap actual = *(d5.bitmap());
@@ -1135,7 +1135,7 @@ void tst_QDataStream::readQDate(QDataStream *s)
     QDate test(qDateData(dataIndex(QTest::currentDataTag())));
     QDate d6;
     *s >> d6;
-    QVERIFY(d6 == test);
+    QCOMPARE(d6, test);
 }
 
 // ************************************
@@ -1229,7 +1229,7 @@ void tst_QDataStream::readQTime(QDataStream *s)
     QTime test = qTimeData(dataIndex(QTest::currentDataTag()));
     QTime d7;
     *s >> d7;
-    QVERIFY(d7 == test);
+    QCOMPARE(d7, test);
 }
 
 // ************************************
@@ -1279,7 +1279,7 @@ void tst_QDataStream::readQDateTime(QDataStream *s)
     QDateTime test(qDateTimeData(dataIndex(QTest::currentDataTag())));
     QDateTime d8;
     *s >> d8;
-    QVERIFY(d8 == test);
+    QCOMPARE(d8, test);
 }
 
 // ************************************
@@ -1430,16 +1430,16 @@ void tst_QDataStream::readQImage(QDataStream *s)
 
     QImage d12;
     *s >> d12;
-    QVERIFY(d12 == ref);
+    QCOMPARE(d12, ref);
 
     // do some extra neurotic tests
-    QVERIFY(d12.size() == ref.size());
-    QVERIFY(d12.isNull() == ref.isNull());
-    QVERIFY(d12.width() == ref.width());
-    QVERIFY(d12.height() == ref.height());
-    QVERIFY(d12.depth() == ref.depth());
-    QVERIFY(d12.colorCount() == ref.colorCount());
-    QVERIFY(d12.hasAlphaChannel() == ref.hasAlphaChannel());
+    QCOMPARE(d12.size(), ref.size());
+    QCOMPARE(d12.isNull(), ref.isNull());
+    QCOMPARE(d12.width(), ref.width());
+    QCOMPARE(d12.height(), ref.height());
+    QCOMPARE(d12.depth(), ref.depth());
+    QCOMPARE(d12.colorCount(), ref.colorCount());
+    QCOMPARE(d12.hasAlphaChannel(), ref.hasAlphaChannel());
 }
 
 // ************************************
@@ -1533,9 +1533,9 @@ void tst_QDataStream::readQPen(QDataStream *s)
     QCOMPARE(d15.style(), origPen.style());
     QCOMPARE(d15.width(), origPen.width());
     QCOMPARE(d15.color(), origPen.color());
-    QVERIFY(d15.capStyle() == origPen.capStyle());
-    QVERIFY(d15.joinStyle() == origPen.joinStyle());
-    QVERIFY(d15 == origPen);
+    QCOMPARE(d15.capStyle(), origPen.capStyle());
+    QCOMPARE(d15.joinStyle(), origPen.joinStyle());
+    QCOMPARE(d15, origPen);
 }
 
 // ************************************
@@ -1583,11 +1583,11 @@ void tst_QDataStream::readQPixmap(QDataStream *s)
     QPixmap d16;
     *s >> d16;
     QVERIFY(!d16.isNull() && !pm.isNull());
-    QVERIFY(d16.width() == pm.width());
-    QVERIFY(d16.height() == pm.height());
-    QVERIFY(d16.size() == pm.size());
-    QVERIFY(d16.rect() == pm.rect());
-    QVERIFY(d16.depth() == pm.depth());
+    QCOMPARE(d16.width(), pm.width());
+    QCOMPARE(d16.height(), pm.height());
+    QCOMPARE(d16.size(), pm.size());
+    QCOMPARE(d16.rect(), pm.rect());
+    QCOMPARE(d16.depth(), pm.depth());
 }
 
 void tst_QDataStream::writeQIcon(QDataStream *s)
@@ -1654,11 +1654,11 @@ void tst_QDataStream::readQPoint(QDataStream *s)
     QPoint ref(qPointData(dataIndex(QTest::currentDataTag())));
     QPoint d17;
     *s >> d17;
-    QVERIFY(d17 == ref);
+    QCOMPARE(d17, ref);
 
     QPointF d17f;
     *s >> d17f;
-    QVERIFY(d17f == QPointF(ref));
+    QCOMPARE(d17f, QPointF(ref));
 }
 
 // ************************************
@@ -1706,11 +1706,11 @@ void tst_QDataStream::readQRect(QDataStream *s)
     QRect ref(qRectData(dataIndex(QTest::currentDataTag())));
     QRect d18;
     *s >> d18;
-    QVERIFY(d18 == ref);
+    QCOMPARE(d18, ref);
 
     QRectF d18f;
     *s >> d18f;
-    QVERIFY(d18f == QRectF(ref));
+    QCOMPARE(d18f, QRectF(ref));
 }
 
 // ************************************
@@ -1819,11 +1819,11 @@ void tst_QDataStream::readQPolygon(QDataStream *s)
     QPolygon ref(qPolygonData(dataIndex(QTest::currentDataTag())));
     QPolygon d19;
     *s >> d19;
-    QVERIFY(d19 == ref);
+    QCOMPARE(d19, ref);
 
     QPolygonF d19f;
     *s >> d19f;
-    QVERIFY(d19f == QPolygonF(ref));
+    QCOMPARE(d19f, QPolygonF(ref));
 }
 
 // ************************************
@@ -1883,7 +1883,7 @@ void tst_QDataStream::readQRegion(QDataStream *s)
     QRegion ref(qRegionData(dataIndex(QTest::currentDataTag())));
     QRegion r;
     *s >> r;
-    QVERIFY(r == ref);
+    QCOMPARE(r, ref);
 }
 
 // ************************************
@@ -1931,11 +1931,11 @@ void tst_QDataStream::readQSize(QDataStream *s)
     QSize ref(qSizeData(dataIndex(QTest::currentDataTag())));
     QSize d21;
     *s >> d21;
-    QVERIFY(d21 == ref);
+    QCOMPARE(d21, ref);
 
     QSizeF d21f;
     *s >> d21f;
-    QVERIFY(d21f == QSizeF(ref));
+    QCOMPARE(d21f, QSizeF(ref));
 }
 
 // *********************** atEnd ******************************
@@ -2087,7 +2087,7 @@ void tst_QDataStream::setVersion_data()
     QDataStream latest;
 
     for (int vers = 1; vers <= latest.version(); ++vers)
-        QTest::newRow(qPrintable(QString("v_%1").arg(vers))) << vers;
+        QTest::newRow(("v_" + QByteArray::number(vers)).constData()) << vers;
 }
 
 void tst_QDataStream::setVersion()
@@ -2111,13 +2111,13 @@ void tst_QDataStream::setVersion()
         QDataStream in(&ba1, QIODevice::ReadOnly);
         in.setVersion(vers);
         in >> keyseq1 >> keyseq2 >> deadbeef;
-        QVERIFY(keyseq1 == QKeySequence(Qt::Key_A));
+        QCOMPARE(keyseq1, QKeySequence(Qt::Key_A));
         if (vers >= 5) {
             QVERIFY(keyseq2 == QKeySequence(Qt::Key_B, Qt::Key_C));
         } else {
-            QVERIFY(keyseq2 == QKeySequence(Qt::Key_B));
+            QCOMPARE(keyseq2, QKeySequence(Qt::Key_B));
         }
-        QVERIFY(deadbeef == 0xDEADBEEF);
+        QCOMPARE(deadbeef, 0xDEADBEEF);
     }
 
     /*
@@ -2126,7 +2126,7 @@ void tst_QDataStream::setVersion()
 
     // revise the test if new color roles or color groups are added
     QVERIFY(QPalette::NColorRoles == QPalette::ToolTipText + 1);
-    QVERIFY(QPalette::NColorGroups == 3);
+    QCOMPARE(int(QPalette::NColorGroups), 3);
 
     QByteArray ba2;
     QPalette pal1, pal2;
@@ -2191,8 +2191,8 @@ void tst_QDataStream::setVersion()
                     }
                 }
             }
-            QVERIFY(pal1 == inPal1);
-            QVERIFY(pal2 == inPal2);
+            QCOMPARE(pal1, inPal1);
+            QCOMPARE(pal2, inPal2);
         }
     }
 }
@@ -3077,9 +3077,9 @@ void tst_QDataStream::compatibility_Qt3()
             in >> in_palette;
             in >> in_brush;
         }
-        QVERIFY(in_brush.style() == Qt::NoBrush);
-        QVERIFY(in_palette.brush(QPalette::Button).style() == Qt::NoBrush);
-        QVERIFY(in_palette.color(QPalette::Light) == Qt::green);
+        QCOMPARE(in_brush.style(), Qt::NoBrush);
+        QCOMPARE(in_palette.brush(QPalette::Button).style(), Qt::NoBrush);
+        QCOMPARE(in_palette.color(QPalette::Light), QColor(Qt::green));
     }
 }
 
@@ -3109,9 +3109,9 @@ void tst_QDataStream::compatibility_Qt2()
         in >> in_palette;
         in >> in_brush;
     }
-    QVERIFY(in_brush.style() == Qt::NoBrush);
-    QVERIFY(in_palette.brush(QPalette::Button).style() == Qt::NoBrush);
-    QVERIFY(in_palette.color(QPalette::Light) == Qt::green);
+    QCOMPARE(in_brush.style(), Qt::NoBrush);
+    QCOMPARE(in_palette.brush(QPalette::Button).style(), Qt::NoBrush);
+    QCOMPARE(in_palette.color(QPalette::Light), QColor(Qt::green));
 }
 
 void tst_QDataStream::floatingPointNaN()
@@ -3203,6 +3203,165 @@ void tst_QDataStream::floatingPointPrecision()
         QCOMPARE(234.0, d);
     }
 
+}
+
+void tst_QDataStream::transaction_data()
+{
+    QTest::addColumn<qint8>("i8Data");
+    QTest::addColumn<qint16>("i16Data");
+    QTest::addColumn<qint32>("i32Data");
+    QTest::addColumn<qint64>("i64Data");
+    QTest::addColumn<bool>("bData");
+    QTest::addColumn<float>("fData");
+    QTest::addColumn<double>("dData");
+    QTest::addColumn<QByteArray>("strData");
+    QTest::addColumn<QByteArray>("rawData");
+
+    QTest::newRow("1") << qint8(1) << qint16(2) << qint32(3) << qint64(4) << true << 5.0f
+                       << double(6.0) << QByteArray("Hello world!") << QByteArray("Qt rocks!");
+    QTest::newRow("2") << qint8(1 << 6) << qint16(1 << 14) << qint32(1 << 30) << qint64Data(3) << false << 123.0f
+                       << double(234.0) << stringData(5).toUtf8() << stringData(6).toUtf8();
+    QTest::newRow("3") << qint8(-1) << qint16(-2) << qint32(-3) << qint64(-4) << true << -123.0f
+                       << double(-234.0) << stringData(3).toUtf8() << stringData(4).toUtf8();
+}
+
+void tst_QDataStream::transaction()
+{
+    QByteArray testBuffer;
+
+    QFETCH(qint8, i8Data);
+    QFETCH(qint16, i16Data);
+    QFETCH(qint32, i32Data);
+    QFETCH(qint64, i64Data);
+    QFETCH(bool, bData);
+    QFETCH(float, fData);
+    QFETCH(double, dData);
+    QFETCH(QByteArray, strData);
+    QFETCH(QByteArray, rawData);
+
+    {
+        QDataStream stream(&testBuffer, QIODevice::WriteOnly);
+
+        stream << i8Data << i16Data << i32Data << i64Data
+               << bData << fData << dData << strData.constData();
+        stream.writeRawData(rawData.constData(), rawData.size());
+    }
+
+    for (int splitPos = 0; splitPos <= testBuffer.size(); ++splitPos) {
+        QByteArray readBuffer(testBuffer.left(splitPos));
+        SequentialBuffer dev(&readBuffer);
+        dev.open(QIODevice::ReadOnly);
+        QDataStream stream(&dev);
+
+        qint8 i8;
+        qint16 i16;
+        qint32 i32;
+        qint64 i64;
+        bool b;
+        float f;
+        double d;
+        char *str;
+        QByteArray raw(rawData.size(), 0);
+
+        forever {
+            stream.startTransaction();
+            stream >> i8 >> i16 >> i32 >> i64 >> b >> f >> d >> str;
+            stream.readRawData(raw.data(), raw.size());
+
+            if (stream.commitTransaction())
+                break;
+
+            QVERIFY(stream.status() == QDataStream::ReadPastEnd);
+            QVERIFY(splitPos == 0 || !stream.atEnd());
+            QVERIFY(readBuffer.size() < testBuffer.size());
+            delete [] str;
+            raw.fill(0);
+            readBuffer.append(testBuffer.right(testBuffer.size() - splitPos));
+        }
+
+        QVERIFY(stream.atEnd());
+        QCOMPARE(i8, i8Data);
+        QCOMPARE(i16, i16Data);
+        QCOMPARE(i32, i32Data);
+        QCOMPARE(i64, i64Data);
+        QCOMPARE(b, bData);
+        QCOMPARE(f, fData);
+        QCOMPARE(d, dData);
+        QVERIFY(strData == str);
+        delete [] str;
+        QCOMPARE(raw, rawData);
+    }
+}
+
+void tst_QDataStream::nestedTransactionsResult_data()
+{
+    QTest::addColumn<bool>("commitFirst");
+    QTest::addColumn<bool>("rollbackFirst");
+    QTest::addColumn<bool>("commitSecond");
+    QTest::addColumn<bool>("rollbackSecond");
+    QTest::addColumn<bool>("successExpected");
+    QTest::addColumn<bool>("expectedAtEnd");
+    QTest::addColumn<int>("expectedStatus");
+
+    QTest::newRow("1") << false << false << false << false
+                       << false << true << int(QDataStream::ReadCorruptData);
+    QTest::newRow("2") << false << false << false << true
+                       << false << true << int(QDataStream::ReadCorruptData);
+    QTest::newRow("3") << false << false << true << false
+                       << false << true << int(QDataStream::ReadCorruptData);
+
+    QTest::newRow("4") << false << true << false << false
+                       << false << true << int(QDataStream::ReadCorruptData);
+    QTest::newRow("5") << false << true << false << true
+                       << false << false << int(QDataStream::ReadPastEnd);
+    QTest::newRow("6") << false << true << true << false
+                       << false << false << int(QDataStream::ReadPastEnd);
+
+    QTest::newRow("7") << true << false << false << false
+                       << false << true << int(QDataStream::ReadCorruptData);
+    QTest::newRow("8") << true << false << false << true
+                       << false << false << int(QDataStream::ReadPastEnd);
+    QTest::newRow("9") << true << false << true << false
+                       << true << true << int(QDataStream::Ok);
+}
+
+void tst_QDataStream::nestedTransactionsResult()
+{
+    QByteArray testBuffer(1, 0);
+    QDataStream stream(&testBuffer, QIODevice::ReadOnly);
+    uchar c;
+
+    QFETCH(bool, commitFirst);
+    QFETCH(bool, rollbackFirst);
+    QFETCH(bool, commitSecond);
+    QFETCH(bool, rollbackSecond);
+    QFETCH(bool, successExpected);
+    QFETCH(bool, expectedAtEnd);
+    QFETCH(int, expectedStatus);
+
+    stream.startTransaction();
+    stream.startTransaction();
+    stream >> c;
+
+    if (commitFirst)
+        QVERIFY(stream.commitTransaction());
+    else if (rollbackFirst)
+        stream.rollbackTransaction();
+    else
+        stream.abortTransaction();
+
+    stream.startTransaction();
+
+    if (commitSecond)
+        QCOMPARE(stream.commitTransaction(), commitFirst);
+    else if (rollbackSecond)
+        stream.rollbackTransaction();
+    else
+        stream.abortTransaction();
+
+    QCOMPARE(stream.commitTransaction(), successExpected);
+    QCOMPARE(stream.atEnd(), expectedAtEnd);
+    QCOMPARE(int(stream.status()), expectedStatus);
 }
 
 QTEST_MAIN(tst_QDataStream)

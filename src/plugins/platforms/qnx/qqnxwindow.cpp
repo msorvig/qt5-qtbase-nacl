@@ -1,31 +1,37 @@
 /***************************************************************************
 **
 ** Copyright (C) 2011 - 2013 BlackBerry Limited. All rights reserved.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -46,12 +52,6 @@
 #include "private/qguiapplication_p.h"
 
 #include <QtCore/QDebug>
-
-#if defined(Q_OS_BLACKBERRY)
-#include "qqnxnavigatorcover.h"
-#include <sys/pps.h>
-#include <bps/navigator.h>
-#endif
 
 #include <errno.h>
 
@@ -378,7 +378,7 @@ void QQnxWindow::setBufferSize(const QSize &size)
         screen_get_window_property_iv(m_window, SCREEN_PROPERTY_RENDER_BUFFER_COUNT, &bufferCount),
         "Failed to query render buffer count");
 
-    if (bufferCount != MAX_BUFFER_COUNT) {
+    if (Q_UNLIKELY(bufferCount != MAX_BUFFER_COUNT)) {
         qFatal("QQnxWindow: invalid buffer count. Expected = %d, got = %d.",
                 MAX_BUFFER_COUNT, bufferCount);
     }
@@ -456,10 +456,10 @@ void QQnxWindow::removeFromParent()
     qWindowDebug() << "window =" << window();
     // Remove from old Hierarchy position
     if (m_parentWindow) {
-        if (m_parentWindow->m_childWindows.removeAll(this))
-            m_parentWindow = 0;
-        else
+        if (Q_UNLIKELY(!m_parentWindow->m_childWindows.removeAll(this)))
             qFatal("QQnxWindow: Window Hierarchy broken; window has parent, but parent hasn't got child.");
+        else
+            m_parentWindow = 0;
     } else if (m_screen) {
         m_screen->removeWindow(this);
     }
@@ -633,23 +633,7 @@ QQnxWindow *QQnxWindow::findWindow(screen_window_t windowHandle)
 
 void QQnxWindow::minimize()
 {
-#if defined(Q_OS_BLACKBERRY)
-    qWindowDebug();
-
-    pps_encoder_t encoder;
-
-    pps_encoder_initialize(&encoder, false);
-    pps_encoder_add_string(&encoder, "msg", "minimizeWindow");
-
-    if (navigator_raw_write(pps_encoder_buffer(&encoder),
-                pps_encoder_length(&encoder)) != BPS_SUCCESS) {
-        qWindowDebug() << "navigator_raw_write failed:" << strerror(errno);
-    }
-
-    pps_encoder_cleanup(&encoder);
-#else
     qWarning("Qt::WindowMinimized is not supported by this OS version");
-#endif
 }
 
 void QQnxWindow::setRotation(int rotation)
@@ -686,18 +670,8 @@ void QQnxWindow::initWindow()
     QQnxScreen *platformScreen = static_cast<QQnxScreen *>(window()->screen()->handle());
     setScreen(platformScreen);
 
-    if (window()->type() == Qt::CoverWindow) {
-#if defined(Q_OS_BLACKBERRY)
-        if (platformScreen->rootWindow()) {
-            screen_set_window_property_pv(m_screen->rootWindow()->nativeHandle(),
-                                          SCREEN_PROPERTY_ALTERNATE_WINDOW, (void**)&m_window);
-            m_cover.reset(new QQnxNavigatorCover);
-        } else {
-            qWarning("No root window for cover window");
-        }
-#endif
+    if (window()->type() == Qt::CoverWindow)
         m_exposed = false;
-    }
 
     // Add window to plugin's window mapper
     QQnxIntegration::addWindow(m_window, window());

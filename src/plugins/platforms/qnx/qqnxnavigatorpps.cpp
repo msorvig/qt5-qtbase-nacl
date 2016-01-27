@@ -1,31 +1,37 @@
 /***************************************************************************
 **
 ** Copyright (C) 2012 Research In Motion
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -100,7 +106,7 @@ bool QQnxNavigatorPps::sendPpsMessage(const QByteArray &message, const QByteArra
     // send pps message to navigator
     errno = 0;
     int bytes = qt_safe_write(m_fd, ppsMessage.constData(), ppsMessage.size());
-    if (bytes == -1)
+    if (Q_UNLIKELY(bytes == -1))
         qFatal("QQNX: failed to write navigator pps, errno=%d", errno);
 
     // allocate buffer for pps data
@@ -110,7 +116,7 @@ bool QQnxNavigatorPps::sendPpsMessage(const QByteArray &message, const QByteArra
     do {
         errno = 0;
         bytes = qt_safe_read(m_fd, buffer, ppsBufferSize - 1);
-        if (bytes == -1)
+        if (Q_UNLIKELY(bytes == -1))
             qFatal("QQNX: failed to read navigator pps, errno=%d", errno);
     } while (bytes == 0);
 
@@ -125,7 +131,7 @@ bool QQnxNavigatorPps::sendPpsMessage(const QByteArray &message, const QByteArra
     parsePPS(ppsData, responseFields);
 
     if (responseFields.contains("res") && responseFields.value("res") == message) {
-        if (responseFields.contains("err")) {
+        if (Q_UNLIKELY(responseFields.contains("err"))) {
             qCritical() << "navigator responded with error: " << responseFields.value("err");
             return false;
         }
@@ -142,7 +148,7 @@ void QQnxNavigatorPps::parsePPS(const QByteArray &ppsData, QHash<QByteArray, QBy
     QList<QByteArray> lines = ppsData.split('\n');
 
     // validate pps object
-    if (lines.size() == 0 || lines.at(0) != "@control")
+    if (Q_UNLIKELY(lines.empty() || lines.at(0) != "@control"))
         qFatal("QQNX: unrecognized pps object, data=%s", ppsData.constData());
 
     // parse pps object attributes and extract values

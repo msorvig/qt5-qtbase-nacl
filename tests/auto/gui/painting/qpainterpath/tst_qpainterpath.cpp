@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -270,13 +265,13 @@ void tst_QPainterPath::contains_QPointF_data()
     inside.addEllipse(base_rect.adjusted(5, 5, -5, -5));
     QPolygonF inside_poly = inside.toFillPolygon();
     for (int i=0; i<inside_poly.size(); ++i)
-        QTest::newRow(qPrintable(QString("inside_ellipse %1").arg(i))) << path << inside_poly.at(i) << true;
+        QTest::newRow(("inside_ellipse " + QByteArray::number(i)).constData()) << path << inside_poly.at(i) << true;
 
     QPainterPath outside;
     outside.addEllipse(base_rect.adjusted(-5, -5, 5, 5));
     QPolygonF outside_poly = outside.toFillPolygon();
     for (int i=0; i<outside_poly.size(); ++i)
-        QTest::newRow(qPrintable(QString("outside_ellipse %1").arg(i))) << path << outside_poly.at(i) << false;
+        QTest::newRow(("outside_ellipse " + QByteArray::number(i)).constData()) << path << outside_poly.at(i) << false;
 
     path = QPainterPath();
     base_rect = QRectF(50, 50, 200, 200);
@@ -852,8 +847,10 @@ void tst_QPainterPath::testArcMoveTo_data()
           << QRectF(100, 100, -100, -100);
 
     for (int domain=0; domain<rects.size(); ++domain) {
+        const QByteArray dB = QByteArray::number(domain);
         for (int i=-360; i<=360; ++i) {
-            QTest::newRow(qPrintable(QString("test %1 %2").arg(domain).arg(i))) << rects.at(domain) << (qreal) i;
+            QTest::newRow(("test " + dB + ' ' + QByteArray::number(i)).constData())
+                << rects.at(domain) << (qreal) i;
         }
 
         // test low angles

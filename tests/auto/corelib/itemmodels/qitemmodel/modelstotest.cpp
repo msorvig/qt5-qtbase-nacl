@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -236,7 +231,7 @@ QModelIndex ModelsToTest::populateTestArea(QAbstractItemModel *model)
 {
     if (QStringListModel *stringListModel = qobject_cast<QStringListModel *>(model)) {
         QString alphabet = "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z";
-        stringListModel->setStringList( alphabet.split(",") );
+        stringListModel->setStringList( alphabet.split(QLatin1Char(',')) );
         return QModelIndex();
     }
 
@@ -317,7 +312,7 @@ QModelIndex ModelsToTest::populateTestArea(QAbstractItemModel *model)
 
         QDir tempDir(m_dirModelTempDir->path());
         for (int i = 0; i < 26; ++i) {
-            const QString subdir = QString("foo_") + QString::number(i);
+            const QString subdir = QLatin1String("foo_") + QString::number(i);
             if (!tempDir.mkdir(subdir))
                 qFatal("Cannot create directory %s",
                        qPrintable(QDir::toNativeSeparators(tempDir.path() + QLatin1Char('/') +subdir)));
@@ -355,7 +350,7 @@ QModelIndex ModelsToTest::populateTestArea(QAbstractItemModel *model)
         int items = 50;
 #endif
         while (items--)
-            listWidget->addItem(QString("item %1").arg(items));
+            listWidget->addItem(QLatin1String("item ") + QString::number(items));
         return QModelIndex();
     }
 
@@ -370,9 +365,10 @@ QModelIndex ModelsToTest::populateTestArea(QAbstractItemModel *model)
         treeWidget->setColumnCount(1);
         QTreeWidgetItem *parent;
         while (topItems--){
-            parent = new QTreeWidgetItem(treeWidget, QStringList(QString("top %1").arg(topItems)));
+            const QString tS = QString::number(topItems);
+            parent = new QTreeWidgetItem(treeWidget, QStringList(QLatin1String("top ") + tS));
             for (int i = 0; i < 20; ++i)
-                new QTreeWidgetItem(parent, QStringList(QString("child %1").arg(topItems)));
+                new QTreeWidgetItem(parent, QStringList(QLatin1String("child ") + tS));
         }
         return QModelIndex();
     }

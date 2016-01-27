@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1388,9 +1394,10 @@ void QTableWidgetItem::setData(int role, const QVariant &value)
 QVariant QTableWidgetItem::data(int role) const
 {
     role = (role == Qt::EditRole ? Qt::DisplayRole : role);
-    for (int i = 0; i < values.count(); ++i)
-        if (values.at(i).role == role)
-            return values.at(i).value;
+    for (const auto &value : values) {
+        if (value.role == role)
+            return value.value;
+    }
     return QVariant();
 }
 
@@ -1958,7 +1965,7 @@ void QTableWidget::setItem(int row, int column, QTableWidgetItem *item)
 {
     Q_D(QTableWidget);
     if (item) {
-        if (item->view != 0) {
+        if (Q_UNLIKELY(item->view)) {
             qWarning("QTableWidget: cannot insert an item that is already owned by another QTableWidget");
         } else {
             item->view = this;
@@ -2359,10 +2366,9 @@ QList<QTableWidgetSelectionRange> QTableWidget::selectedRanges() const
 QList<QTableWidgetItem*> QTableWidget::selectedItems() const
 {
     Q_D(const QTableWidget);
-    QModelIndexList indexes = selectionModel()->selectedIndexes();
+    const QModelIndexList indexes = selectionModel()->selectedIndexes();
     QList<QTableWidgetItem*> items;
-    for (int i = 0; i < indexes.count(); ++i) {
-        QModelIndex index = indexes.at(i);
+    for (const auto &index : indexes) {
         if (isIndexHidden(index))
             continue;
         QTableWidgetItem *item = d->tableModel()->item(index);
@@ -2639,7 +2645,7 @@ QList<QTableWidgetItem*> QTableWidget::items(const QMimeData *data) const
 }
 
 /*!
-  Returns the QModelIndex assocated with the given \a item.
+  Returns the QModelIndex associated with the given \a item.
 */
 
 QModelIndex QTableWidget::indexFromItem(QTableWidgetItem *item) const
@@ -2649,7 +2655,7 @@ QModelIndex QTableWidget::indexFromItem(QTableWidgetItem *item) const
 }
 
 /*!
-  Returns a pointer to the QTableWidgetItem assocated with the given \a index.
+  Returns a pointer to the QTableWidgetItem associated with the given \a index.
 */
 
 QTableWidgetItem *QTableWidget::itemFromIndex(const QModelIndex &index) const
@@ -2682,22 +2688,21 @@ void QTableWidget::dropEvent(QDropEvent *event) {
         int col = -1;
         int row = -1;
         if (d->dropOn(event, &row, &col, &topIndex)) {
-            QModelIndexList indexes = selectedIndexes();
+            const QModelIndexList indexes = selectedIndexes();
             int top = INT_MAX;
             int left = INT_MAX;
-            for (int i = 0; i < indexes.count(); ++i) {
-                top = qMin(indexes.at(i).row(), top);
-                left = qMin(indexes.at(i).column(), left);
+            for (const auto &index : indexes) {
+                top = qMin(index.row(), top);
+                left = qMin(index.column(), left);
             }
 
             QList<QTableWidgetItem *> taken;
             const int indexesCount = indexes.count();
             taken.reserve(indexesCount);
-            for (int i = 0; i < indexesCount; ++i)
-                taken.append(takeItem(indexes.at(i).row(), indexes.at(i).column()));
+            for (const auto &index : indexes)
+                taken.append(takeItem(index.row(), index.column()));
 
-            for (int i = 0; i < indexes.count(); ++i) {
-                QModelIndex index = indexes.at(i);
+            for (const auto &index : indexes) {
                 int r = index.row() - top + topIndex.row();
                 int c = index.column() - left + topIndex.column();
                 setItem(r, c, taken.takeFirst());

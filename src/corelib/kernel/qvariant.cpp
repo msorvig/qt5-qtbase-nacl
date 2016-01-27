@@ -1,32 +1,39 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
 ** Copyright (C) 2015 Olivier Goffart <ogoffart@woboq.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -56,6 +63,7 @@
 #include "qbytearraylist.h"
 #endif
 #include "private/qvariant_p.h"
+#include "private/qlocale_p.h"
 #include "qmetatype_p.h"
 #include <qmetaobject.h>
 
@@ -70,18 +78,6 @@
 #include <cstring>
 
 QT_BEGIN_NAMESPACE
-
-#ifndef DBL_MANT_DIG
-#  define DBL_MANT_DIG  53
-#endif
-#ifndef FLT_MANT_DIG
-#  define FLT_MANT_DIG  24
-#endif
-
-const int log10_2_10000 = 30103;    // log10(2) * 100000
-// same as C++11 std::numeric_limits<T>::max_digits10
-const int max_digits10_double = (DBL_MANT_DIG * log10_2_10000) / 100000 + 2;
-const int max_digits10_float = (FLT_MANT_DIG * log10_2_10000) / 100000 + 2;
 
 namespace {
 class HandlersManager
@@ -433,10 +429,10 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
             *str = QString::number(qMetaTypeUNumber(d));
             break;
         case QMetaType::Float:
-            *str = QString::number(d->data.f, 'g', max_digits10_float);
+            *str = QString::number(d->data.f, 'g', QLocale::FloatingPointShortest);
             break;
         case QVariant::Double:
-            *str = QString::number(d->data.d, 'g', max_digits10_double);
+            *str = QString::number(d->data.d, 'g', QLocale::FloatingPointShortest);
             break;
 #if !defined(QT_NO_DATESTRING)
         case QVariant::Date:
@@ -450,7 +446,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
             break;
 #endif
         case QVariant::Bool:
-            *str = QLatin1String(d->data.b ? "true" : "false");
+            *str = d->data.b ? QStringLiteral("true") : QStringLiteral("false");
             break;
         case QVariant::ByteArray:
             *str = QString::fromUtf8(v_cast<QByteArray>(d)->constData());
@@ -564,7 +560,9 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         if (d->type == QVariant::List) {
             QStringList *slst = static_cast<QStringList *>(result);
             const QVariantList *list = v_cast<QVariantList >(d);
-            for (int i = 0; i < list->size(); ++i)
+            const int size = list->size();
+            slst->reserve(size);
+            for (int i = 0; i < size; ++i)
                 slst->append(list->at(i).toString());
         } else if (d->type == QVariant::String) {
             QStringList *slst = static_cast<QStringList *>(result);
@@ -625,10 +623,10 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
             *ba = v_cast<QString>(d)->toUtf8();
             break;
         case QVariant::Double:
-            *ba = QByteArray::number(d->data.d, 'g', max_digits10_double);
+            *ba = QByteArray::number(d->data.d, 'g', QLocale::FloatingPointShortest);
             break;
         case QMetaType::Float:
-            *ba = QByteArray::number(d->data.f, 'g', max_digits10_float);
+            *ba = QByteArray::number(d->data.f, 'g', QLocale::FloatingPointShortest);
             break;
         case QMetaType::Char:
         case QMetaType::SChar:
@@ -830,7 +828,9 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         if (d->type == QVariant::StringList) {
             QVariantList *lst = static_cast<QVariantList *>(result);
             const QStringList *slist = v_cast<QStringList>(d);
-            for (int i = 0; i < slist->size(); ++i)
+            const int size = slist->size();
+            lst->reserve(size);
+            for (int i = 0; i < size; ++i)
                 lst->append(QVariant(slist->at(i)));
         } else if (qstrcmp(QMetaType::typeName(d->type), "QList<QVariant>") == 0) {
             *static_cast<QVariantList *>(result) =

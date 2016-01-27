@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -39,14 +34,6 @@
 class tst_QStandardItem : public QObject
 {
     Q_OBJECT
-
-public:
-    tst_QStandardItem();
-    virtual ~tst_QStandardItem();
-
-public slots:
-    void init();
-    void cleanup();
 
 private slots:
     void ctor();
@@ -83,22 +70,6 @@ private slots:
     void subclassing();
     void lessThan();
 };
-
-tst_QStandardItem::tst_QStandardItem()
-{
-}
-
-tst_QStandardItem::~tst_QStandardItem()
-{
-}
-
-void tst_QStandardItem::init()
-{
-}
-
-void tst_QStandardItem::cleanup()
-{
-}
 
 void tst_QStandardItem::ctor()
 {
@@ -140,7 +111,8 @@ void tst_QStandardItem::getSetData()
     QStandardItem item;
     for (int x = 0; x < 2; ++x) {
         for (int i = 1; i <= 2; ++i) {
-            QString text = QString("text %0").arg(i);
+            const QString iS = QString::number(i);
+            QString text = QLatin1String("text ") + iS;
             item.setText(text);
             QCOMPARE(item.text(), text);
 
@@ -150,15 +122,15 @@ void tst_QStandardItem::getSetData()
             item.setIcon(icon);
             QCOMPARE(item.icon(), icon);
 
-            QString toolTip = QString("toolTip %0").arg(i);
+            QString toolTip = QLatin1String("toolTip ") + iS;
             item.setToolTip(toolTip);
             QCOMPARE(item.toolTip(), toolTip);
 
-            QString statusTip = QString("statusTip %0").arg(i);
+            QString statusTip = QLatin1String("statusTip ") + iS;
             item.setStatusTip(statusTip);
             QCOMPARE(item.statusTip(), statusTip);
 
-            QString whatsThis = QString("whatsThis %0").arg(i);
+            QString whatsThis = QLatin1String("whatsThis ") + iS;
             item.setWhatsThis(whatsThis);
             QCOMPARE(item.whatsThis(), whatsThis);
 
@@ -188,11 +160,11 @@ void tst_QStandardItem::getSetData()
             item.setCheckState(checkState);
             QCOMPARE(item.checkState(), checkState);
 
-            QString accessibleText = QString("accessibleText %0").arg(i);
+            QString accessibleText = QLatin1String("accessibleText ") + iS;
             item.setAccessibleText(accessibleText);
             QCOMPARE(item.accessibleText(), accessibleText);
 
-            QString accessibleDescription = QString("accessibleDescription %0").arg(i);
+            QString accessibleDescription = QLatin1String("accessibleDescription ") + iS;
             item.setAccessibleDescription(accessibleDescription);
             QCOMPARE(item.accessibleDescription(), accessibleDescription);
 

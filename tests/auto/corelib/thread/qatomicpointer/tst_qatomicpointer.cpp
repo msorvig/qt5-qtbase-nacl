@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -123,15 +119,15 @@ void tst_QAtomicPointer::constructor()
 {
     void *one = this;
     QAtomicPointer<void> atomic1 = one;
-    QVERIFY(atomic1.load() == one);
+    QCOMPARE(atomic1.load(), one);
 
     void *two = &one;
     QAtomicPointer<void> atomic2 = two;
-    QVERIFY(atomic2.load() == two);
+    QCOMPARE(atomic2.load(), two);
 
     void *three = &two;
     QAtomicPointer<void> atomic3 = three;
-    QVERIFY(atomic3.load() == three);
+    QCOMPARE(atomic3.load(), three);
 }
 
 void tst_QAtomicPointer::copy_constructor()
@@ -139,19 +135,19 @@ void tst_QAtomicPointer::copy_constructor()
     void *one = this;
     QAtomicPointer<void> atomic1 = one;
     QAtomicPointer<void> atomic1_copy = atomic1;
-    QVERIFY(atomic1_copy.load() == one);
+    QCOMPARE(atomic1_copy.load(), one);
     QCOMPARE(atomic1_copy.load(), atomic1.load());
 
     void *two = &one;
     QAtomicPointer<void> atomic2 = two;
     QAtomicPointer<void> atomic2_copy = atomic2;
-    QVERIFY(atomic2_copy.load() == two);
+    QCOMPARE(atomic2_copy.load(), two);
     QCOMPARE(atomic2_copy.load(), atomic2.load());
 
     void *three = &two;
     QAtomicPointer<void> atomic3 = three;
     QAtomicPointer<void> atomic3_copy = atomic3;
-    QVERIFY(atomic3_copy.load() == three);
+    QCOMPARE(atomic3_copy.load(), three);
     QCOMPARE(atomic3_copy.load(), atomic3.load());
 }
 
@@ -165,17 +161,17 @@ void tst_QAtomicPointer::assignment_operator()
     QAtomicPointer<void> atomic2 = two;
     QAtomicPointer<void> atomic3 = three;
 
-    QVERIFY(atomic1.load() == one);
-    QVERIFY(atomic2.load() == two);
-    QVERIFY(atomic3.load() == three);
+    QCOMPARE(atomic1.load(), one);
+    QCOMPARE(atomic2.load(), two);
+    QCOMPARE(atomic3.load(), three);
 
     atomic1 = two;
     atomic2 = three;
     atomic3 = one;
 
-    QVERIFY(atomic1.load() == two);
-    QVERIFY(atomic2.load() == three);
-    QVERIFY(atomic3.load() == one);
+    QCOMPARE(atomic1.load(), two);
+    QCOMPARE(atomic2.load(), three);
+    QCOMPARE(atomic3.load(), one);
 }
 
 void tst_QAtomicPointer::isTestAndSetNative()
@@ -240,15 +236,15 @@ void tst_QAtomicPointer::testAndSet()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QVERIFY(atomic1.testAndSetRelaxed(one, two));
         QVERIFY(atomic2.testAndSetRelaxed(two, three));
         QVERIFY(atomic3.testAndSetRelaxed(three, one));
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -258,15 +254,15 @@ void tst_QAtomicPointer::testAndSet()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QVERIFY(atomic1.testAndSetAcquire(one, two));
         QVERIFY(atomic2.testAndSetAcquire(two, three));
         QVERIFY(atomic3.testAndSetAcquire(three, one));
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -276,15 +272,15 @@ void tst_QAtomicPointer::testAndSet()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QVERIFY(atomic1.testAndSetRelease(one, two));
         QVERIFY(atomic2.testAndSetRelease(two, three));
         QVERIFY(atomic3.testAndSetRelease(three, one));
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -294,15 +290,15 @@ void tst_QAtomicPointer::testAndSet()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QVERIFY(atomic1.testAndSetOrdered(one, two));
         QVERIFY(atomic2.testAndSetOrdered(two, three));
         QVERIFY(atomic3.testAndSetOrdered(three, one));
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 }
 
@@ -368,15 +364,15 @@ void tst_QAtomicPointer::fetchAndStore()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QCOMPARE(atomic1.fetchAndStoreRelaxed(two), one);
         QCOMPARE(atomic2.fetchAndStoreRelaxed(three), two);
         QCOMPARE(atomic3.fetchAndStoreRelaxed(one), three);
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -386,15 +382,15 @@ void tst_QAtomicPointer::fetchAndStore()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QCOMPARE(atomic1.fetchAndStoreAcquire(two), one);
         QCOMPARE(atomic2.fetchAndStoreAcquire(three), two);
         QCOMPARE(atomic3.fetchAndStoreAcquire(one), three);
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -404,15 +400,15 @@ void tst_QAtomicPointer::fetchAndStore()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QCOMPARE(atomic1.fetchAndStoreRelease(two), one);
         QCOMPARE(atomic2.fetchAndStoreRelease(three), two);
         QCOMPARE(atomic3.fetchAndStoreRelease(one), three);
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 
     {
@@ -422,15 +418,15 @@ void tst_QAtomicPointer::fetchAndStore()
 
         QCOMPARE(atomic1.load(), one);
         QCOMPARE(atomic2.load(), two);
-        QVERIFY(atomic3.load() == three);
+        QCOMPARE(atomic3.load(), three);
 
         QCOMPARE(atomic1.fetchAndStoreOrdered(two), one);
         QCOMPARE(atomic2.fetchAndStoreOrdered(three), two);
         QCOMPARE(atomic3.fetchAndStoreOrdered(one), three);
 
-        QVERIFY(atomic1.load() == two);
-        QVERIFY(atomic2.load() == three);
-        QVERIFY(atomic3.load() == one);
+        QCOMPARE(atomic1.load(), two);
+        QCOMPARE(atomic2.load(), three);
+        QCOMPARE(atomic3.load(), one);
     }
 }
 

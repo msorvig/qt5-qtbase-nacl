@@ -1,31 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -2337,8 +2344,8 @@ static const uint * QT_FASTCALL fetchTransformedBilinearARGB32PM(uint *buffer, c
                     uint bl = s2[x1];
                     uint br = s2[x2];
 
-#if defined(__SSE2__)
-                    // The SSE2 optimized interpolate_4_pixels is faster than interpolate_4_pixels_16.
+#if defined(__SSE2__) || defined(__ARM_NEON__)
+                    // The optimized interpolate_4_pixels are faster than interpolate_4_pixels_16.
                     int distx = (fx & 0x0000ffff) >> 8;
                     int disty = (fy & 0x0000ffff) >> 8;
                     *b = interpolate_4_pixels(tl, tr, bl, br, distx, disty);
@@ -2567,12 +2574,8 @@ static const uint *QT_FASTCALL fetchTransformedBilinear(uint *buffer, const Oper
                     if ((fdx < 0 && fdx > -(fixed_scale / 8)) || std::abs(data->m22) < (1./8.)) { // scale up more than 8x
                         int disty = (fy & 0x0000ffff) >> 8;
                         for (int i = 0; i < len; ++i) {
-                            uint tl = buf1[i * 2 + 0];
-                            uint tr = buf1[i * 2 + 1];
-                            uint bl = buf2[i * 2 + 0];
-                            uint br = buf2[i * 2 + 1];
                             int distx = (fracX & 0x0000ffff) >> 8;
-                            b[i] = interpolate_4_pixels(tl, tr, bl, br, distx, disty);
+                            b[i] = interpolate_4_pixels(buf1 + i * 2, buf2 + i * 2, distx, disty);
                             fracX += fdx;
                         }
                     } else { //scale down
@@ -2633,15 +2636,10 @@ static const uint *QT_FASTCALL fetchTransformedBilinear(uint *buffer, const Oper
                 if (std::abs(data->m11) > 8 || std::abs(data->m22) > 8) {
                     //if we are zooming more than 8 times, we use 8bit precision for the position.
                     for (int i = 0; i < len; ++i) {
-                        uint tl = buf1[i * 2 + 0];
-                        uint tr = buf1[i * 2 + 1];
-                        uint bl = buf2[i * 2 + 0];
-                        uint br = buf2[i * 2 + 1];
-
                         int distx = (fracX & 0x0000ffff) >> 8;
                         int disty = (fracY & 0x0000ffff) >> 8;
 
-                        b[i] = interpolate_4_pixels(tl, tr, bl, br, distx, disty);
+                        b[i] = interpolate_4_pixels(buf1 + i * 2, buf2 + i * 2, distx, disty);
                         fracX += fdx;
                         fracY += fdy;
                     }
@@ -2731,12 +2729,7 @@ static const uint *QT_FASTCALL fetchTransformedBilinear(uint *buffer, const Oper
                 int distx = distxs[i];
                 int disty = distys[i];
 
-                uint tl = buf1[i * 2 + 0];
-                uint tr = buf1[i * 2 + 1];
-                uint bl = buf2[i * 2 + 0];
-                uint br = buf2[i * 2 + 1];
-
-                b[i] = interpolate_4_pixels(tl, tr, bl, br, distx, disty);
+                b[i] = interpolate_4_pixels(buf1 + i * 2, buf2 + i * 2, distx, disty);
             }
             length -= len;
             b += len;

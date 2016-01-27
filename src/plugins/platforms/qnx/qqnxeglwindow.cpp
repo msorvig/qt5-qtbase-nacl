@@ -1,31 +1,37 @@
 /***************************************************************************
 **
 ** Copyright (C) 2013 - 2014 BlackBerry Limited. All rights reserved.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -59,7 +65,7 @@ QQnxEglWindow::QQnxEglWindow(QWindow *window, screen_context_t context, bool nee
     // Set window usage
     const int val = SCREEN_USAGE_OPENGL_ES2;
     const int result = screen_set_window_property_iv(nativeHandle(), SCREEN_PROPERTY_USAGE, &val);
-    if (result != 0)
+    if (Q_UNLIKELY(result != 0))
         qFatal("QQnxEglWindow: failed to set window alpha usage, errno=%d", errno);
 
     m_requestedBufferSize = shouldMakeFullScreen() ? screen()->geometry().size() : window->geometry().size();
@@ -106,7 +112,7 @@ void QQnxEglWindow::destroyEGLSurface()
     // Destroy EGL surface if it exists
     if (m_eglSurface != EGL_NO_SURFACE) {
         EGLBoolean eglResult = eglDestroySurface(platformOpenGLContext()->getEglDisplay(), m_eglSurface);
-        if (eglResult != EGL_TRUE)
+        if (Q_UNLIKELY(eglResult != EGL_TRUE))
             qFatal("QQNX: failed to destroy EGL surface, err=%d", eglGetError());
     }
 
@@ -118,12 +124,12 @@ void QQnxEglWindow::swapEGLBuffers()
     qEglWindowDebug();
     // Set current rendering API
     EGLBoolean eglResult = eglBindAPI(EGL_OPENGL_ES_API);
-    if (eglResult != EGL_TRUE)
+    if (Q_UNLIKELY(eglResult != EGL_TRUE))
         qFatal("QQNX: failed to set EGL API, err=%d", eglGetError());
 
     // Post EGL surface to window
     eglResult = eglSwapBuffers(m_platformOpenGLContext->getEglDisplay(), m_eglSurface);
-    if (eglResult != EGL_TRUE)
+    if (Q_UNLIKELY(eglResult != EGL_TRUE))
         qFatal("QQNX: failed to swap EGL buffers, err=%d", eglGetError());
 
     windowPosted();
@@ -178,15 +184,15 @@ int QQnxEglWindow::pixelFormat() const
     const QSurfaceFormat format = m_platformOpenGLContext->format();
     // Extract size of color channels from window format
     const int redSize = format.redBufferSize();
-    if (redSize == -1)
+    if (Q_UNLIKELY(redSize == -1))
         qFatal("QQnxWindow: red size not defined");
 
     const int greenSize = format.greenBufferSize();
-    if (greenSize == -1)
+    if (Q_UNLIKELY(greenSize == -1))
         qFatal("QQnxWindow: green size not defined");
 
     const int blueSize = format.blueBufferSize();
-    if (blueSize == -1)
+    if (Q_UNLIKELY(blueSize == -1))
         qFatal("QQnxWindow: blue size not defined");
 
     // select matching native format

@@ -17,4 +17,5 @@ wince* {
    DEPLOYMENT += rootFiles renderFiles
    DEFINES += SRCDIR=\\\".\\\"
 }
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
+
+RESOURCES += testdata.qrc

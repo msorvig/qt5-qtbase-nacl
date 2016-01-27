@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 CONFIG -= app_bundle debug_and_release_target
 QT = core-private core testlib
 qtHaveModule(network): QT += network
@@ -17,4 +16,3 @@ TESTDATA += ../dosfile.txt ../noendofline.txt ../testfile.txt \
             ../resources/file1.ext1
 
 win32:!winrt: LIBS+=-lole32 -luuid
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

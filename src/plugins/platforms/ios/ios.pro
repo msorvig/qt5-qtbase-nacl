@@ -6,7 +6,7 @@ PLUGIN_CLASS_NAME = QIOSIntegrationPlugin
 load(qt_plugin)
 
 QT += core-private gui-private platformsupport-private
-LIBS += -framework Foundation -framework UIKit -framework QuartzCore -framework AssetsLibrary
+LIBS += -framework Foundation -framework UIKit -framework QuartzCore -framework AssetsLibrary -framework AudioToolbox
 
 OBJECTIVE_SOURCES = \
     plugin.mm \
@@ -30,7 +30,8 @@ OBJECTIVE_SOURCES = \
     qiostextresponder.mm \
     qiosmenu.mm \
     qiosfileengineassetslibrary.mm \
-    qiosfiledialog.mm
+    qiosfiledialog.mm \
+    qiosmessagedialog.mm
 
 HEADERS = \
     qiosintegration.h \
@@ -54,7 +55,8 @@ HEADERS = \
     qiosmenu.h \
     qiosfileenginefactory.h \
     qiosfileengineassetslibrary.h \
-    qiosfiledialog.h
+    qiosfiledialog.h \
+    qiosmessagedialog.h
 
 OTHER_FILES = \
     quiview_textinput.mm \

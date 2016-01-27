@@ -1,31 +1,37 @@
 /****************************************************************************
  **
  ** Copyright (C) 2013 BogDan Vatra <bogdan@kde.org>
- ** Contact: http://www.qt.io/licensing/
+ ** Contact: https://www.qt.io/licensing/
  **
  ** This file is part of the Android port of the Qt Toolkit.
  **
- ** $QT_BEGIN_LICENSE:LGPL21$
+ ** $QT_BEGIN_LICENSE:LGPL$
  ** Commercial License Usage
  ** Licensees holding valid commercial Qt licenses may use this file in
  ** accordance with the commercial license agreement provided with the
  ** Software or, alternatively, in accordance with the terms contained in
  ** a written agreement between you and The Qt Company. For licensing terms
- ** and conditions see http://www.qt.io/terms-conditions. For further
- ** information use the contact form at http://www.qt.io/contact-us.
+ ** and conditions see https://www.qt.io/terms-conditions. For further
+ ** information use the contact form at https://www.qt.io/contact-us.
  **
  ** GNU Lesser General Public License Usage
  ** Alternatively, this file may be used under the terms of the GNU Lesser
- ** General Public License version 2.1 or version 3 as published by the Free
- ** Software Foundation and appearing in the file LICENSE.LGPLv21 and
- ** LICENSE.LGPLv3 included in the packaging of this file. Please review the
- ** following information to ensure the GNU Lesser General Public License
- ** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
- ** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+ ** General Public License version 3 as published by the Free Software
+ ** Foundation and appearing in the file LICENSE.LGPL3 included in the
+ ** packaging of this file. Please review the following information to
+ ** ensure the GNU Lesser General Public License version 3 requirements
+ ** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
  **
- ** As a special exception, The Qt Company gives you certain additional
- ** rights. These rights are described in The Qt Company LGPL Exception
- ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+ ** GNU General Public License Usage
+ ** Alternatively, this file may be used under the terms of the GNU
+ ** General Public License version 2.0 or (at your option) the GNU General
+ ** Public license version 3 or any later version approved by the KDE Free
+ ** Qt Foundation. The licenses are as published by the Free Software
+ ** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+ ** included in the packaging of this file. Please review the following
+ ** information to ensure the GNU General Public License requirements will
+ ** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+ ** https://www.gnu.org/licenses/gpl-3.0.html.
  **
  ** $QT_END_LICENSE$
  **
@@ -100,14 +106,12 @@ public class QtMessageDialogHelper
         if (m_icon == 0)
             return null;
 
-        if (Build.VERSION.SDK_INT > 10) {
-            try {
-                TypedValue typedValue = new TypedValue();
-                m_theme.resolveAttribute(Class.forName("android.R$attr").getDeclaredField("alertDialogIcon").getInt(null), typedValue, true);
-                return m_activity.getResources().getDrawable(typedValue.resourceId);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            TypedValue typedValue = new TypedValue();
+            m_theme.resolveAttribute(android.R.attr.alertDialogIcon, typedValue, true);
+            return m_activity.getResources().getDrawable(typedValue.resourceId);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         // Information, Warning, Critical, Question
@@ -115,7 +119,7 @@ public class QtMessageDialogHelper
         {
             case 1: // Information
                 try {
-                    return m_activity.getResources().getDrawable(Class.forName("android.R$drawable").getDeclaredField("ic_dialog_info").getInt(null));
+                    return m_activity.getResources().getDrawable(android.R.drawable.ic_dialog_info);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -129,14 +133,14 @@ public class QtMessageDialogHelper
 //                break;
             case 3: // Critical
                 try {
-                    return m_activity.getResources().getDrawable(Class.forName("android.R$drawable").getDeclaredField("ic_dialog_alert").getInt(null));
+                    return m_activity.getResources().getDrawable(android.R.drawable.ic_dialog_alert);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 break;
             case 4: // Question
                 try {
-                    return m_activity.getResources().getDrawable(Class.forName("android.R$drawable").getDeclaredField("ic_menu_help").getInt(null));
+                    return m_activity.getResources().getDrawable(android.R.drawable.ic_menu_help);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -310,15 +314,11 @@ public class QtMessageDialogHelper
                     for (ButtonStruct button: m_buttonsList)
                     {
                         Button bv;
-                        if (Build.VERSION.SDK_INT > 10) {
-                            try {
-                                bv = new Button(m_activity, null, Class.forName("android.R$attr").getDeclaredField("borderlessButtonStyle").getInt(null));
-                            } catch (Exception e) {
-                                bv = new Button(m_activity);
-                                e.printStackTrace();
-                            }
-                        } else {
+                        try {
+                            bv = new Button(m_activity, null, Class.forName("android.R$attr").getDeclaredField("borderlessButtonStyle").getInt(null));
+                        } catch (Exception e) {
                             bv = new Button(m_activity);
+                            e.printStackTrace();
                         }
 
                         bv.setText(button.m_text);
@@ -327,14 +327,12 @@ public class QtMessageDialogHelper
                         {
                             LinearLayout.LayoutParams layout = null;
                             View spacer = new View(m_activity);
-                            if (Build.VERSION.SDK_INT > 10) {
-                                try {
-                                    layout = new LinearLayout.LayoutParams(1, RelativeLayout.LayoutParams.MATCH_PARENT);
-                                    spacer.setBackgroundDrawable(getStyledDrawable("dividerVertical"));
-                                    buttonsLayout.addView(spacer, layout);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
+                            try {
+                                layout = new LinearLayout.LayoutParams(1, RelativeLayout.LayoutParams.MATCH_PARENT);
+                                spacer.setBackgroundDrawable(getStyledDrawable("dividerVertical"));
+                                buttonsLayout.addView(spacer, layout);
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
                         }
                         LinearLayout.LayoutParams layout = null;
@@ -343,23 +341,21 @@ public class QtMessageDialogHelper
                         firstButton = false;
                     }
 
-                    if (Build.VERSION.SDK_INT > 10) {
-                        try {
-                            View horizontalDevider = new View(m_activity);
-                            horizontalDevider.setId(id++);
-                            horizontalDevider.setBackgroundDrawable(getStyledDrawable("dividerHorizontal"));
-                            RelativeLayout.LayoutParams relativeParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, 1);
-                            relativeParams.setMargins(0, 10, 0, 0);
-                            if (lastView != null) {
-                                relativeParams.addRule(RelativeLayout.BELOW, lastView.getId());
-                            }
-                            else
-                                relativeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                            dialogLayout.addView(horizontalDevider, relativeParams);
-                            lastView = horizontalDevider;
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                    try {
+                        View horizontalDevider = new View(m_activity);
+                        horizontalDevider.setId(id++);
+                        horizontalDevider.setBackgroundDrawable(getStyledDrawable("dividerHorizontal"));
+                        RelativeLayout.LayoutParams relativeParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, 1);
+                        relativeParams.setMargins(0, 10, 0, 0);
+                        if (lastView != null) {
+                            relativeParams.addRule(RelativeLayout.BELOW, lastView.getId());
                         }
+                        else
+                            relativeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                        dialogLayout.addView(horizontalDevider, relativeParams);
+                        lastView = horizontalDevider;
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                     RelativeLayout.LayoutParams relativeParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
                     if (lastView != null) {
@@ -367,10 +363,7 @@ public class QtMessageDialogHelper
                     }
                     else
                         relativeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                    if (Build.VERSION.SDK_INT < 11)
-                        relativeParams.setMargins(2, 12, 2, 4);
-                    else
-                        relativeParams.setMargins(2, 0, 2, 0);
+                    relativeParams.setMargins(2, 0, 2, 0);
                     dialogLayout.addView(buttonsLayout, relativeParams);
                 }
                 scrollView.addView(dialogLayout);

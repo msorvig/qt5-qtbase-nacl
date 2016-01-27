@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -68,9 +64,6 @@ struct CompilerInfo{
     {CC_BORLAND, "Borland C++",                                                    0, "bcc32.exe"},
     {CC_MINGW,   "MinGW (Minimalist GNU for Windows)",                             0, "g++.exe"},
     {CC_INTEL,   "Intel(R) C++ Compiler for 32-bit applications",                  0, "icl.exe"}, // xilink.exe, xilink5.exe, xilink6.exe, xilib.exe
-    {CC_MSVC2005, "Microsoft (R) Visual Studio 2005 C/C++ Compiler (8.0)",         "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\8.0", "cl.exe"}, // link.exe, lib.exe
-    {CC_MSVC2008, "Microsoft (R) Visual Studio 2008 C/C++ Compiler (9.0)",         "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\9.0", "cl.exe"}, // link.exe, lib.exe
-    {CC_MSVC2010, "Microsoft (R) Visual Studio 2010 C/C++ Compiler (10.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\10.0", "cl.exe"}, // link.exe, lib.exe
     {CC_MSVC2012, "Microsoft (R) Visual Studio 2012 C/C++ Compiler (11.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\11.0", "cl.exe"}, // link.exe, lib.exe
     {CC_MSVC2013, "Microsoft (R) Visual Studio 2013 C/C++ Compiler (12.0)",        "Software\\Microsoft\\VisualStudio\\SxS\\VC7\\12.0", "cl.exe"}, // link.exe, lib.exe
     // Microsoft skipped version 13
@@ -109,15 +102,6 @@ QString Environment::detectQMakeSpec()
     case CC_MSVC2012:
         spec = "win32-msvc2012";
         break;
-    case CC_MSVC2010:
-        spec = "win32-msvc2010";
-        break;
-    case CC_MSVC2008:
-        spec = "win32-msvc2008";
-        break;
-    case CC_MSVC2005:
-        spec = "win32-msvc2005";
-        break;
     case CC_INTEL:
         spec = "win32-icc";
         break;
@@ -142,12 +126,6 @@ Compiler Environment::compilerFromQMakeSpec(const QString &qmakeSpec)
         return CC_MSVC2013;
     if (qmakeSpec == QLatin1String("win32-msvc2012"))
         return CC_MSVC2012;
-    if (qmakeSpec == QLatin1String("win32-msvc2010"))
-        return CC_MSVC2010;
-    if (qmakeSpec == QLatin1String("win32-msvc2008"))
-        return CC_MSVC2008;
-    if (qmakeSpec == QLatin1String("win32-msvc2005"))
-        return CC_MSVC2005;
     if (qmakeSpec == QLatin1String("win32-icc"))
         return CC_INTEL;
     if (qmakeSpec == QLatin1String("win32-g++"))

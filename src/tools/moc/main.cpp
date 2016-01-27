@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -146,7 +141,7 @@ static QStringList argumentsFromCommandLineAndFile(const QStringList &arguments)
 {
     QStringList allArguments;
     allArguments.reserve(arguments.size());
-    foreach (const QString &argument, arguments) {
+    for (const QString &argument : arguments) {
         // "@file" doesn't start with a '-' so we can't use QCommandLineParser for it
         if (argument.startsWith(QLatin1Char('@'))) {
             QString optionsFile = argument;
@@ -304,25 +299,30 @@ int runMoc(int argc, char **argv)
         if (parser.isSet(forceIncludeOption)) {
             moc.noInclude = false;
             autoInclude = false;
-            foreach (const QString &include, parser.values(forceIncludeOption)) {
+            const auto forceIncludes = parser.values(forceIncludeOption);
+            for (const QString &include : forceIncludes) {
                 moc.includeFiles.append(QFile::encodeName(include));
                 defaultInclude = false;
              }
         }
-        foreach (const QString &include, parser.values(prependIncludeOption))
+        const auto prependIncludes = parser.values(prependIncludeOption);
+        for (const QString &include : prependIncludes)
             moc.includeFiles.prepend(QFile::encodeName(include));
         if (parser.isSet(pathPrefixOption))
             moc.includePath = QFile::encodeName(parser.value(pathPrefixOption));
     }
-    foreach (const QString &path, parser.values(includePathOption))
+    const auto includePaths = parser.values(includePathOption);
+    for (const QString &path : includePaths)
         pp.includes += Preprocessor::IncludePath(QFile::encodeName(path));
-    foreach (const QString &path, parser.values(macFrameworkOption)) {
+    const auto macFrameworks = parser.values(macFrameworkOption);
+    for (const QString &path : macFrameworks) {
         // minimalistic framework support for the mac
         Preprocessor::IncludePath p(QFile::encodeName(path));
         p.isFrameworkPath = true;
         pp.includes += p;
     }
-    foreach (const QString &arg, parser.values(defineOption)) {
+    const auto defines = parser.values(defineOption);
+    for (const QString &arg : defines) {
         QByteArray name = arg.toLocal8Bit();
         QByteArray value("1");
         int eq = name.indexOf('=');
@@ -339,7 +339,8 @@ int runMoc(int argc, char **argv)
         macro.symbols.removeLast(); // remove the EOF symbol
         pp.macros.insert(name, macro);
     }
-    foreach (const QString &arg, parser.values(undefineOption)) {
+    const auto undefines = parser.values(undefineOption);
+    for (const QString &arg : undefines) {
         QByteArray macro = arg.toLocal8Bit();
         if (macro.isEmpty()) {
             error("Missing macro name");
@@ -384,7 +385,8 @@ int runMoc(int argc, char **argv)
         moc.filename = filename.toLocal8Bit();
     }
 
-    foreach (const QString &md, parser.values(metadataOption)) {
+    const auto metadata = parser.values(metadataOption);
+    for (const QString &md : metadata) {
         int split = md.indexOf(QLatin1Char('='));
         QString key = md.left(split);
         QString value = md.mid(split + 1);

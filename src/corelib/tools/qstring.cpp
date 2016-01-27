@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -40,6 +46,7 @@
 #include <qtextcodec.h>
 #endif
 #include <private/qutfcodec_p.h>
+#include <private/qlocale_tools_p.h>
 #include "qsimd_p.h"
 #include <qnumeric.h>
 #include <qdatastream.h>
@@ -1651,9 +1658,7 @@ QString::QString(QChar ch)
     \snippet qstring/main.cpp 45
 
     If you want to append a certain number of identical characters to
-    the string, use \l operator+=() as follows rather than resize():
-
-    \snippet qstring/main.cpp 46
+    the string, use the \l {QString::}{resize(int, QChar)} overload.
 
     If you want to expand the string so that it reaches a certain
     width and fill the new positions with a particular character, use
@@ -1682,6 +1687,25 @@ void QString::resize(int size)
         d->size = size;
         d->data()[size] = '\0';
     }
+}
+
+/*!
+    \overload
+    \since 5.7
+
+    Unlike \l {QString::}{resize(int)}, this overload
+    initializes the new characters to \a fillChar:
+
+    \snippet qstring/main.cpp 46
+*/
+
+void QString::resize(int size, QChar fillChar)
+{
+    const int oldSize = length();
+    resize(size);
+    const int difference = length() - oldSize;
+    if (difference > 0)
+        std::fill_n(d->begin() + oldSize, difference, fillChar.unicode());
 }
 
 /*! \fn int QString::capacity() const
@@ -2681,7 +2705,7 @@ QString &QString::replace(QChar c, QLatin1String after, Qt::CaseSensitivity cs)
   expect. Consider sorting user-interface strings with
   localeAwareCompare().
 */
-bool operator==(const QString &s1, const QString &s2)
+bool operator==(const QString &s1, const QString &s2) Q_DECL_NOTHROW
 {
     if (s1.d->size != s2.d->size)
         return false;
@@ -2694,7 +2718,7 @@ bool operator==(const QString &s1, const QString &s2)
     Returns \c true if this string is equal to \a other; otherwise
     returns \c false.
 */
-bool QString::operator==(QLatin1String other) const
+bool QString::operator==(QLatin1String other) const Q_DECL_NOTHROW
 {
     if (d->size != other.size())
         return false;
@@ -2745,7 +2769,7 @@ bool QString::operator==(QLatin1String other) const
     expect. Consider sorting user-interface strings using the
     QString::localeAwareCompare() function.
 */
-bool operator<(const QString &s1, const QString &s2)
+bool operator<(const QString &s1, const QString &s2) Q_DECL_NOTHROW
 {
     return ucstrcmp(s1.constData(), s1.length(), s2.constData(), s2.length()) < 0;
 }
@@ -2755,7 +2779,7 @@ bool operator<(const QString &s1, const QString &s2)
     Returns \c true if this string is lexically less than the parameter
     string called \a other; otherwise returns \c false.
 */
-bool QString::operator<(QLatin1String other) const
+bool QString::operator<(QLatin1String other) const Q_DECL_NOTHROW
 {
     const uchar *c = (const uchar *) other.latin1();
     if (!c || *c == 0)
@@ -2860,7 +2884,7 @@ bool QString::operator<(QLatin1String other) const
     Returns \c true if this string is lexically greater than the parameter
     string \a other; otherwise returns \c false.
 */
-bool QString::operator>(QLatin1String other) const
+bool QString::operator>(QLatin1String other) const Q_DECL_NOTHROW
 {
     const uchar *c = (const uchar *) other.latin1();
     if (!c || *c == '\0')
@@ -3562,7 +3586,7 @@ QString &QString::replace(const QRegularExpression &re, const QString &after)
 
         lastEnd = 0;
         // add the after string, with replacements for the backreferences
-        foreach (const QStringCapture &backReference, backReferences) {
+        for (const QStringCapture &backReference : qAsConst(backReferences)) {
             // part of "after" before the backreference
             len = backReference.pos - lastEnd;
             if (len > 0) {
@@ -3600,7 +3624,7 @@ QString &QString::replace(const QRegularExpression &re, const QString &after)
     resize(newLength);
     int i = 0;
     QChar *uc = data();
-    foreach (const QStringRef &chunk, chunks) {
+    for (const QStringRef &chunk : qAsConst(chunks)) {
         int len = chunk.length();
         memcpy(uc + i, chunk.unicode(), len * sizeof(QChar));
         i += len;
@@ -5343,7 +5367,7 @@ QString& QString::fill(QChar ch, int size)
 
     Same as compare(*this, \a other, \a cs).
 */
-int QString::compare(const QString &other, Qt::CaseSensitivity cs) const
+int QString::compare(const QString &other, Qt::CaseSensitivity cs) const Q_DECL_NOTHROW
 {
     if (cs == Qt::CaseSensitive)
         return ucstrcmp(constData(), length(), other.constData(), other.length());
@@ -5355,7 +5379,7 @@ int QString::compare(const QString &other, Qt::CaseSensitivity cs) const
     \since 4.5
 */
 int QString::compare_helper(const QChar *data1, int length1, const QChar *data2, int length2,
-                            Qt::CaseSensitivity cs)
+                            Qt::CaseSensitivity cs) Q_DECL_NOTHROW
 {
     if (cs == Qt::CaseSensitive)
         return ucstrcmp(data1, length1, data2, length2);
@@ -5370,7 +5394,7 @@ int QString::compare_helper(const QChar *data1, int length1, const QChar *data2,
 
     Same as compare(*this, \a other, \a cs).
 */
-int QString::compare(QLatin1String other, Qt::CaseSensitivity cs) const
+int QString::compare(QLatin1String other, Qt::CaseSensitivity cs) const Q_DECL_NOTHROW
 {
     return compare_helper(unicode(), length(), other, cs);
 }
@@ -5406,7 +5430,7 @@ int QString::compare_helper(const QChar *data1, int length1, const char *data2, 
     \since 4.5
 */
 int QString::compare_helper(const QChar *data1, int length1, QLatin1String s2,
-                            Qt::CaseSensitivity cs)
+                            Qt::CaseSensitivity cs) Q_DECL_NOTHROW
 {
     const ushort *uc = reinterpret_cast<const ushort *>(data1);
     const ushort *uce = uc + length1;
@@ -5883,6 +5907,72 @@ QString &QString::vsprintf(const char *cformat, va_list ap)
     return *this = vasprintf(cformat, ap);
 }
 
+static void append_utf8(QString &qs, const char *cs, int len)
+{
+    const int oldSize = qs.size();
+    qs.resize(oldSize + len);
+    const QChar *newEnd = QUtf8::convertToUnicode(qs.data() + oldSize, cs, len);
+    qs.resize(newEnd - qs.constData());
+}
+
+static uint parse_flag_characters(const char * &c) Q_DECL_NOTHROW
+{
+    uint flags = QLocaleData::ZeroPadExponent;
+    while (true) {
+        switch (*c) {
+        case '#': flags |= QLocaleData::Alternate; break;
+        case '0': flags |= QLocaleData::ZeroPadded; break;
+        case '-': flags |= QLocaleData::LeftAdjusted; break;
+        case ' ': flags |= QLocaleData::BlankBeforePositive; break;
+        case '+': flags |= QLocaleData::AlwaysShowSign; break;
+        case '\'': flags |= QLocaleData::ThousandsGroup; break;
+        default: return flags;
+        }
+        ++c;
+    }
+}
+
+static int parse_field_width(const char * &c)
+{
+    Q_ASSERT(qIsDigit(*c));
+
+    // can't be negative - started with a digit
+    // contains at least one digit
+    const char *endp;
+    bool ok;
+    const qulonglong result = qstrtoull(c, &endp, 10, &ok);
+    c = endp;
+    while (qIsDigit(*c)) // preserve Qt 5.5 behavior of consuming all digits, no matter how many
+        ++c;
+    return ok && result < qulonglong(std::numeric_limits<int>::max()) ? int(result) : 0;
+}
+
+enum LengthMod { lm_none, lm_hh, lm_h, lm_l, lm_ll, lm_L, lm_j, lm_z, lm_t };
+
+static inline bool can_consume(const char * &c, char ch) Q_DECL_NOTHROW
+{
+    if (*c == ch) {
+        ++c;
+        return true;
+    }
+    return false;
+}
+
+static LengthMod parse_length_modifier(const char * &c) Q_DECL_NOTHROW
+{
+    switch (*c++) {
+    case 'h': return can_consume(c, 'h') ? lm_hh : lm_h;
+    case 'l': return can_consume(c, 'l') ? lm_ll : lm_l;
+    case 'L': return lm_L;
+    case 'j': return lm_j;
+    case 'z':
+    case 'Z': return lm_z;
+    case 't': return lm_t;
+    }
+    --c; // don't consume *c - it wasn't a flag
+    return lm_none;
+}
+
 /*!
     \fn QString::vasprintf(const char *cformat, va_list ap)
     \since 5.5
@@ -5913,7 +6003,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
         const char *cb = c;
         while (*c != '\0' && *c != '%')
             c++;
-        result.append(QString::fromUtf8(cb, (int)(c - cb)));
+        append_utf8(result, cb, int(c - cb));
 
         if (*c == '\0')
             break;
@@ -5932,23 +6022,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
             continue;
         }
 
-        // Parse flag characters
-        uint flags = 0;
-        bool no_more_flags = false;
-        do {
-            switch (*c) {
-                case '#': flags |= QLocaleData::Alternate; break;
-                case '0': flags |= QLocaleData::ZeroPadded; break;
-                case '-': flags |= QLocaleData::LeftAdjusted; break;
-                case ' ': flags |= QLocaleData::BlankBeforePositive; break;
-                case '+': flags |= QLocaleData::AlwaysShowSign; break;
-                case '\'': flags |= QLocaleData::ThousandsGroup; break;
-                default: no_more_flags = true; break;
-            }
-
-            if (!no_more_flags)
-                ++c;
-        } while (!no_more_flags);
+        uint flags = parse_flag_characters(c);
 
         if (*c == '\0') {
             result.append(QLatin1String(escape_start)); // incomplete escape, treat as non-escape text
@@ -5958,15 +6032,8 @@ QString QString::vasprintf(const char *cformat, va_list ap)
         // Parse field width
         int width = -1; // -1 means unspecified
         if (qIsDigit(*c)) {
-            QString width_str;
-            while (*c != '\0' && qIsDigit(*c))
-                width_str.append(QLatin1Char(*c++));
-
-            // can't be negative - started with a digit
-            // contains at least one digit
-            width = width_str.toInt();
-        }
-        else if (*c == '*') {
+            width = parse_field_width(c);
+        } else if (*c == '*') { // can't parse this in another function, not portably, at least
             width = va_arg(ap, int);
             if (width < 0)
                 width = -1; // treat all negative numbers as unspecified
@@ -5983,15 +6050,8 @@ QString QString::vasprintf(const char *cformat, va_list ap)
         if (*c == '.') {
             ++c;
             if (qIsDigit(*c)) {
-                QString precision_str;
-                while (*c != '\0' && qIsDigit(*c))
-                    precision_str.append(QLatin1Char(*c++));
-
-                // can't be negative - started with a digit
-                // contains at least one digit
-                precision = precision_str.toInt();
-            }
-            else if (*c == '*') {
+                precision = parse_field_width(c);
+            } else if (*c == '*') { // can't parse this in another function, not portably, at least
                 precision = va_arg(ap, int);
                 if (precision < 0)
                     precision = -1; // treat all negative numbers as unspecified
@@ -6004,53 +6064,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
             break;
         }
 
-        // Parse the length modifier
-        enum LengthMod { lm_none, lm_hh, lm_h, lm_l, lm_ll, lm_L, lm_j, lm_z, lm_t };
-        LengthMod length_mod = lm_none;
-        switch (*c) {
-            case 'h':
-                ++c;
-                if (*c == 'h') {
-                    length_mod = lm_hh;
-                    ++c;
-                }
-                else
-                    length_mod = lm_h;
-                break;
-
-            case 'l':
-                ++c;
-                if (*c == 'l') {
-                    length_mod = lm_ll;
-                    ++c;
-                }
-                else
-                    length_mod = lm_l;
-                break;
-
-            case 'L':
-                ++c;
-                length_mod = lm_L;
-                break;
-
-            case 'j':
-                ++c;
-                length_mod = lm_j;
-                break;
-
-            case 'z':
-            case 'Z':
-                ++c;
-                length_mod = lm_z;
-                break;
-
-            case 't':
-                ++c;
-                length_mod = lm_t;
-                break;
-
-            default: break;
-        }
+        const LengthMod length_mod = parse_length_modifier(c);
 
         if (*c == '\0') {
             result.append(QLatin1String(escape_start)); // incomplete escape, treat as non-escape text
@@ -6192,8 +6206,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
                     }
                     case lm_ll: {
                         qint64 *n = va_arg(ap, qint64*);
-                        volatile uint tmp = result.length(); // egcs-2.91.66 gets internal
-                        *n = tmp;                             // compiler error without volatile
+                        *n = result.length();
                         break;
                     }
                     default: {
@@ -6256,7 +6269,7 @@ qlonglong QString::toIntegral_helper(const QChar *data, int len, bool *ok, int b
     }
 #endif
 
-    return QLocaleData::c()->stringToLongLong(data, len, base, ok, QLocaleData::FailOnGroupSeparators);
+    return QLocaleData::c()->stringToLongLong(data, len, base, ok, QLocale::RejectGroupSeparator);
 }
 
 
@@ -6296,7 +6309,8 @@ qulonglong QString::toIntegral_helper(const QChar *data, uint len, bool *ok, int
     }
 #endif
 
-    return QLocaleData::c()->stringToUnsLongLong(data, len, base, ok, QLocaleData::FailOnGroupSeparators);
+    return QLocaleData::c()->stringToUnsLongLong(data, len, base, ok,
+                                                 QLocale::RejectGroupSeparator);
 }
 
 /*!
@@ -6497,7 +6511,7 @@ ushort QString::toUShort(bool *ok, int base) const
 
 double QString::toDouble(bool *ok) const
 {
-    return QLocaleData::c()->stringToDouble(constData(), size(), ok, QLocaleData::FailOnGroupSeparators);
+    return QLocaleData::c()->stringToDouble(constData(), size(), ok, QLocale::RejectGroupSeparator);
 }
 
 /*!
@@ -7745,6 +7759,8 @@ QString QString::arg(double a, int fieldWidth, char fmt, int prec, QChar fillCha
 
         if (!(locale.numberOptions() & QLocale::OmitGroupSeparator))
             flags |= QLocaleData::ThousandsGroup;
+        if (!(locale.numberOptions() & QLocale::OmitLeadingZeroInExponent))
+            flags |= QLocaleData::ZeroPadExponent;
         locale_arg = locale.d->m_data->doubleToString(a, prec, form, fieldWidth, flags);
     }
 
@@ -8790,7 +8806,6 @@ Since this class is only used to refer to string data, and does not take
 ownership of it, no memory is freed when instances are destroyed.
 */
 
-
 /*!
     \fn int QStringRef::position() const
 
@@ -8931,7 +8946,7 @@ QString QStringRef::toString() const {
    Returns \c true if string reference \a s1 is lexically equal to string reference \a s2; otherwise
    returns \c false.
 */
-bool operator==(const QStringRef &s1,const QStringRef &s2)
+bool operator==(const QStringRef &s1,const QStringRef &s2) Q_DECL_NOTHROW
 { return (s1.size() == s2.size() &&
           qMemEquals((const ushort *)s1.unicode(), (const ushort *)s2.unicode(), s1.size()));
 }
@@ -8941,7 +8956,7 @@ bool operator==(const QStringRef &s1,const QStringRef &s2)
    Returns \c true if string \a s1 is lexically equal to string reference \a s2; otherwise
    returns \c false.
 */
-bool operator==(const QString &s1,const QStringRef &s2)
+bool operator==(const QString &s1,const QStringRef &s2) Q_DECL_NOTHROW
 { return (s1.size() == s2.size() &&
           qMemEquals((const ushort *)s1.unicode(), (const ushort *)s2.unicode(), s1.size()));
 }
@@ -8951,7 +8966,7 @@ bool operator==(const QString &s1,const QStringRef &s2)
    Returns \c true if string  \a s1 is lexically equal to string reference \a s2; otherwise
    returns \c false.
 */
-bool operator==(QLatin1String s1, const QStringRef &s2)
+bool operator==(QLatin1String s1, const QStringRef &s2) Q_DECL_NOTHROW
 {
     if (s1.size() != s2.size())
         return false;
@@ -8973,7 +8988,7 @@ bool operator==(QLatin1String s1, const QStringRef &s2)
     expect. Consider sorting user-interface strings using the
     QString::localeAwareCompare() function.
 */
-bool operator<(const QStringRef &s1,const QStringRef &s2)
+bool operator<(const QStringRef &s1,const QStringRef &s2) Q_DECL_NOTHROW
 {
     return ucstrcmp(s1.constData(), s1.length(), s2.constData(), s2.length()) < 0;
 }
@@ -9026,6 +9041,19 @@ bool operator<(const QStringRef &s1,const QStringRef &s2)
 
     The \a position must be a valid index position in the string
     (i.e., 0 <= \a position < size()).
+*/
+
+/*!
+    \fn QChar QStringRef::operator[](int position) const
+    \since 5.7
+
+    Returns the character at the given index \a position in the
+    string reference.
+
+    The \a position must be a valid index position in the string
+    reference (i.e., 0 <= \a position < size()).
+
+    \sa at()
 */
 
 /*!
@@ -10465,7 +10493,7 @@ ushort QStringRef::toUShort(bool *ok, int base) const
 
 double QStringRef::toDouble(bool *ok) const
 {
-    return QLocaleData::c()->stringToDouble(constData(), size(), ok, QLocaleData::FailOnGroupSeparators);
+    return QLocaleData::c()->stringToDouble(constData(), size(), ok, QLocale::RejectGroupSeparator);
 }
 
 /*!

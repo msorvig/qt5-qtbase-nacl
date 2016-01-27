@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the utils of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -367,8 +362,10 @@ void Automaton::closure (StatePointer state)
 
       if (_M_grammar->isNonTerminal (*item->dot))
         {
-          foreach (const RulePointer &rule, _M_grammar->rule_map.values (*item->dot))
+          const auto range = qAsConst(_M_grammar->rule_map).equal_range(*item->dot);
+          for (auto it = range.first; it != range.second; ++it)
             {
+              const RulePointer &rule = *it;
               Item ii;
               ii.rule = rule;
               ii.dot = rule->rhs.begin ();
@@ -413,8 +410,10 @@ void Automaton::buildLookbackSets ()
           if (! _M_grammar->isNonTerminal (A))
             continue;
 
-          foreach (const RulePointer &rule, _M_grammar->rule_map.values (A))
+          const auto range = qAsConst(_M_grammar->rule_map).equal_range(A);
+          for (auto it = range.first; it != range.second; ++it)
             {
+              const RulePointer &rule = *it;
               StatePointer q = p;
 
               for (NameList::iterator dot = rule->rhs.begin (); dot != rule->rhs.end (); ++dot)
@@ -606,8 +605,10 @@ void Automaton::buildIncludesDigraph ()
           if (! _M_grammar->isNonTerminal (name))
             continue;
 
-          foreach (const RulePointer &rule, _M_grammar->rule_map.values (name))
+          const auto range = qAsConst(_M_grammar->rule_map).equal_range(name);
+          for (auto it = range.first; it != range.second; ++it)
             {
+              const RulePointer &rule = *it;
               StatePointer p = pp;
 
               for (NameList::iterator A = rule->rhs.begin (); A != rule->rhs.end (); ++A)
@@ -706,8 +707,10 @@ void Automaton::buildLookaheads ()
     {
       for (ItemPointer item = p->closure.begin (); item != p->closure.end (); ++item)
         {
-          foreach (const Lookback &lookback, lookbacks.values (item))
+          const auto range = qAsConst(lookbacks).equal_range(item);
+          for (auto it = range.first; it != range.second; ++it)
             {
+              const Lookback &lookback = *it;
               StatePointer q = lookback.state;
 
 #ifndef QLALR_NO_DEBUG_LOOKAHEADS

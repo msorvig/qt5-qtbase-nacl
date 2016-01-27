@@ -112,7 +112,7 @@ void QWinRTEGLContext::initialize()
         EGL_NONE,
     };
     g->eglDisplay = eglGetPlatformDisplayEXT(EGL_PLATFORM_ANGLE_ANGLE, EGL_DEFAULT_DISPLAY, displayAttributes);
-    if (g->eglDisplay == EGL_NO_DISPLAY)
+    if (Q_UNLIKELY(g->eglDisplay == EGL_NO_DISPLAY))
         qCritical("Failed to initialize EGL display: 0x%x", eglGetError());
 
     // eglInitialize checks for EGL_PLATFORM_ANGLE_ENABLE_AUTOMATIC_TRIM_ANGLE

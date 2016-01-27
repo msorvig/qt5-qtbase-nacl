@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -341,7 +336,7 @@ void tst_QSortFilterProxyModel::sort_data()
 
     QStringList list;
     for (int i = 10000; i < 20000; ++i)
-        list.append(QString("Number: %1").arg(i));
+        list.append(QStringLiteral("Number: ") + QString::number(i));
     QTest::newRow("large set ascending") <<  static_cast<int>(Qt::AscendingOrder) << int(Qt::CaseSensitive) << list << list;
 }
 
@@ -1346,14 +1341,14 @@ void tst_QSortFilterProxyModel::buildHierarchy(const QStringList &l, QAbstractIt
     QStack<QModelIndex> parent_stack;
     for (int i = 0; i < l.count(); ++i) {
         QString token = l.at(i);
-        if (token == "<") { // start table
+        if (token == QLatin1String("<")) { // start table
             ++ind;
             parent_stack.push(parent);
             row_stack.push(row);
             parent = m->index(row - 1, 0, parent);
             row = 0;
             QVERIFY(m->insertColumns(0, 1, parent)); // add column
-        } else if (token == ">") { // end table
+        } else if (token == QLatin1String(">")) { // end table
             --ind;
             parent = parent_stack.pop();
             row = row_stack.pop();
@@ -1376,14 +1371,14 @@ void tst_QSortFilterProxyModel::checkHierarchy(const QStringList &l, const QAbst
     QStack<QModelIndex> parent_stack;
     for (int i = 0; i < l.count(); ++i) {
         QString token = l.at(i);
-        if (token == "<") { // start table
+        if (token == QLatin1String("<")) { // start table
             ++indent;
             parent_stack.push(parent);
             row_stack.push(row);
             parent = m->index(row - 1, 0, parent);
             QVERIFY(parent.isValid());
             row = 0;
-        } else if (token == ">") { // end table
+        } else if (token == QLatin1String(">")) { // end table
             --indent;
             parent = parent_stack.pop();
             row = row_stack.pop();
@@ -1418,7 +1413,7 @@ void tst_QSortFilterProxyModel::filterTable()
     filter.setFilterRegExp("9");
 
     for (int i = 0; i < filter.rowCount(); ++i)
-        QVERIFY(filter.data(filter.index(i, 0)).toString().contains("9"));
+        QVERIFY(filter.data(filter.index(i, 0)).toString().contains(QLatin1Char('9')));
 }
 
 void tst_QSortFilterProxyModel::insertAfterSelect()
@@ -1663,16 +1658,16 @@ void tst_QSortFilterProxyModel::removeSourceRows()
     QCOMPARE(aboutToRemoveSpy.count(), expectedRemovedProxyIntervals.count());
     for (int i = 0; i < aboutToRemoveSpy.count(); ++i) {
         QList<QVariant> args = aboutToRemoveSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), expectedRemovedProxyIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), expectedRemovedProxyIntervals.at(i).second);
     }
     QCOMPARE(removeSpy.count(), expectedRemovedProxyIntervals.count());
     for (int i = 0; i < removeSpy.count(); ++i) {
         QList<QVariant> args = removeSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), expectedRemovedProxyIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), expectedRemovedProxyIntervals.at(i).second);
     }
@@ -1841,8 +1836,8 @@ void tst_QSortFilterProxyModel::changeFilter()
     QCOMPARE(initialInsertSpy.count(), 0);
     for (int i = 0; i < initialRemoveSpy.count(); ++i) {
         QList<QVariant> args = initialRemoveSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), initialRemoveIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), initialRemoveIntervals.at(i).second);
     }
@@ -1864,8 +1859,8 @@ void tst_QSortFilterProxyModel::changeFilter()
     QCOMPARE(finalRemoveSpy.count(), finalRemoveIntervals.count());
     for (int i = 0; i < finalRemoveSpy.count(); ++i) {
         QList<QVariant> args = finalRemoveSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), finalRemoveIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), finalRemoveIntervals.at(i).second);
     }
@@ -1876,8 +1871,8 @@ void tst_QSortFilterProxyModel::changeFilter()
     QCOMPARE(finalInsertSpy.count(), insertIntervals.count());
     for (int i = 0; i < finalInsertSpy.count(); ++i) {
         QList<QVariant> args = finalInsertSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), insertIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), insertIntervals.at(i).second);
     }
@@ -2018,8 +2013,8 @@ void tst_QSortFilterProxyModel::changeSourceData()
     QCOMPARE(removeSpy.count(), removeIntervals.count());
     for (int i = 0; i < removeSpy.count(); ++i) {
         QList<QVariant> args = removeSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), removeIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), removeIntervals.at(i).second);
     }
@@ -2027,8 +2022,8 @@ void tst_QSortFilterProxyModel::changeSourceData()
     QCOMPARE(insertSpy.count(), insertIntervals.count());
     for (int i = 0; i < insertSpy.count(); ++i) {
         QList<QVariant> args = insertSpy.at(i);
-        QVERIFY(args.at(1).type() == QVariant::Int);
-        QVERIFY(args.at(2).type() == QVariant::Int);
+        QCOMPARE(args.at(1).type(), QVariant::Int);
+        QCOMPARE(args.at(2).type(), QVariant::Int);
         QCOMPARE(args.at(1).toInt(), insertIntervals.at(i).first);
         QCOMPARE(args.at(2).toInt(), insertIntervals.at(i).second);
     }
@@ -2545,12 +2540,11 @@ void tst_QSortFilterProxyModel::sortStable()
 {
     QStandardItemModel* model = new QStandardItemModel(5, 2);
     for (int r = 0; r < 5; r++) {
+        const QString prefix = QLatin1String("Row:") + QString::number(r) + QLatin1String(", Column:");
         for (int c = 0; c < 2; c++)  {
-            QStandardItem* item = new QStandardItem(
-                    QString("Row:%0, Column:%1").arg(r).arg(c) );
+            QStandardItem* item = new QStandardItem(prefix + QString::number(c));
             for (int i = 0; i < 3; i++) {
-                QStandardItem* child = new QStandardItem(
-                        QString("Item %0").arg(i) );
+                QStandardItem* child = new QStandardItem(QLatin1String("Item ") + QString::number(i));
                 item->appendRow( child );
             }
             model->setItem(r, c, item);
@@ -2581,7 +2575,7 @@ void tst_QSortFilterProxyModel::hiddenColumns()
     public:
         MyStandardItemModel() : QStandardItemModel(0,5) {}
         void reset()
-        { QStandardItemModel::reset(); }
+        { beginResetModel(); endResetModel(); }
         friend class tst_QSortFilterProxyModel;
     } model;
     QSortFilterProxyModel proxy;
@@ -2625,7 +2619,7 @@ void tst_QSortFilterProxyModel::staticSorting()
     QSortFilterProxyModel proxy;
     proxy.setSourceModel(&model);
     proxy.setDynamicSortFilter(false);
-    QStringList initial = QString("bateau avion dragon hirondelle flamme camion elephant").split(" ");
+    QStringList initial = QString("bateau avion dragon hirondelle flamme camion elephant").split(QLatin1Char(' '));
 
     // prepare model
     QStandardItem *root = model.invisibleRootItem ();
@@ -2680,7 +2674,7 @@ void tst_QSortFilterProxyModel::staticSorting()
 void tst_QSortFilterProxyModel::dynamicSorting()
 {
     QStringListModel model1;
-    const QStringList initial = QString("bateau avion dragon hirondelle flamme camion elephant").split(" ");
+    const QStringList initial = QString("bateau avion dragon hirondelle flamme camion elephant").split(QLatin1Char(' '));
     model1.setStringList(initial);
     QSortFilterProxyModel proxy1;
     proxy1.setDynamicSortFilter(false);
@@ -2806,7 +2800,8 @@ public:
                 qWarning("Invalid modelIndex [%d,%d,%p]", idx.row(), idx.column(),
                 idx.internalPointer());
             }
-            return QString("[%1,%2]").arg(idx.row()).arg(idx.column());
+            return QLatin1Char('[') + QString::number(idx.row()) + QLatin1Char(',')
+                + QString::number(idx.column()) + QLatin1Char(']');
         }
         return QVariant();
     }
@@ -2971,7 +2966,7 @@ void tst_QSortFilterProxyModel::doubleProxySelectionSetSourceModel()
     QStandardItemModel *model1 = new QStandardItemModel;
     QStandardItem *parentItem = model1->invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("model1 item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("model1 item ") + QString::number(i));
         parentItem->appendRow(item);
         parentItem = item;
     }
@@ -2979,7 +2974,7 @@ void tst_QSortFilterProxyModel::doubleProxySelectionSetSourceModel()
     QStandardItemModel *model2 = new QStandardItemModel;
     QStandardItem *parentItem2 = model2->invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("model2 item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("model2 item ") + QString::number(i));
         parentItem2->appendRow(item);
         parentItem2 = item;
     }
@@ -3078,7 +3073,7 @@ void tst_QSortFilterProxyModel::appearsAndSort()
 void tst_QSortFilterProxyModel::unnecessaryDynamicSorting()
 {
     QStringListModel model;
-    const QStringList initial = QString("bravo charlie delta echo").split(" ");
+    const QStringList initial = QString("bravo charlie delta echo").split(QLatin1Char(' '));
     model.setStringList(initial);
     QSortFilterProxyModel proxy;
     proxy.setDynamicSortFilter(false);
@@ -3162,7 +3157,7 @@ private:
 void tst_QSortFilterProxyModel::testMultipleProxiesWithSelection()
 {
     QStringListModel model;
-    const QStringList initial = QString("bravo charlie delta echo").split(" ");
+    const QStringList initial = QString("bravo charlie delta echo").split(QLatin1Char(' '));
     model.setStringList(initial);
 
     QSortFilterProxyModel proxy;
@@ -3196,7 +3191,7 @@ static bool isValid(const QItemSelection &selection)
 void tst_QSortFilterProxyModel::mapSelectionFromSource()
 {
     QStringListModel model;
-    const QStringList initial = QString("bravo charlie delta echo").split(" ");
+    const QStringList initial = QString("bravo charlie delta echo").split(QLatin1Char(' '));
     model.setStringList(initial);
 
     QSortFilterProxyModel proxy;
@@ -3205,7 +3200,7 @@ void tst_QSortFilterProxyModel::mapSelectionFromSource()
     proxy.setSourceModel(&model);
 
     // Only "delta" remains.
-    QVERIFY(proxy.rowCount() == 1);
+    QCOMPARE(proxy.rowCount(), 1);
 
     QItemSelection selection;
     QModelIndex charlie = model.index(1, 0);
@@ -3220,7 +3215,7 @@ void tst_QSortFilterProxyModel::mapSelectionFromSource()
     QItemSelection proxiedSelection = proxy.mapSelectionFromSource(selection);
 
     // Only "delta" is in the mapped result.
-    QVERIFY(proxiedSelection.size() == 1);
+    QCOMPARE(proxiedSelection.size(), 1);
     QVERIFY(isValid(proxiedSelection));
 }
 
@@ -3377,7 +3372,10 @@ void tst_QSortFilterProxyModel::resetInvalidate()
         {
             switch (test) {
             case 0: break;
-            case 1: reset(); break;
+            case 1:
+                beginResetModel();
+                endResetModel();
+                break;
             case 2: invalidate(); break;
             case 3: invalidateFilter(); break;
             }
@@ -3551,11 +3549,11 @@ void tst_QSortFilterProxyModel::testParentLayoutChanged()
     QStandardItem *parentItem = model.invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
         {
-            QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+            QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
             parentItem->appendRow(item);
         }
         {
-            QStandardItem *item = new QStandardItem(QString("item 1%0").arg(i));
+            QStandardItem *item = new QStandardItem(QLatin1String("item 1") + QString::number(i));
             parentItem->appendRow(item);
             parentItem = item;
         }
@@ -3852,9 +3850,10 @@ void tst_QSortFilterProxyModel::hierarchyFilterInvalidation()
 {
     QStandardItemModel model;
     for (int i = 0; i < 10; ++i) {
-        QStandardItem *child = new QStandardItem(QString("Row %1").arg(i));
+        const QString rowText = QLatin1String("Row ") + QString::number(i);
+        QStandardItem *child = new QStandardItem(rowText);
         for (int j = 0; j < 1; ++j) {
-            child->appendRow(new QStandardItem(QString("Row %1/%2").arg(i).arg(j)));
+            child->appendRow(new QStandardItem(rowText + QLatin1Char('/') + QString::number(j)));
         }
         model.appendRow(child);
     }
@@ -3913,7 +3912,7 @@ void tst_QSortFilterProxyModel::simpleFilterInvalidation()
 {
     QStandardItemModel model;
     for (int i = 0; i < 2; ++i) {
-        QStandardItem *child = new QStandardItem(QString("Row %1").arg(i));
+        QStandardItem *child = new QStandardItem(QLatin1String("Row ") + QString::number(i));
         child->appendRow(new QStandardItem("child"));
         model.appendRow(child);
     }

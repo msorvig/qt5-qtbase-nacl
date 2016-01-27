@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -157,9 +152,10 @@ QtTestModel::QtTestModel(int rows, int columns, QObject *parent)
 {
     table.resize(rows);
     for (int r = 0; r < rows; ++r) {
+        const QString prefix = QString::number(r) + QLatin1Char('/');
         table[r].resize(columns);
         for (int c = 0; c < columns; ++c)
-            table[r][c] = QString("%1/%2").arg(r).arg(c);
+            table[r][c] = prefix + QString::number(c);
     }
 }
 
@@ -1699,8 +1695,8 @@ void tst_QAbstractItemModel::testMoveToDescendants()
             moveCommand->setDestRow(row);
             moveCommand->doCommand();
 
-            QVERIFY(beforeSpy.size() == 0);
-            QVERIFY(afterSpy.size() == 0);
+            QCOMPARE(beforeSpy.size(), 0);
+            QCOMPARE(afterSpy.size(), 0);
         }
     }
 }
@@ -1757,8 +1753,8 @@ void tst_QAbstractItemModel::testMoveWithinOwnRange()
     moveCommand->setDestRow(destRow);
     moveCommand->doCommand();
 
-    QVERIFY(beforeSpy.size() == 0);
-    QVERIFY(afterSpy.size() == 0);
+    QCOMPARE(beforeSpy.size(), 0);
+    QCOMPARE(afterSpy.size(), 0);
 }
 
 class ListenerObject : public QObject
@@ -1823,7 +1819,7 @@ void ListenerObject::slotAboutToBeReset()
     // Nothing has been changed yet. All indexes should be the same.
     for (int i = 0; i < m_persistentIndexes.size(); ++i) {
         QModelIndex idx = m_persistentIndexes.at(i);
-        QVERIFY(idx == m_nonPersistentIndexes.at(i));
+        QCOMPARE(idx, m_nonPersistentIndexes.at(i));
         QVERIFY(m_model->mapToSource(idx).isValid());
     }
 }
@@ -1859,13 +1855,13 @@ void tst_QAbstractItemModel::testReset()
     resetCommand->doCommand();
 
     // Verify that the correct signals were emitted
-    QVERIFY(beforeResetSpy.size() == 1);
-    QVERIFY(afterResetSpy.size() == 1);
+    QCOMPARE(beforeResetSpy.size(), 1);
+    QCOMPARE(afterResetSpy.size(), 1);
 
     // Verify that the move actually happened.
-    QVERIFY(m_model->rowCount() == 9);
+    QCOMPARE(m_model->rowCount(), 9);
     QModelIndex destIndex = m_model->index(4, 0);
-    QVERIFY(m_model->rowCount(destIndex) == 11);
+    QCOMPARE(m_model->rowCount(destIndex), 11);
 
     // Delete it because its slots test things which are not true after this point.
     delete listener;
@@ -1877,14 +1873,14 @@ void tst_QAbstractItemModel::testReset()
     QCOMPARE(nullProxy->roleNames().value(Qt::UserRole + 1), QByteArray());
 
     nullProxy->setSourceModel(new ModelWithCustomRole(this));
-    QVERIFY(proxyBeforeResetSpy.size() == 1);
-    QVERIFY(proxyAfterResetSpy.size() == 1);
+    QCOMPARE(proxyBeforeResetSpy.size(), 1);
+    QCOMPARE(proxyAfterResetSpy.size(), 1);
 
     QCOMPARE(nullProxy->roleNames().value(Qt::UserRole + 1), QByteArray("custom"));
 
     nullProxy->setSourceModel(m_model);
-    QVERIFY(proxyBeforeResetSpy.size() == 2);
-    QVERIFY(proxyAfterResetSpy.size() == 2);
+    QCOMPARE(proxyBeforeResetSpy.size(), 2);
+    QCOMPARE(proxyAfterResetSpy.size(), 2);
 
     // After being reset the proxy must be queried again.
     QCOMPARE(nullProxy->roleNames().value(Qt::UserRole + 1), QByteArray());
@@ -2055,10 +2051,10 @@ void tst_QAbstractItemModel::testChildrenLayoutsChanged()
         QVERIFY(afterParents.contains(p2));
 
         // The first will be the last, and the lest will be the first.
-        QVERIFY(p1FirstPersistent.row() == 1);
-        QVERIFY(p1LastPersistent.row() == 0);
-        QVERIFY(p2FirstPersistent.row() == 9);
-        QVERIFY(p2LastPersistent.row() == 8);
+        QCOMPARE(p1FirstPersistent.row(), 1);
+        QCOMPARE(p1LastPersistent.row(), 0);
+        QCOMPARE(p2FirstPersistent.row(), 9);
+        QCOMPARE(p2LastPersistent.row(), 8);
     }
 
     insertCommand = new ModelInsertCommand(&model, this);
@@ -2115,8 +2111,8 @@ void tst_QAbstractItemModel::testChildrenLayoutsChanged()
         QCOMPARE(beforeSignal.size(), 2);
         QCOMPARE(afterSignal.size(), 2);
 
-        QVERIFY(p1FirstPersistent.row() == 1);
-        QVERIFY(p1LastPersistent.row() == 0);
+        QCOMPARE(p1FirstPersistent.row(), 1);
+        QCOMPARE(p1LastPersistent.row(), 0);
         QCOMPARE(p2FirstPersistent.row(), 9);
         QCOMPARE(p2LastPersistent.row(), 8);
     }

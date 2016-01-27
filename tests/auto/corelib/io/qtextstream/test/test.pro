@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 TARGET = ../tst_qtextstream
 QT = core network testlib
 SOURCES = ../tst_qtextstream.cpp
@@ -20,4 +19,3 @@ TESTDATA += \
     ../qtextstream.qrc \
     ../tst_qtextstream.cpp \
     ../resources
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

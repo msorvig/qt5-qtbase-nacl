@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -510,24 +505,24 @@ void tst_QHash::key()
         QCOMPARE(hash1.key(1, def), def);
 
         hash1.insert("one", 1);
-        QCOMPARE(hash1.key(1), QString("one"));
-        QCOMPARE(hash1.key(1, def), QString("one"));
+        QCOMPARE(hash1.key(1), QLatin1String("one"));
+        QCOMPARE(hash1.key(1, def), QLatin1String("one"));
         QCOMPARE(hash1.key(2), QString());
         QCOMPARE(hash1.key(2, def), def);
 
         hash1.insert("two", 2);
-        QCOMPARE(hash1.key(1), QString("one"));
-        QCOMPARE(hash1.key(1, def), QString("one"));
-        QCOMPARE(hash1.key(2), QString("two"));
-        QCOMPARE(hash1.key(2, def), QString("two"));
+        QCOMPARE(hash1.key(1), QLatin1String("one"));
+        QCOMPARE(hash1.key(1, def), QLatin1String("one"));
+        QCOMPARE(hash1.key(2), QLatin1String("two"));
+        QCOMPARE(hash1.key(2, def), QLatin1String("two"));
         QCOMPARE(hash1.key(3), QString());
         QCOMPARE(hash1.key(3, def), def);
 
         hash1.insert("deux", 2);
-        QCOMPARE(hash1.key(1), QString("one"));
-        QCOMPARE(hash1.key(1, def), QString("one"));
-        QVERIFY(hash1.key(2) == "deux" || hash1.key(2) == "two");
-        QVERIFY(hash1.key(2, def) == "deux" || hash1.key(2, def) == "two");
+        QCOMPARE(hash1.key(1), QLatin1String("one"));
+        QCOMPARE(hash1.key(1, def), QLatin1String("one"));
+        QVERIFY(hash1.key(2) == QLatin1String("deux") || hash1.key(2) == QLatin1String("two"));
+        QVERIFY(hash1.key(2, def) == QLatin1String("deux") || hash1.key(2, def) == QLatin1String("two"));
         QCOMPARE(hash1.key(3), QString());
         QCOMPARE(hash1.key(3, def), def);
     }
@@ -628,8 +623,8 @@ void tst_QHash::find()
     map1.insert(1,"Mayer");
     map1.insert(2,"Hej");
 
-    QVERIFY(map1.find(1).value() == "Mayer");
-    QVERIFY(map1.find(2).value() == "Hej");
+    QCOMPARE(map1.find(1).value(), QLatin1String("Mayer"));
+    QCOMPARE(map1.find(2).value(), QLatin1String("Hej"));
 
     for(i = 3; i < 10; ++i) {
         compareString = testString.arg(i);
@@ -661,8 +656,8 @@ void tst_QHash::constFind()
     map1.insert(1,"Mayer");
     map1.insert(2,"Hej");
 
-    QVERIFY(map1.constFind(1).value() == "Mayer");
-    QVERIFY(map1.constFind(2).value() == "Hej");
+    QCOMPARE(map1.constFind(1).value(), QLatin1String("Mayer"));
+    QCOMPARE(map1.constFind(2).value(), QLatin1String("Hej"));
 
     for(i = 3; i < 10; ++i) {
         compareString = testString.arg(i);
@@ -706,7 +701,7 @@ void tst_QHash::take()
     map.insert(2, "zwei");
     map.insert(3, "drei");
 
-    QVERIFY(map.take(3) == "drei");
+    QCOMPARE(map.take(3), QLatin1String("drei"));
     QVERIFY(!map.contains(3));
 }
 

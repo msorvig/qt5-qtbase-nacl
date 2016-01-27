@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -258,6 +264,21 @@ QModelIndex QFileSystemModel::index(int row, int column, const QModelIndex &pare
 }
 
 /*!
+    \reimp
+*/
+QModelIndex QFileSystemModel::sibling(int row, int column, const QModelIndex &idx) const
+{
+    if (row == idx.row() && column < QFileSystemModelPrivate::NumColumns) {
+        // cheap sibling operation: just adjust the column:
+        return createIndex(row, column, idx.internalPointer());
+    } else {
+        // for anything else: call the default implementation
+        // (this could probably be optimized, too):
+        return QAbstractItemModel::sibling(row, column, idx);
+    }
+}
+
+/*!
     \overload
 
     Returns the model item index for the given \a path and \a column.
@@ -451,11 +472,8 @@ QFileSystemModelPrivate::QFileSystemNode *QFileSystemModelPrivate::node(const QS
                 p->bypassFilters[node] = 1;
             QString dir = q->filePath(this->index(parent));
             if (!node->hasInformation() && fetch) {
-                Fetching f;
-                f.dir = dir;
-                f.file = element;
-                f.node = node;
-                p->toFetch.append(f);
+                Fetching f = { std::move(dir), std::move(element), node };
+                p->toFetch.append(std::move(f));
                 p->fetchingTimer.start(0, const_cast<QFileSystemModel*>(q));
             }
         }
@@ -1548,10 +1566,9 @@ void QFileSystemModel::setNameFilters(const QStringList &filters)
         d->bypassFilters.clear();
         // We guarantee that rootPath will stick around
         QPersistentModelIndex root(index(rootPath()));
-        QModelIndexList persistantList = persistentIndexList();
-        for (int i = 0; i < persistantList.count(); ++i) {
-            QFileSystemModelPrivate::QFileSystemNode *node;
-            node = d->node(persistantList.at(i));
+        const QModelIndexList persistentList = persistentIndexList();
+        for (const auto &persistentIndex : persistentList) {
+            QFileSystemModelPrivate::QFileSystemNode *node = d->node(persistentIndex);
             while (node) {
                 if (d->bypassFilters.contains(node))
                     break;
@@ -1565,9 +1582,8 @@ void QFileSystemModel::setNameFilters(const QStringList &filters)
     d->nameFilters.clear();
     const Qt::CaseSensitivity caseSensitive =
         (filter() & QDir::CaseSensitive) ? Qt::CaseSensitive : Qt::CaseInsensitive;
-    for (int i = 0; i < filters.size(); ++i) {
-        d->nameFilters << QRegExp(filters.at(i), caseSensitive, QRegExp::Wildcard);
-    }
+    for (const auto &filter : filters)
+        d->nameFilters << QRegExp(filter, caseSensitive, QRegExp::Wildcard);
     d->forceSort = true;
     d->delayedSort();
 #endif
@@ -1723,9 +1739,9 @@ void QFileSystemModelPrivate::addVisibleFiles(QFileSystemNode *parentNode, const
     if (parentNode->dirtyChildrenIndex == -1)
         parentNode->dirtyChildrenIndex = parentNode->visibleChildren.count();
 
-    for (int i = 0; i < newFiles.count(); ++i) {
-        parentNode->visibleChildren.append(newFiles.at(i));
-        parentNode->children.value(newFiles.at(i))->isVisible = true;
+    for (const auto &newFile : newFiles) {
+        parentNode->visibleChildren.append(newFile);
+        parentNode->children.value(newFile)->isVisible = true;
     }
     if (!indexHidden)
       q->endInsertRows();
@@ -1768,10 +1784,10 @@ void QFileSystemModelPrivate::_q_fileSystemChanged(const QString &path, const QV
     QStringList newFiles;
     QFileSystemModelPrivate::QFileSystemNode *parentNode = node(path, false);
     QModelIndex parentIndex = index(parentNode);
-    for (int i = 0; i < updates.count(); ++i) {
-        QString fileName = updates.at(i).first;
+    for (const auto &update : updates) {
+        QString fileName = update.first;
         Q_ASSERT(!fileName.isEmpty());
-        QExtendedInformation info = fileInfoGatherer.getInfo(updates.at(i).second);
+        QExtendedInformation info = fileInfoGatherer.getInfo(update.second);
         bool previouslyHere = parentNode->children.contains(fileName);
         if (!previouslyHere) {
             addNode(parentNode, fileName, info.fileInfo());
@@ -1956,8 +1972,8 @@ bool QFileSystemModelPrivate::passNameFilters(const QFileSystemNode *node) const
 
     // Check the name regularexpression filters
     if (!(node->isDir() && (filters & QDir::AllDirs))) {
-        for (int i = 0; i < nameFilters.size(); ++i) {
-            QRegExp copy = nameFilters.at(i);
+        for (const auto &nameFilter : nameFilters) {
+            QRegExp copy = nameFilter;
             if (copy.exactMatch(node->fileName))
                 return true;
         }

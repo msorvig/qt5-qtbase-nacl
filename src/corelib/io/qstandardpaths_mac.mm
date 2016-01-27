@@ -1,37 +1,46 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
 #include "qstandardpaths.h"
+
+#ifndef QT_NO_STANDARDPATHS
+
 #include <qdir.h>
 #include <qurl.h>
 #include <private/qcore_mac_p.h>
@@ -40,61 +49,45 @@
 #include <qcoreapplication.h>
 #endif
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <ApplicationServices/ApplicationServices.h>
+#import <Foundation/Foundation.h>
 
 QT_BEGIN_NAMESPACE
 
-/*
-    Translates a QStandardPaths::StandardLocation into the mac equivalent.
-*/
-OSType translateLocation(QStandardPaths::StandardLocation type)
+static QString pathForDirectory(NSSearchPathDirectory directory,
+                                NSSearchPathDomainMask mask)
+{
+    return QString::fromNSString(
+        [NSSearchPathForDirectoriesInDomains(directory, mask, YES) lastObject]);
+}
+
+static NSSearchPathDirectory searchPathDirectory(QStandardPaths::StandardLocation type)
 {
     switch (type) {
-    case QStandardPaths::ConfigLocation:
-    case QStandardPaths::GenericConfigLocation:
-    case QStandardPaths::AppConfigLocation:
-        return kPreferencesFolderType;
     case QStandardPaths::DesktopLocation:
-        return kDesktopFolderType;
+        return NSDesktopDirectory;
     case QStandardPaths::DocumentsLocation:
-        return kDocumentsFolderType;
-    case QStandardPaths::FontsLocation:
-        // There are at least two different font directories on the mac: /Library/Fonts and ~/Library/Fonts.
-        // To select a specific one we have to specify a different first parameter when calling FSFindFolder.
-        return kFontsFolderType;
+        return NSDocumentDirectory;
     case QStandardPaths::ApplicationsLocation:
-        return kApplicationsFolderType;
+        return NSApplicationDirectory;
     case QStandardPaths::MusicLocation:
-        return kMusicDocumentsFolderType;
+        return NSMusicDirectory;
     case QStandardPaths::MoviesLocation:
-        return kMovieDocumentsFolderType;
+        return NSMoviesDirectory;
     case QStandardPaths::PicturesLocation:
-        return kPictureDocumentsFolderType;
-    case QStandardPaths::TempLocation:
-        return kTemporaryFolderType;
+        return NSPicturesDirectory;
     case QStandardPaths::GenericDataLocation:
     case QStandardPaths::RuntimeLocation:
     case QStandardPaths::AppDataLocation:
     case QStandardPaths::AppLocalDataLocation:
-        return kApplicationSupportFolderType;
+        return NSApplicationSupportDirectory;
     case QStandardPaths::GenericCacheLocation:
     case QStandardPaths::CacheLocation:
-        return kCachedDataFolderType;
+        return NSCachesDirectory;
+    case QStandardPaths::DownloadLocation:
+        return NSDownloadsDirectory;
     default:
-        return kDesktopFolderType;
+        return (NSSearchPathDirectory)0;
     }
-}
-
-/*
-    Constructs a full unicode path from a FSRef.
-*/
-static QString getFullPath(const FSRef &ref)
-{
-    QByteArray ba(2048, 0);
-    if (FSRefMakePath(&ref, reinterpret_cast<UInt8 *>(ba.data()), ba.size()) == noErr)
-        return QString::fromUtf8(ba.constData()).normalized(QString::NormalizationForm_C);
-    return QString();
 }
 
 static void appendOrganizationAndApp(QString &path)
@@ -111,28 +104,65 @@ static void appendOrganizationAndApp(QString &path)
 #endif
 }
 
-static QString macLocation(QStandardPaths::StandardLocation type, short domain)
+static QString baseWritableLocation(QStandardPaths::StandardLocation type,
+                                    NSSearchPathDomainMask mask = NSUserDomainMask,
+                                    bool appendOrgAndApp = false)
 {
-    // https://developer.apple.com/library/mac/documentation/Cocoa/Reference/Foundation/Classes/NSFileManager_Class/index.html
-    if (type == QStandardPaths::DownloadLocation) {
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        NSURL *url = [fileManager URLForDirectory:NSDownloadsDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:nil];
-        if (!url)
-            return QString();
-        return QString::fromNSString([url path]);
+    QString path;
+    const NSSearchPathDirectory dir = searchPathDirectory(type);
+    switch (type) {
+    case QStandardPaths::HomeLocation:
+        path = QDir::homePath();
+        break;
+    case QStandardPaths::TempLocation:
+        path = QDir::tempPath();
+        break;
+#ifdef Q_OS_IOS
+    // These locations point to non-existing write-protected paths. Use sensible fallbacks.
+    case QStandardPaths::MusicLocation:
+        path = pathForDirectory(NSDocumentDirectory, mask) + QLatin1String("/Music");
+        break;
+    case QStandardPaths::MoviesLocation:
+        path = pathForDirectory(NSDocumentDirectory, mask) + QLatin1String("/Movies");
+        break;
+    case QStandardPaths::PicturesLocation:
+        path = pathForDirectory(NSDocumentDirectory, mask) + QLatin1String("/Pictures");
+        break;
+    case QStandardPaths::DownloadLocation:
+        path = pathForDirectory(NSDocumentDirectory, mask) + QLatin1String("/Downloads");
+        break;
+    case QStandardPaths::DesktopLocation:
+        path = pathForDirectory(NSDocumentDirectory, mask) + QLatin1String("/Desktop");
+        break;
+    case QStandardPaths::ApplicationsLocation:
+        break;
+#endif
+    case QStandardPaths::FontsLocation:
+        path = pathForDirectory(NSLibraryDirectory, mask) + QLatin1String("/Fonts");
+        break;
+    case QStandardPaths::ConfigLocation:
+    case QStandardPaths::GenericConfigLocation:
+    case QStandardPaths::AppConfigLocation:
+        path = pathForDirectory(NSLibraryDirectory, mask) + QLatin1String("/Preferences");
+        break;
+    default:
+        path = pathForDirectory(dir, mask);
+        break;
     }
 
-    // http://developer.apple.com/documentation/Carbon/Reference/Folder_Manager/Reference/reference.html
-    FSRef ref;
-    OSErr err = FSFindFolder(domain, translateLocation(type), false, &ref);
-    if (err)
-       return QString();
+    if (appendOrgAndApp) {
+        switch (type) {
+        case QStandardPaths::AppDataLocation:
+        case QStandardPaths::AppLocalDataLocation:
+        case QStandardPaths::AppConfigLocation:
+        case QStandardPaths::CacheLocation:
+            appendOrganizationAndApp(path);
+            break;
+        default:
+            break;
+        }
+    }
 
-   QString path = getFullPath(ref);
-
-    if (type == QStandardPaths::AppDataLocation || type == QStandardPaths::AppLocalDataLocation ||
-        type == QStandardPaths::CacheLocation || type == QStandardPaths::AppConfigLocation)
-        appendOrganizationAndApp(path);
     return path;
 }
 
@@ -167,31 +197,32 @@ QString QStandardPaths::writableLocation(StandardLocation type)
         }
     }
 
-    switch (type) {
-    case HomeLocation:
-        return QDir::homePath();
-    case TempLocation:
-        return QDir::tempPath();
-    case GenericDataLocation:
-    case AppDataLocation:
-    case AppLocalDataLocation:
-    case GenericCacheLocation:
-    case CacheLocation:
-    case RuntimeLocation:
-        return macLocation(type, kUserDomain);
-    default:
-        return macLocation(type, kOnAppropriateDisk);
-    }
+    return baseWritableLocation(type, NSUserDomainMask, true);
 }
 
 QStringList QStandardPaths::standardLocations(StandardLocation type)
 {
     QStringList dirs;
 
-    if (type == GenericDataLocation || type == AppDataLocation || type == AppLocalDataLocation || type == GenericCacheLocation || type == CacheLocation) {
-        const QString path = macLocation(type, kOnAppropriateDisk);
-        if (!path.isEmpty())
-            dirs.append(path);
+#ifdef Q_OS_IOS
+    if (type == PicturesLocation)
+        dirs << writableLocation(PicturesLocation) << QLatin1String("assets-library://");
+#endif
+
+    if (type == GenericDataLocation || type == FontsLocation || type == ApplicationsLocation
+            || type == AppDataLocation || type == AppLocalDataLocation
+            || type == GenericCacheLocation || type == CacheLocation) {
+        QList<NSSearchPathDomainMask> masks;
+        masks << NSLocalDomainMask;
+        if (type == FontsLocation || type == GenericCacheLocation)
+            masks << NSSystemDomainMask;
+
+        for (QList<NSSearchPathDomainMask>::const_iterator it = masks.begin();
+             it != masks.end(); ++it) {
+            const QString path = baseWritableLocation(type, *it, true);
+            if (!path.isEmpty() && !dirs.contains(path))
+                dirs.append(path);
+        }
     }
 
     if (type == AppDataLocation || type == AppLocalDataLocation) {
@@ -219,28 +250,41 @@ QStringList QStandardPaths::standardLocations(StandardLocation type)
         }
     }
     const QString localDir = writableLocation(type);
-    dirs.prepend(localDir);
+    if (!localDir.isEmpty())
+        dirs.prepend(localDir);
     return dirs;
 }
 
 #ifndef QT_BOOTSTRAPPED
 QString QStandardPaths::displayName(StandardLocation type)
 {
+    // Use "Home" instead of the user's Unix username
     if (QStandardPaths::HomeLocation == type)
         return QCoreApplication::translate("QStandardPaths", "Home");
 
-    FSRef ref;
-    OSErr err = FSFindFolder(kOnAppropriateDisk, translateLocation(type), false, &ref);
-    if (err)
-        return QString();
+    // The temporary directory returned by the old Carbon APIs is ~/Library/Caches/TemporaryItems,
+    // the display name of which ("TemporaryItems") isn't translated by the system. The standard
+    // temporary directory has no reasonable display name either, so use something more sensible.
+    if (QStandardPaths::TempLocation == type)
+        return QCoreApplication::translate("QStandardPaths", "Temporary Items");
 
-    QCFString displayName;
-    err = LSCopyDisplayNameForRef(&ref, &displayName);
-    if (err)
-        return QString();
+    // standardLocations() may return an empty list on some platforms
+    if (QStandardPaths::ApplicationsLocation == type)
+        return QCoreApplication::translate("QStandardPaths", "Applications");
 
-    return static_cast<QString>(displayName);
+    if (QCFType<CFURLRef> url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault,
+            standardLocations(type).first().toCFString(),
+            kCFURLPOSIXPathStyle, true)) {
+        QCFString name;
+        CFURLCopyResourcePropertyForKey(url, kCFURLLocalizedNameKey, &name, NULL);
+        if (name && CFStringGetLength(name))
+            return QString::fromCFString(name);
+    }
+
+    return QFileInfo(baseWritableLocation(type)).fileName();
 }
 #endif
 
 QT_END_NAMESPACE
+
+#endif // QT_NO_STANDARDPATHS

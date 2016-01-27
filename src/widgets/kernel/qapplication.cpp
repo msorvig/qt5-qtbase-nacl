@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -65,6 +71,7 @@
 #include <QtGui/qstylehints.h>
 #include <QtGui/qinputmethod.h>
 #include <QtGui/private/qwindow_p.h>
+#include <QtGui/qtouchdevice.h>
 #include <qpa/qplatformtheme.h>
 #ifndef QT_NO_WHATSTHIS
 #include <QtWidgets/QWhatsThis>
@@ -1126,9 +1133,9 @@ QStyle *QApplication::style()
         QStyle *&app_style = QApplicationPrivate::app_style;
         app_style = QStyleFactory::create(style);
         if (!app_style) {
-            QStringList styles = QStyleFactory::keys();
-            for (int i = 0; i < styles.size(); ++i) {
-                if ((app_style = QStyleFactory::create(styles.at(i))))
+            const QStringList styles = QStyleFactory::keys();
+            for (const auto &style : styles) {
+                if ((app_style = QStyleFactory::create(style)))
                     break;
             }
         }
@@ -1369,7 +1376,7 @@ int QApplication::colorSpec()
 
 void QApplication::setColorSpec(int spec)
 {
-    if (qApp)
+    if (Q_UNLIKELY(qApp))
         qWarning("QApplication::setColorSpec: This function must be "
                  "called before the QApplication object is created");
     QApplicationPrivate::app_cspec = spec;
@@ -1743,8 +1750,7 @@ void QApplicationPrivate::notifyWindowIconChanged()
     QWindowList windowList = QGuiApplication::topLevelWindows();
 
     // send to all top-level QWidgets
-    for (int i = 0; i < list.size(); ++i) {
-        QWidget *w = list.at(i);
+    for (auto *w : list) {
         windowList.removeOne(w->windowHandle());
         QCoreApplication::sendEvent(w, &ev);
     }
@@ -1906,9 +1912,9 @@ bool QApplicationPrivate::tryCloseAllWidgetWindows(QWindowList *processedWindows
             processedWindows->append(window);
     }
 
-    QWidgetList list = QApplication::topLevelWidgets();
-    for (int i = 0; i < list.size(); ++i) {
-        QWidget *w = list.at(i);
+retry:
+    const QWidgetList list = QApplication::topLevelWidgets();
+    for (auto *w : list) {
         if (w->isVisible() && w->windowType() != Qt::Desktop &&
                 !w->testAttribute(Qt::WA_DontShowOnScreen) && !w->data->is_closing) {
             QWindow *window = w->windowHandle();
@@ -1916,8 +1922,7 @@ bool QApplicationPrivate::tryCloseAllWidgetWindows(QWindowList *processedWindows
                 return false;
             if (window)
                 processedWindows->append(window);
-            list = QApplication::topLevelWidgets();
-            i = -1;
+            goto retry;
         }
     }
     return true;
@@ -1996,9 +2001,8 @@ bool QApplication::event(QEvent *e)
         ce->accept();
         closeAllWindows();
 
-        QWidgetList list = topLevelWidgets();
-        for (int i = 0; i < list.size(); ++i) {
-            QWidget *w = list.at(i);
+        const QWidgetList list = topLevelWidgets();
+        for (auto *w : list) {
             if (w->isVisible() && !(w->windowType() == Qt::Desktop) && !(w->windowType() == Qt::Popup) &&
                  (!(w->windowType() == Qt::Dialog) || !w->parentWidget())) {
                 ce->ignore();
@@ -2012,9 +2016,8 @@ bool QApplication::event(QEvent *e)
     } else if (e->type() == QEvent::LocaleChange) {
         // on Windows the event propagation is taken care by the
         // WM_SETTINGCHANGE event handler.
-        QWidgetList list = topLevelWidgets();
-        for (int i = 0; i < list.size(); ++i) {
-            QWidget *w = list.at(i);
+        const QWidgetList list = topLevelWidgets();
+        for (auto *w : list) {
             if (!(w->windowType() == Qt::Desktop)) {
                 if (!w->testAttribute(Qt::WA_SetLocale))
                     w->d_func()->setLocale_helper(QLocale(), true);
@@ -2058,9 +2061,8 @@ bool QApplication::event(QEvent *e)
     }
 
     if(e->type() == QEvent::LanguageChange) {
-        QWidgetList list = topLevelWidgets();
-        for (int i = 0; i < list.size(); ++i) {
-            QWidget *w = list.at(i);
+        const QWidgetList list = topLevelWidgets();
+        for (auto *w : list) {
             if (!(w->windowType() == Qt::Desktop))
                 postEvent(w, new QEvent(QEvent::LanguageChange));
         }
@@ -2086,8 +2088,7 @@ void QApplicationPrivate::notifyLayoutDirectionChange()
     QWindowList windowList = QGuiApplication::topLevelWindows();
 
     // send to all top-level QWidgets
-    for (int i = 0; i < list.size(); ++i) {
-        QWidget *w = list.at(i);
+    for (auto *w : list) {
         windowList.removeAll(w->windowHandle());
         QEvent ev(QEvent::ApplicationLayoutDirectionChange);
         QCoreApplication::sendEvent(w, &ev);
@@ -2138,9 +2139,8 @@ void QApplication::setActiveWindow(QWidget* act)
 
     if (QApplicationPrivate::active_window) {
         if (style()->styleHint(QStyle::SH_Widget_ShareActivation, 0, QApplicationPrivate::active_window)) {
-            QWidgetList list = topLevelWidgets();
-            for (int i = 0; i < list.size(); ++i) {
-                QWidget *w = list.at(i);
+            const QWidgetList list = topLevelWidgets();
+            for (auto *w : list) {
                 if (w->isVisible() && w->isActiveWindow())
                     toBeDeactivated.append(w);
             }
@@ -2161,9 +2161,8 @@ void QApplication::setActiveWindow(QWidget* act)
 
     if (QApplicationPrivate::active_window) {
         if (style()->styleHint(QStyle::SH_Widget_ShareActivation, 0, QApplicationPrivate::active_window)) {
-            QWidgetList list = topLevelWidgets();
-            for (int i = 0; i < list.size(); ++i) {
-                QWidget *w = list.at(i);
+            const QWidgetList list = topLevelWidgets();
+            for (auto *w : list) {
                 if (w->isVisible() && w->isActiveWindow())
                     toBeActivated.append(w);
             }
@@ -2321,7 +2320,6 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave, con
     return;
 #endif
 
-    QWidget* w ;
     if ((!enter && !leave) || (enter == leave))
         return;
 #ifdef ALIEN_DEBUG
@@ -2332,25 +2330,25 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave, con
 
     bool sameWindow = leave && enter && leave->window() == enter->window();
     if (leave && !sameWindow) {
-        w = leave;
+        auto *w = leave;
         do {
             leaveList.append(w);
         } while (!w->isWindow() && (w = w->parentWidget()));
     }
     if (enter && !sameWindow) {
-        w = enter;
+        auto *w = enter;
         do {
-            enterList.prepend(w);
+            enterList.append(w);
         } while (!w->isWindow() && (w = w->parentWidget()));
     }
     if (sameWindow) {
         int enterDepth = 0;
         int leaveDepth = 0;
-        w = enter;
-        while (!w->isWindow() && (w = w->parentWidget()))
+        auto *e = enter;
+        while (!e->isWindow() && (e = e->parentWidget()))
             enterDepth++;
-        w = leave;
-        while (!w->isWindow() && (w = w->parentWidget()))
+        auto *l = leave;
+        while (!l->isWindow() && (l = l->parentWidget()))
             leaveDepth++;
         QWidget* wenter = enter;
         QWidget* wleave = leave;
@@ -2367,21 +2365,16 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave, con
             wleave = wleave->parentWidget();
         }
 
-        w = leave;
-        while (w != wleave) {
+        for (auto *w = leave; w != wleave; w = w->parentWidget())
             leaveList.append(w);
-            w = w->parentWidget();
-        }
-        w = enter;
-        while (w != wenter) {
-            enterList.prepend(w);
-            w = w->parentWidget();
-        }
+
+        for (auto *w = enter; w != wenter; w = w->parentWidget())
+            enterList.append(w);
     }
 
     QEvent leaveEvent(QEvent::Leave);
     for (int i = 0; i < leaveList.size(); ++i) {
-        w = leaveList.at(i);
+        auto *w = leaveList.at(i);
         if (!QApplication::activeModalWidget() || QApplicationPrivate::tryModalHelper(w, 0)) {
             QApplication::sendEvent(w, &leaveEvent);
             if (w->testAttribute(Qt::WA_Hover) &&
@@ -2398,9 +2391,9 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave, con
         const QPoint globalPos = qIsInf(globalPosF.x())
             ? QPoint(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
             : globalPosF.toPoint();
-        const QPoint windowPos = enterList.front()->window()->mapFromGlobal(globalPos);
-        for (int i = 0; i < enterList.size(); ++i) {
-            w = enterList.at(i);
+        const QPoint windowPos = enterList.back()->window()->mapFromGlobal(globalPos);
+        for (auto it = enterList.crbegin(), end = enterList.crend(); it != end; ++it) {
+            auto *w = *it;
             if (!QApplication::activeModalWidget() || QApplicationPrivate::tryModalHelper(w, 0)) {
                 const QPointF localPos = w->mapFromGlobal(globalPos);
                 QEnterEvent enterEvent(localPos, windowPos, globalPosF);
@@ -2423,7 +2416,7 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave, con
     // This is not required on Windows as the cursor is reset on every single mouse move.
     QWidget *parentOfLeavingCursor = 0;
     for (int i = 0; i < leaveList.size(); ++i) {
-        w = leaveList.at(i);
+        auto *w = leaveList.at(i);
         if (!isAlien(w))
             break;
         if (w->testAttribute(Qt::WA_SetCursor)) {
@@ -2488,7 +2481,7 @@ bool QApplicationPrivate::isBlockedByModal(QWidget *widget)
 bool QApplicationPrivate::isWindowBlocked(QWindow *window, QWindow **blockingWindow) const
 {
     QWindow *unused = 0;
-    if (!window) {
+    if (Q_UNLIKELY(!window)) {
         qWarning().nospace() << "window == 0 passed.";
         return false;
     }
@@ -3010,7 +3003,7 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
     if (QApplicationPrivate::is_app_closing)
         return true;
 
-    if (receiver == 0) {                        // serious error
+    if (Q_UNLIKELY(!receiver)) {                        // serious error
         qWarning("QApplication::notify: Unexpected null receiver");
         return true;
     }
@@ -3259,7 +3252,7 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
                         QObject *obj = d->extraData->eventFilters.at(i);
                         if (!obj)
                             continue;
-                        if (obj->d_func()->threadData != w->d_func()->threadData) {
+                        if (Q_UNLIKELY(obj->d_func()->threadData != w->d_func()->threadData)) {
                             qWarning("QApplication: Object event filter cannot be in a different thread.");
                             continue;
                         }
@@ -4131,7 +4124,7 @@ bool QApplication::isEffectEnabled(Qt::UIEffect effect)
 */
 void QApplication::beep()
 {
-    QMetaObject::invokeMethod(QGuiApplication::platformNativeInterface(), "beep");
+    QGuiApplicationPrivate::platformIntegration()->beep();
 }
 
 /*!

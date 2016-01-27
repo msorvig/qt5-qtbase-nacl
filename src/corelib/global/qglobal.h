@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2014 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -686,6 +692,15 @@ Q_CORE_EXPORT bool qSharedBuild() Q_DECL_NOTHROW;
 #  define qUtf8Printable(string) QString(string).toUtf8().constData()
 #endif
 
+/*
+    Wrap QString::utf16() with enough casts to allow passing it
+    to QString::asprintf("%ls") without warnings.
+*/
+#ifndef qUtf16Printable
+#  define qUtf16Printable(string) \
+    static_cast<const wchar_t*>(static_cast<const void*>(QString(string).utf16()))
+#endif
+
 class QString;
 Q_CORE_EXPORT QString qt_error_string(int errorCode = -1);
 
@@ -744,7 +759,7 @@ Q_CORE_EXPORT void qt_check_pointer(const char *, int);
 Q_CORE_EXPORT void qBadAlloc();
 
 #ifdef QT_NO_EXCEPTIONS
-#  if defined(QT_NO_DEBUG)
+#  if defined(QT_NO_DEBUG) && !defined(QT_FORCE_ASSERTS)
 #    define Q_CHECK_PTR(p) qt_noop()
 #  else
 #    define Q_CHECK_PTR(p) do {if(!(p))qt_check_pointer(__FILE__,__LINE__);} while (0)
@@ -914,8 +929,6 @@ QT_WARNING_DISABLE_MSVC(4530) /* C++ exception handler used, but unwind semantic
 #  endif
 #endif
 
-#if defined(Q_COMPILER_DECLTYPE) || defined(Q_CC_GNU)
-/* make use of decltype or GCC's __typeof__ extension */
 template <typename T>
 class QForeachContainer {
     QForeachContainer &operator=(const QForeachContainer &) Q_DECL_EQ_DELETE;
@@ -926,17 +939,6 @@ public:
     int control;
 };
 
-// We need to use __typeof__ if we don't have decltype or if the compiler
-// hasn't been updated to the fix of Core Language Defect Report 382
-// (http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#382).
-// GCC 4.3 and 4.4 have support for decltype, but are affected by DR 382.
-#  if defined(Q_COMPILER_DECLTYPE) && \
-    (defined(Q_CC_CLANG) || defined(Q_CC_INTEL) || !defined(Q_CC_GNU) || Q_CC_GNU >= 405)
-#    define QT_FOREACH_DECLTYPE(x) typename QtPrivate::remove_reference<decltype(x)>::type
-#  else
-#    define QT_FOREACH_DECLTYPE(x) __typeof__((x))
-#  endif
-
 // Explanation of the control word:
 //  - it's initialized to 1
 //  - that means both the inner and outer loops start
@@ -946,60 +948,11 @@ public:
 //    the outer loop to continue executing
 //  - if there was a break inside the inner loop, it will exit with control still
 //    set to 1; in that case, the outer loop will invert it to 0 and will exit too
-#  define Q_FOREACH(variable, container)                                \
-for (QForeachContainer<QT_FOREACH_DECLTYPE(container)> _container_((container)); \
+#define Q_FOREACH(variable, container)                                \
+for (QForeachContainer<typename QtPrivate::remove_reference<decltype(container)>::type> _container_((container)); \
      _container_.control && _container_.i != _container_.e;         \
      ++_container_.i, _container_.control ^= 1)                     \
     for (variable = *_container_.i; _container_.control; _container_.control = 0)
-
-#else
-
-struct QForeachContainerBase {};
-
-template <typename T>
-class QForeachContainer : public QForeachContainerBase {
-    QForeachContainer &operator=(const QForeachContainer &) Q_DECL_EQ_DELETE;
-public:
-    inline QForeachContainer(const T& t): c(t), brk(0), i(c.begin()), e(c.end()){}
-    QForeachContainer(const QForeachContainer &other)
-        : c(other.c), brk(other.brk), i(other.i), e(other.e) {}
-    const T c;
-    mutable int brk;
-    mutable typename T::const_iterator i, e;
-    inline bool condition() const { return (!brk++ && i != e); }
-};
-
-template <typename T> inline T *qForeachPointer(const T &) { return 0; }
-
-template <typename T> inline QForeachContainer<T> qForeachContainerNew(const T& t)
-{ return QForeachContainer<T>(t); }
-
-template <typename T>
-inline const QForeachContainer<T> *qForeachContainer(const QForeachContainerBase *base, const T *)
-{ return static_cast<const QForeachContainer<T> *>(base); }
-
-#if defined(Q_CC_DIAB)
-// VxWorks DIAB generates unresolvable symbols, if container is a function call
-#  define Q_FOREACH(variable,container)                                                             \
-    if(0){}else                                                                                     \
-    for (const QForeachContainerBase &_container_ = qForeachContainerNew(container);                \
-         qForeachContainer(&_container_, (__typeof__(container) *) 0)->condition();       \
-         ++qForeachContainer(&_container_, (__typeof__(container) *) 0)->i)               \
-        for (variable = *qForeachContainer(&_container_, (__typeof__(container) *) 0)->i; \
-             qForeachContainer(&_container_, (__typeof__(container) *) 0)->brk;           \
-             --qForeachContainer(&_container_, (__typeof__(container) *) 0)->brk)
-
-#else
-#  define Q_FOREACH(variable, container) \
-    for (const QForeachContainerBase &_container_ = qForeachContainerNew(container); \
-         qForeachContainer(&_container_, true ? 0 : qForeachPointer(container))->condition();       \
-         ++qForeachContainer(&_container_, true ? 0 : qForeachPointer(container))->i)               \
-        for (variable = *qForeachContainer(&_container_, true ? 0 : qForeachPointer(container))->i; \
-             qForeachContainer(&_container_, true ? 0 : qForeachPointer(container))->brk;           \
-             --qForeachContainer(&_container_, true ? 0 : qForeachPointer(container))->brk)
-#endif // MSVC6 || MIPSpro
-
-#endif
 
 #define Q_FOREVER for(;;)
 #ifndef QT_NO_KEYWORDS
@@ -1098,7 +1051,16 @@ template <typename T> struct QEnableIf<true, T> { typedef T Type; };
 
 template <bool B, typename T, typename F> struct QConditional { typedef T Type; };
 template <typename T, typename F> struct QConditional<false, T, F> { typedef F Type; };
+
+template <typename T> struct QAddConst { typedef const T Type; };
 }
+
+// this adds const to non-const objects (like std::as_const)
+template <typename T>
+Q_DECL_CONSTEXPR typename QtPrivate::QAddConst<T>::Type &qAsConst(T &t) Q_DECL_NOTHROW { return t; }
+// prevent rvalue arguments:
+template <typename T>
+void qAsConst(const T &&) Q_DECL_EQ_DELETE;
 
 QT_END_NAMESPACE
 

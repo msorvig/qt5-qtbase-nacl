@@ -7,4 +7,3 @@ contains(QT_CONFIG, c++11): CONFIG += c++11
 contains(QT_CONFIG, c++14): CONFIG += c++14
 
 
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

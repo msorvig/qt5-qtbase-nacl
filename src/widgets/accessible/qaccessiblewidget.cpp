@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -53,10 +59,9 @@ QT_BEGIN_NAMESPACE
 
 static QList<QWidget*> childWidgets(const QWidget *widget)
 {
-    QList<QObject*> list = widget->children();
     QList<QWidget*> widgets;
-    for (int i = 0; i < list.size(); ++i) {
-        QWidget *w = qobject_cast<QWidget *>(list.at(i));
+    for (QObject *o : widget->children()) {
+        QWidget *w = qobject_cast<QWidget *>(o);
         if (w && !w->isWindow()
             && !qobject_cast<QFocusFrame*>(w)
 #if !defined(QT_NO_MENU)
@@ -77,9 +82,8 @@ static QString buddyString(const QWidget *widget)
     if (!parent)
         return QString();
 #ifndef QT_NO_SHORTCUT
-    QObjectList ol = parent->children();
-    for (int i = 0; i < ol.size(); ++i) {
-        QLabel *label = qobject_cast<QLabel*>(ol.at(i));
+    for (QObject *o : parent->children()) {
+        QLabel *label = qobject_cast<QLabel*>(o);
         if (label && label->buddy() == widget)
             return label->text();
     }
@@ -274,7 +278,7 @@ public:
 void QAccessibleWidget::addControllingSignal(const QString &signal)
 {
     QByteArray s = QMetaObject::normalizedSignature(signal.toLatin1());
-    if (object()->metaObject()->indexOfSignal(s) < 0)
+    if (Q_UNLIKELY(object()->metaObject()->indexOfSignal(s) < 0))
         qWarning("Signal %s unknown in %s", s.constData(), object()->metaObject()->className());
     d->primarySignals << QLatin1String(s);
 }
@@ -302,8 +306,8 @@ QAccessibleWidget::relations(QAccessible::Relation match /*= QAccessible::AllRel
             // ideally we would go through all objects and check, but that
             // will be too expensive
             const QList<QWidget*> kids = childWidgets(parent);
-            for (int i = 0; i < kids.count(); ++i) {
-                if (QLabel *labelSibling = qobject_cast<QLabel*>(kids.at(i))) {
+            for (QWidget *kid : kids) {
+                if (QLabel *labelSibling = qobject_cast<QLabel*>(kid)) {
                     if (labelSibling->buddy() == widget()) {
                         QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(labelSibling);
                         rels.append(qMakePair(iface, rel));

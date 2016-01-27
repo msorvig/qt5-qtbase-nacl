@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1885,13 +1881,15 @@ void tst_QDateTime::operator_insert_extract_data()
     const int thisVersion = tmpDataStream.version();
     for (int version = QDataStream::Qt_1_0; version <= thisVersion; ++version) {
         const QDataStream::Version dataStreamVersion = static_cast<QDataStream::Version>(version);
-        QTest::newRow(QString::fromLatin1("v%1 WA => HAWAII %2").arg(dataStreamVersion).arg(positiveYear.toString()).toLocal8Bit().constData())
+        const QByteArray vN = QByteArray::number(dataStreamVersion);
+        const QByteArray pY = positiveYear.toString().toLatin1();
+        QTest::newRow(('v' + vN + " WA => HAWAII " + pY).constData())
             << positiveYear << westernAustralia << hawaii << dataStreamVersion;
-        QTest::newRow(QString::fromLatin1("v%1 WA => WA %2").arg(dataStreamVersion).arg(positiveYear.toString()).toLocal8Bit().constData())
+        QTest::newRow(('v' + vN + " WA => WA " + pY).constData())
             << positiveYear << westernAustralia << westernAustralia << dataStreamVersion;
-        QTest::newRow(QString::fromLatin1("v%1 HAWAII => WA %2").arg(dataStreamVersion).arg(negativeYear.toString()).toLocal8Bit().constData())
+        QTest::newRow(('v' + vN + " HAWAII => WA " + negativeYear.toString().toLatin1()).constData())
             << negativeYear << hawaii << westernAustralia << dataStreamVersion;
-        QTest::newRow(QString::fromLatin1("v%1 HAWAII => HAWAII %2").arg(dataStreamVersion).arg(positiveYear.toString()).toLocal8Bit().constData())
+        QTest::newRow(('v' + vN + " HAWAII => HAWAII " + pY).constData())
             << positiveYear << hawaii << hawaii << dataStreamVersion;
     }
 }
@@ -2290,11 +2288,11 @@ void tst_QDateTime::fromStringStringFormat_data()
     QTest::newRow("data9") << QString("101010") << QString("dMyy") << QDateTime(QDate(1910, 10, 10), QTime());
     QTest::newRow("data10") << QString("101010") << QString("dMyy") << QDateTime(QDate(1910, 10, 10), QTime());
     QTest::newRow("data11") << date << QString("dd MMM yy") << QDateTime(QDate(1910, 10, 10), QTime());
-    date = fri + " " + december + " 3 2004";
+    date = fri + QLatin1Char(' ') + december + " 3 2004";
     QTest::newRow("data12") << date << QString("ddd MMMM d yyyy") << QDateTime(QDate(2004, 12, 3), QTime());
     QTest::newRow("data13") << QString("30.02.2004") << QString("dd.MM.yyyy") << invalidDateTime();
     QTest::newRow("data14") << QString("32.01.2004") << QString("dd.MM.yyyy") << invalidDateTime();
-    date = thu + " " + january + " 2004";
+    date = thu + QLatin1Char(' ') + january + " 2004";
     QTest::newRow("data15") << date << QString("ddd MMMM yyyy") << QDateTime(QDate(2004, 1, 1), QTime());
     QTest::newRow("data16") << QString("2005-06-28T07:57:30.001Z")
                             << QString("yyyy-MM-ddThh:mm:ss.zZ")

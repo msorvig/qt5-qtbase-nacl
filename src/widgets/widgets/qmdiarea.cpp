@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -161,7 +167,6 @@
 #include <QResizeEvent>
 #include <QScrollBar>
 #include <QtAlgorithms>
-#include <QMutableVectorIterator>
 #include <QPainter>
 #include <QFontMetrics>
 #include <QStyleOption>
@@ -179,7 +184,7 @@ using namespace QMdi;
 // Asserts in debug mode, gives warning otherwise.
 static bool sanityCheck(const QMdiSubWindow * const child, const char *where)
 {
-    if (!child) {
+    if (Q_UNLIKELY(!child)) {
         const char error[] = "null pointer";
         Q_ASSERT_X(false, where, error);
         qWarning("%s:%s", where, error);
@@ -190,13 +195,13 @@ static bool sanityCheck(const QMdiSubWindow * const child, const char *where)
 
 static bool sanityCheck(const QList<QWidget *> &widgets, const int index, const char *where)
 {
-    if (index < 0 || index >= widgets.size()) {
+    if (Q_UNLIKELY(index < 0 || index >= widgets.size())) {
         const char error[] = "index out of range";
         Q_ASSERT_X(false, where, error);
         qWarning("%s:%s", where, error);
         return false;
     }
-    if (!widgets.at(index)) {
+    if (Q_UNLIKELY(!widgets.at(index))) {
         const char error[] = "null pointer";
         Q_ASSERT_X(false, where, error);
         qWarning("%s:%s", where, error);
@@ -380,7 +385,7 @@ void IconTiler::rearrange(QList<QWidget *> &widgets, const QRect &domain) const
         return;
 
     const int n = widgets.size();
-    const int width = widgets.at(0)->width();
+    const int width = qMax(widgets.at(0)->width(), 1);
     const int height = widgets.at(0)->height();
     const int ncols = qMax(domain.width() / width, 1);
     const int nrows = n / ncols + ((n % ncols) ? 1 : 0);
@@ -409,7 +414,7 @@ void IconTiler::rearrange(QList<QWidget *> &widgets, const QRect &domain) const
 int MinOverlapPlacer::accumulatedOverlap(const QRect &source, const QVector<QRect> &rects)
 {
     int accOverlap = 0;
-    foreach (const QRect &rect, rects) {
+    for (const QRect &rect : rects) {
         QRect intersection = source.intersected(rect);
         accOverlap += intersection.width() * intersection.height();
     }
@@ -426,7 +431,7 @@ QRect MinOverlapPlacer::findMinOverlapRect(const QVector<QRect> &source, const Q
 {
     int minAccOverlap = -1;
     QRect minAccOverlapRect;
-    foreach (const QRect &srcRect, source) {
+    for (const QRect &srcRect : source) {
         const int accOverlap = accumulatedOverlap(srcRect, rects);
         if (accOverlap < minAccOverlap || minAccOverlap == -1) {
             minAccOverlap = accOverlap;
@@ -455,7 +460,7 @@ QVector<QRect> MinOverlapPlacer::getCandidatePlacements(const QSize &size, const
     if (domain.bottom() - size.height() + 1 >= 0)
         ylist << domain.bottom() - size.height() + 1;
 
-    foreach (const QRect &rect, rects) {
+    for (const QRect &rect : rects) {
         xlist << rect.right() + 1;
         ylist << rect.bottom() + 1;
     }
@@ -480,17 +485,16 @@ QVector<QRect> MinOverlapPlacer::getCandidatePlacements(const QSize &size, const
 */
 QVector<QRect> MinOverlapPlacer::findNonInsiders(const QRect &domain, QVector<QRect> &source)
 {
-    QVector<QRect> result;
-    result.reserve(source.size());
+    const auto containedInDomain =
+            [domain](const QRect &srcRect) { return domain.contains(srcRect); };
 
-    QMutableVectorIterator<QRect> it(source);
-    while (it.hasNext()) {
-        const QRect srcRect = it.next();
-        if (!domain.contains(srcRect)) {
-            result << srcRect;
-            it.remove();
-        }
-    }
+    const auto firstOut = std::stable_partition(source.begin(), source.end(), containedInDomain);
+
+    QVector<QRect> result;
+    result.reserve(source.end() - firstOut);
+    std::copy(firstOut, source.end(), std::back_inserter(result));
+
+    source.erase(firstOut, source.end());
 
     return result;
 }
@@ -506,13 +510,13 @@ QVector<QRect> MinOverlapPlacer::findMaxOverlappers(const QRect &domain, const Q
     result.reserve(source.size());
 
     int maxOverlap = -1;
-    foreach (const QRect &srcRect, source) {
+    for (const QRect &srcRect : source) {
         QRect intersection = domain.intersected(srcRect);
         const int overlap = intersection.width() * intersection.height();
         if (overlap >= maxOverlap || maxOverlap == -1) {
             if (overlap > maxOverlap) {
                 maxOverlap = overlap;
-                result.clear();
+                result.resize(0);
             }
             result << srcRect;
         }
@@ -551,7 +555,7 @@ QPoint MinOverlapPlacer::place(const QSize &size, const QVector<QRect> &rects,
 {
     if (size.isEmpty() || !domain.isValid())
         return QPoint();
-    foreach (const QRect &rect, rects) {
+    for (const QRect &rect : rects) {
         if (!rect.isValid())
             return QPoint();
     }
@@ -938,7 +942,7 @@ void QMdiAreaPrivate::rearrange(Rearranger *rearranger)
         if (!sanityCheck(child, "QMdiArea::rearrange") || !child->isVisible())
             continue;
         if (rearranger->type() == Rearranger::IconTiler) {
-            if (child->isMinimized() && !child->isShaded() && !(child->windowFlags() & Qt::FramelessWindowHint))
+            if (child->isMinimized() && !child->isShaded())
                 widgets.append(child);
         } else {
             if (child->isMinimized() && !child->isShaded())
@@ -1239,7 +1243,8 @@ void QMdiAreaPrivate::internalRaise(QMdiSubWindow *mdiChild) const
 
     QMdiSubWindow *stackUnderChild = 0;
     if (!windowStaysOnTop(mdiChild)) {
-        foreach (QObject *object, viewport->children()) {
+        const auto children = viewport->children(); // take a copy, as raising/stacking under changes the order
+        for (QObject *object : children) {
             QMdiSubWindow *child = qobject_cast<QMdiSubWindow *>(object);
             if (!child || !childWindows.contains(child))
                 continue;
@@ -1394,7 +1399,7 @@ QMdiAreaPrivate::subWindowList(QMdiArea::WindowOrder order, bool reversed) const
                 list.prepend(child);
         }
     } else if (order == QMdiArea::StackingOrder) {
-        foreach (QObject *object, viewport->children()) {
+        for (QObject *object : viewport->children()) {
             QMdiSubWindow *child = qobject_cast<QMdiSubWindow *>(object);
             if (!child || !childWindows.contains(child))
                 continue;
@@ -1743,7 +1748,7 @@ QSize QMdiArea::sizeHint() const
 
     QSize desktopSize = QApplication::desktop()->size();
     QSize size(desktopSize.width() * 2 / scaleFactor, desktopSize.height() * 2 / scaleFactor);
-    foreach (QMdiSubWindow *child, d_func()->childWindows) {
+    for (QMdiSubWindow *child : d_func()->childWindows) {
         if (!sanityCheck(child, "QMdiArea::sizeHint"))
             continue;
         size = size.expandedTo(child->sizeHint());
@@ -1761,7 +1766,7 @@ QSize QMdiArea::minimumSizeHint() const
                style()->pixelMetric(QStyle::PM_TitleBarHeight, 0, this));
     size = size.expandedTo(QAbstractScrollArea::minimumSizeHint());
     if (!d->scrollBarsEnabled()) {
-        foreach (QMdiSubWindow *child, d->childWindows) {
+        for (QMdiSubWindow *child : d->childWindows) {
             if (!sanityCheck(child, "QMdiArea::sizeHint"))
                 continue;
             size = size.expandedTo(child->minimumSizeHint());
@@ -1831,12 +1836,12 @@ void QMdiArea::setActiveSubWindow(QMdiSubWindow *window)
         return;
     }
 
-    if (d->childWindows.isEmpty()) {
+    if (Q_UNLIKELY(d->childWindows.isEmpty())) {
         qWarning("QMdiArea::setActiveSubWindow: workspace is empty");
         return;
     }
 
-    if (d->childWindows.indexOf(window) == -1) {
+    if (Q_UNLIKELY(d->childWindows.indexOf(window) == -1)) {
         qWarning("QMdiArea::setActiveSubWindow: window is not inside workspace");
         return;
     }
@@ -1960,7 +1965,7 @@ void QMdiArea::activatePreviousSubWindow()
 */
 QMdiSubWindow *QMdiArea::addSubWindow(QWidget *widget, Qt::WindowFlags windowFlags)
 {
-    if (!widget) {
+    if (Q_UNLIKELY(!widget)) {
         qWarning("QMdiArea::addSubWindow: null pointer to widget");
         return 0;
     }
@@ -1972,7 +1977,7 @@ QMdiSubWindow *QMdiArea::addSubWindow(QWidget *widget, Qt::WindowFlags windowFla
 
     // Widget is already a QMdiSubWindow
     if (child) {
-        if (d->childWindows.indexOf(child) != -1) {
+        if (Q_UNLIKELY(d->childWindows.indexOf(child) != -1)) {
             qWarning("QMdiArea::addSubWindow: window is already added");
             return child;
         }
@@ -2003,7 +2008,7 @@ QMdiSubWindow *QMdiArea::addSubWindow(QWidget *widget, Qt::WindowFlags windowFla
 */
 void QMdiArea::removeSubWindow(QWidget *widget)
 {
-    if (!widget) {
+    if (Q_UNLIKELY(!widget)) {
         qWarning("QMdiArea::removeSubWindow: null pointer to widget");
         return;
     }
@@ -2014,7 +2019,7 @@ void QMdiArea::removeSubWindow(QWidget *widget)
 
     if (QMdiSubWindow *child = qobject_cast<QMdiSubWindow *>(widget)) {
         int index = d->childWindows.indexOf(child);
-        if (index == -1) {
+        if (Q_UNLIKELY(index == -1)) {
             qWarning("QMdiArea::removeSubWindow: window is not inside workspace");
             return;
         }
@@ -2038,7 +2043,7 @@ void QMdiArea::removeSubWindow(QWidget *widget)
         }
     }
 
-    if (!found)
+    if (Q_UNLIKELY(!found))
         qWarning("QMdiArea::removeSubWindow: widget is not child of any window inside QMdiArea");
 }
 

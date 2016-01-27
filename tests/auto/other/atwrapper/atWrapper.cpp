@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -149,9 +144,10 @@ void atWrapper::ftpMgetDone( bool error)
     if ( mgetDirList.size() > 1 )
         for ( int i = 1; i < mgetDirList.size(); ++i )
         {
-            file = new QFile( QString( output ) + "/" + mgetDirList.at( 0 ) + "/" + mgetDirList.at( i ) );
+            file = new QFile( QString( output ) + QLatin1Char('/') + mgetDirList.at( 0 )
+                              + QLatin1Char('/') + mgetDirList.at( i ) );
             if (file->open(QIODevice::WriteOnly)) {
-                ftp.get( ftpBaseDir + "/" + mgetDirList.at( 0 ) + "/" + mgetDirList.at( i ), file );
+                ftp.get( ftpBaseDir + QLatin1Char('/') + mgetDirList.at( 0 ) + QLatin1Char('/') + mgetDirList.at( i ), file );
                 ftp.list(); //Only there to fill up a slot in the pendingCommands queue.
                 while ( ftp.hasPendingCommands() )
                     QCoreApplication::instance()->processEvents();
@@ -192,11 +188,11 @@ bool atWrapper::setupFTP()
     QString dir = "";
     ftpMkDir( ftpBaseDir );
 
-    ftpBaseDir += "/" + QLibraryInfo::buildKey();
+    ftpBaseDir += QLatin1Char('/') + QLibraryInfo::buildKey();
 
     ftpMkDir( ftpBaseDir );
 
-    ftpBaseDir += "/" + QString( qVersion() );
+    ftpBaseDir += QLatin1Char('/') + QString( qVersion() );
 
     ftpMkDir( ftpBaseDir );
 
@@ -209,9 +205,9 @@ bool atWrapper::setupFTP()
     {
         i.next();
         //qDebug() << "Creating dir with key:" << i.key();
-        ftpMkDir( ftpBaseDir + "/" +  QString( i.key() ) + ".failed" );
-        ftpMkDir( ftpBaseDir + "/" +  QString( i.key() ) + ".diff" );
-        if (!ftpMkDir( ftpBaseDir + "/" + QString( i.key() ) + ".baseline" ))
+        ftpMkDir( ftpBaseDir + QLatin1Char('/') +  QString( i.key() ) + ".failed" );
+        ftpMkDir( ftpBaseDir + QLatin1Char('/') +  QString( i.key() ) + ".diff" );
+        if (!ftpMkDir( ftpBaseDir + QLatin1Char('/') + QString( i.key() ) + ".baseline" ))
             haveBaseline = false;
     }
 
@@ -226,7 +222,7 @@ bool atWrapper::setupFTP()
     {
         j.next();
         rmDirList.clear();
-        rmDirList << ftpBaseDir + "/" + j.key() + ".failed" + "/";
+        rmDirList << ftpBaseDir + QLatin1Char('/') + j.key() + ".failed/";
         ftpRmDir( j.key() + ".failed" );
         ftp.rmdir( j.key() + ".failed" );
         ftp.mkdir( j.key() + ".failed" );
@@ -236,7 +232,7 @@ bool atWrapper::setupFTP()
             QCoreApplication::instance()->processEvents();
 
         rmDirList.clear();
-        rmDirList << ftpBaseDir + "/" + j.key() + ".diff" + "/";
+        rmDirList << ftpBaseDir + QLatin1Char('/') + j.key() + ".diff/";
         ftpRmDir( j.key() + ".diff" );
         ftp.rmdir( j.key() + ".diff" );
         ftp.mkdir( j.key() + ".diff" );
@@ -396,7 +392,7 @@ void atWrapper::createBaseline()
         for (int n = 0; n < list.size(); n++)
         {
             QFileInfo fileInfo = list.at( n );
-            QFile file( QString( output ) + "/" + i.key() + "/" + fileInfo.fileName() );
+            QFile file( QString( output ) + QLatin1Char('/') + i.key() + QLatin1Char('/') + fileInfo.fileName() );
             file.open( QIODevice::ReadOnly );
             QByteArray fileData = file.readAll();
             //qDebug() << "Sending up:" << fileInfo.fileName() << "with file size" << fileData.size();
@@ -470,9 +466,9 @@ bool atWrapper::diff( QString basedir, QString dir, QString target )
     //Comparing the two specified files, and then uploading them to
     //the ftp server if they differ
 
-    basedir += "/" + dir;
+    basedir += QLatin1Char('/') + dir;
     QString one = basedir + ".baseline/" + target;
-    QString two = basedir + "/" + target;
+    QString two = basedir + QLatin1Char('/') + target;
 
     QFile file( one );
 
@@ -517,7 +513,7 @@ void atWrapper::uploadDiff( QString basedir, QString dir, QString filename )
 
     qDebug() << basedir;
     QImage im1( basedir + ".baseline/" + filename );
-    QImage im2( basedir + "/" + filename );
+    QImage im2( basedir + QLatin1Char('/') + filename );
 
     QImage im3(im1.size(), QImage::Format_ARGB32);
 
@@ -591,16 +587,16 @@ bool atWrapper::loadConfig( QString path )
 
     QDir::current().mkdir( output );
 
-    output += "/" + QLibraryInfo::buildKey();
+    output += QLatin1Char('/') + QLibraryInfo::buildKey();
 
     QDir::current().mkdir( output );
 
-    output += "/" + QString( qVersion() );
+    output += QLatin1Char('/') + QString( qVersion() );
 
     QDir::current().mkdir( output );
 
 
-    ftpBaseDir += "/" + QHostInfo::localHostName().split( "." ).first();
+    ftpBaseDir += QLatin1Char('/') + QHostInfo::localHostName().split( QLatin1Char('.') ).first();
 
 
 /*

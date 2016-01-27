@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -119,7 +114,7 @@ static QByteArray makeCanonical(const QString &filename,
                         if (notation.publicId().isEmpty()) {
                             writeDtd << " SYSTEM \'";
                             writeDtd << notation.systemId().toString();
-                            writeDtd << "\'";
+                            writeDtd << '\'';
                         } else {
                             writeDtd << " PUBLIC \'";
                             writeDtd << notation.publicId().toString();
@@ -127,10 +122,10 @@ static QByteArray makeCanonical(const QString &filename,
                             if (!notation.systemId().isEmpty() ) {
                                 writeDtd << " \'";
                                 writeDtd << notation.systemId().toString();
-                                writeDtd << "\'";
+                                writeDtd << '\'';
                             }
                         }
-                        writeDtd << ">";
+                        writeDtd << '>';
                         writeDtd << endl;
                     }
 
@@ -157,7 +152,7 @@ static QByteArray makeCanonical(const QString &filename,
                                  text.indexOf(QLatin1Char(13), p),
                                  text.indexOf(QLatin1Char(9), p))) >= 0) {
                     writer.writeCharacters(text.mid(p, i - p));
-                    writer.writeEntityReference(QString("#%1").arg(text.at(i).unicode()));
+                    writer.writeEntityReference(QLatin1Char('#') + QString::number(text.at(i).unicode()));
                     p = i + 1;
                 }
                 writer.writeCharacters(text.mid(p));
@@ -357,7 +352,7 @@ public:
             QFile inputFile(inputFilePath);
             if(!inputFile.open(QIODevice::ReadOnly))
             {
-                failures.append(qMakePair(id, QString::fromLatin1("Failed to open input file %1").arg(inputFilePath)));
+                failures.append(qMakePair(id, QLatin1String("Failed to open input file ") + inputFilePath));
                 return true;
             }
 
@@ -365,8 +360,8 @@ public:
             {
                 if(isWellformed(&inputFile, ParseSinglePass))
                 {
-                     failures.append(qMakePair(id, QString::fromLatin1("Failed to flag %1 as not well-formed.")
-                                                   .arg(inputFilePath)));
+                     failures.append(qMakePair(id, QLatin1String("Failed to flag ") + inputFilePath
+                                                   + QLatin1String(" as not well-formed.")));
 
                      /* Exit, the incremental test will fail as well, no need to flood the output. */
                      return true;
@@ -376,8 +371,8 @@ public:
 
                 if(isWellformed(&inputFile, ParseIncrementally))
                 {
-                     failures.append(qMakePair(id, QString::fromLatin1("Failed to flag %1 as not well-formed with incremental parsing.")
-                                                   .arg(inputFilePath)));
+                     failures.append(qMakePair(id, QLatin1String("Failed to flag ") + inputFilePath
+                                                   + QLatin1String(" as not well-formed with incremental parsing.")));
                 }
                 else
                     successes.append(id);
@@ -402,7 +397,7 @@ public:
 
                     if(!expectedFile.open(QIODevice::ReadOnly))
                     {
-                        failures.append(qMakePair(id, QString::fromLatin1("Failed to open baseline %1").arg(expectedFilePath)));
+                        failures.append(qMakePair(id, QLatin1String("Failed to open baseline ") + expectedFilePath));
                         return true;
                     }
 
@@ -665,8 +660,10 @@ void tst_QXmlStream::reportSuccess_data() const
 
     const int len = m_handler.successes.count();
 
-    for(int i = 0; i < len; ++i)
-        QTest::newRow(qPrintable(QString("%1. %2").arg(i).arg(m_handler.successes.at(i)))) << false;
+    for (int i = 0; i < len; ++i) {
+        const QByteArray testName = QByteArray::number(i) + ". " + m_handler.successes.at(i).toLatin1();
+        QTest::newRow(testName.constData()) << false;
+    }
 
     if(len == 0)
         QTest::newRow("No test cases succeeded.") << true;
@@ -687,7 +684,7 @@ QByteArray tst_QXmlStream::readFile(const QString &filename)
 
     while (!reader.atEnd()) {
         reader.readNext();
-        writer << reader.tokenString() << "(";
+        writer << reader.tokenString() << '(';
         if (reader.isWhitespace())
             writer << " whitespace";
         if (reader.isCDATA())
@@ -695,42 +692,42 @@ QByteArray tst_QXmlStream::readFile(const QString &filename)
         if (reader.isStartDocument() && reader.isStandaloneDocument())
             writer << " standalone";
         if (!reader.text().isEmpty())
-            writer << " text=\"" << reader.text().toString() << "\"";
+            writer << " text=\"" << reader.text().toString() << '"';
         if (!reader.processingInstructionTarget().isEmpty())
-            writer << " processingInstructionTarget=\"" << reader.processingInstructionTarget().toString() << "\"";
+            writer << " processingInstructionTarget=\"" << reader.processingInstructionTarget().toString() << '"';
         if (!reader.processingInstructionData().isEmpty())
-            writer << " processingInstructionData=\"" << reader.processingInstructionData().toString() << "\"";
+            writer << " processingInstructionData=\"" << reader.processingInstructionData().toString() << '"';
         if (!reader.dtdName().isEmpty())
-            writer << " dtdName=\"" << reader.dtdName().toString() << "\"";
+            writer << " dtdName=\"" << reader.dtdName().toString() << '"';
         if (!reader.dtdPublicId().isEmpty())
-            writer << " dtdPublicId=\"" << reader.dtdPublicId().toString() << "\"";
+            writer << " dtdPublicId=\"" << reader.dtdPublicId().toString() << '"';
         if (!reader.dtdSystemId().isEmpty())
-            writer << " dtdSystemId=\"" << reader.dtdSystemId().toString() << "\"";
+            writer << " dtdSystemId=\"" << reader.dtdSystemId().toString() << '"';
         if (!reader.documentVersion().isEmpty())
-            writer << " documentVersion=\"" << reader.documentVersion().toString() << "\"";
+            writer << " documentVersion=\"" << reader.documentVersion().toString() << '"';
         if (!reader.documentEncoding().isEmpty())
-            writer << " documentEncoding=\"" << reader.documentEncoding().toString() << "\"";
+            writer << " documentEncoding=\"" << reader.documentEncoding().toString() << '"';
         if (!reader.name().isEmpty())
-            writer << " name=\"" << reader.name().toString() << "\"";
+            writer << " name=\"" << reader.name().toString() << '"';
         if (!reader.namespaceUri().isEmpty())
-            writer << " namespaceUri=\"" << reader.namespaceUri().toString() << "\"";
+            writer << " namespaceUri=\"" << reader.namespaceUri().toString() << '"';
         if (!reader.qualifiedName().isEmpty())
-            writer << " qualifiedName=\"" << reader.qualifiedName().toString() << "\"";
+            writer << " qualifiedName=\"" << reader.qualifiedName().toString() << '"';
         if (!reader.prefix().isEmpty())
-            writer << " prefix=\"" << reader.prefix().toString() << "\"";
+            writer << " prefix=\"" << reader.prefix().toString() << '"';
         if (reader.attributes().size()) {
             foreach(QXmlStreamAttribute attribute, reader.attributes()) {
                 writer << endl << "    Attribute(";
                 if (!attribute.name().isEmpty())
-                    writer << " name=\"" << attribute.name().toString() << "\"";
+                    writer << " name=\"" << attribute.name().toString() << '"';
                 if (!attribute.namespaceUri().isEmpty())
-                    writer << " namespaceUri=\"" << attribute.namespaceUri().toString() << "\"";
+                    writer << " namespaceUri=\"" << attribute.namespaceUri().toString() << '"';
                 if (!attribute.qualifiedName().isEmpty())
-                    writer << " qualifiedName=\"" << attribute.qualifiedName().toString() << "\"";
+                    writer << " qualifiedName=\"" << attribute.qualifiedName().toString() << '"';
                 if (!attribute.prefix().isEmpty())
-                    writer << " prefix=\"" << attribute.prefix().toString() << "\"";
+                    writer << " prefix=\"" << attribute.prefix().toString() << '"';
                 if (!attribute.value().isEmpty())
-                    writer << " value=\"" << attribute.value().toString() << "\"";
+                    writer << " value=\"" << attribute.value().toString() << '"';
                 writer << " )" << endl;
             }
         }
@@ -738,9 +735,9 @@ QByteArray tst_QXmlStream::readFile(const QString &filename)
             foreach(QXmlStreamNamespaceDeclaration namespaceDeclaration, reader.namespaceDeclarations()) {
                 writer << endl << "    NamespaceDeclaration(";
                 if (!namespaceDeclaration.prefix().isEmpty())
-                    writer << " prefix=\"" << namespaceDeclaration.prefix().toString() << "\"";
+                    writer << " prefix=\"" << namespaceDeclaration.prefix().toString() << '"';
                 if (!namespaceDeclaration.namespaceUri().isEmpty())
-                    writer << " namespaceUri=\"" << namespaceDeclaration.namespaceUri().toString() << "\"";
+                    writer << " namespaceUri=\"" << namespaceDeclaration.namespaceUri().toString() << '"';
                 writer << " )" << endl;
             }
         }
@@ -748,11 +745,11 @@ QByteArray tst_QXmlStream::readFile(const QString &filename)
             foreach(QXmlStreamNotationDeclaration notationDeclaration, reader.notationDeclarations()) {
                 writer << endl << "    NotationDeclaration(";
                 if (!notationDeclaration.name().isEmpty())
-                    writer << " name=\"" << notationDeclaration.name().toString() << "\"";
+                    writer << " name=\"" << notationDeclaration.name().toString() << '"';
                 if (!notationDeclaration.systemId().isEmpty())
-                    writer << " systemId=\"" << notationDeclaration.systemId().toString() << "\"";
+                    writer << " systemId=\"" << notationDeclaration.systemId().toString() << '"';
                 if (!notationDeclaration.publicId().isEmpty())
-                    writer << " publicId=\"" << notationDeclaration.publicId().toString() << "\"";
+                    writer << " publicId=\"" << notationDeclaration.publicId().toString() << '"';
                 writer << " )" << endl;
             }
         }
@@ -760,15 +757,15 @@ QByteArray tst_QXmlStream::readFile(const QString &filename)
             foreach(QXmlStreamEntityDeclaration entityDeclaration, reader.entityDeclarations()) {
                 writer << endl << "    EntityDeclaration(";
                 if (!entityDeclaration.name().isEmpty())
-                    writer << " name=\"" << entityDeclaration.name().toString() << "\"";
+                    writer << " name=\"" << entityDeclaration.name().toString() << '"';
                 if (!entityDeclaration.notationName().isEmpty())
-                    writer << " notationName=\"" << entityDeclaration.notationName().toString() << "\"";
+                    writer << " notationName=\"" << entityDeclaration.notationName().toString() << '"';
                 if (!entityDeclaration.systemId().isEmpty())
-                    writer << " systemId=\"" << entityDeclaration.systemId().toString() << "\"";
+                    writer << " systemId=\"" << entityDeclaration.systemId().toString() << '"';
                 if (!entityDeclaration.publicId().isEmpty())
-                    writer << " publicId=\"" << entityDeclaration.publicId().toString() << "\"";
+                    writer << " publicId=\"" << entityDeclaration.publicId().toString() << '"';
                 if (!entityDeclaration.value().isEmpty())
-                    writer << " value=\"" << entityDeclaration.value().toString() << "\"";
+                    writer << " value=\"" << entityDeclaration.value().toString() << '"';
                 writer << " )" << endl;
             }
         }
@@ -877,13 +874,13 @@ void tst_QXmlStream::testFalsePrematureError() const
         while (!xml.atEnd()) {
             xml.readNext();
         }
-        QVERIFY(xml.error() == QXmlStreamReader::PrematureEndOfDocumentError);
+        QCOMPARE(xml.error(), QXmlStreamReader::PrematureEndOfDocumentError);
         QCOMPARE(xml.errorString(), QLatin1String("Premature end of document."));
         xml.addData(legal_start);
         while (!xml.atEnd()) {
             xml.readNext();
         }
-        QVERIFY(xml.error() == QXmlStreamReader::PrematureEndOfDocumentError);
+        QCOMPARE(xml.error(), QXmlStreamReader::PrematureEndOfDocumentError);
         QCOMPARE(xml.errorString(), QLatin1String("Premature end of document."));
         xml.addData(end);
         while (!xml.atEnd()) {
@@ -898,7 +895,7 @@ void tst_QXmlStream::testFalsePrematureError() const
         }
         QVERIFY(xml.hasError());
         QCOMPARE(xml.errorString(), QLatin1String("Start tag expected."));
-        QVERIFY(xml.error() == QXmlStreamReader::NotWellFormedError);
+        QCOMPARE(xml.error(), QXmlStreamReader::NotWellFormedError);
     }
 }
 
@@ -978,7 +975,8 @@ void tst_QXmlStream::writeAttributesWithSpace() const
     writer.writeEmptyElement("A");
     writer.writeAttribute("attribute", QStringLiteral("value") + QChar(QChar::Nbsp));
     writer.writeEndDocument();
-    QString s = QString("<?xml version=\"1.0\" encoding=\"UTF-8\"?><A attribute=\"value%1\"/>\n").arg(QChar(QChar::Nbsp));
+    QString s = QLatin1String("<?xml version=\"1.0\" encoding=\"UTF-8\"?><A attribute=\"value")
+        + QChar(QChar::Nbsp) + QLatin1String("\"/>\n");
     QCOMPARE(buffer.buffer().data(), s.toUtf8().data());
 }
 
@@ -1051,11 +1049,11 @@ void tst_QXmlStream::readNextStartElement() const
     QXmlStreamReader reader(in);
 
     QVERIFY(reader.readNextStartElement());
-    QVERIFY(reader.isStartElement() && reader.name() == "A");
+    QVERIFY(reader.isStartElement() && reader.name() == QLatin1String("A"));
 
     int amountOfB = 0;
     while (reader.readNextStartElement()) {
-        QVERIFY(reader.isStartElement() && reader.name() == "B");
+        QVERIFY(reader.isStartElement() && reader.name() == QLatin1String("B"));
         ++amountOfB;
         reader.skipCurrentElement();
     }

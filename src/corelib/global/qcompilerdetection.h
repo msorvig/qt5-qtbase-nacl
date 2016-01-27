@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2014 Intel Corporation
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1116,6 +1122,37 @@
 #endif
 #ifndef Q_DECL_CONST_FUNCTION
 #  define Q_DECL_CONST_FUNCTION Q_DECL_PURE_FUNCTION
+#endif
+
+/*
+ * SG10's SD-6 feature detection and some useful extensions from Clang and GCC
+ * https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
+ * http://clang.llvm.org/docs/LanguageExtensions.html#feature-checking-macros
+ */
+#ifdef __has_builtin
+#  define QT_HAS_BUILTIN(x)             __has_builtin(x)
+#else
+#  define QT_HAS_BUILTIN(x)             0
+#endif
+#ifdef __has_attribute
+#  define QT_HAS_ATTRIBUTE(x)           __has_attribute(x)
+#else
+#  define QT_HAS_ATTRIBUTE(x)           0
+#endif
+#ifdef __has_cpp_attribute
+#  define QT_HAS_CPP_ATTRIBUTE(x)       __has_cpp_attribute(x)
+#else
+#  define QT_HAS_CPP_ATTRIBUTE(x)       0
+#endif
+#ifdef __has_include
+#  define QT_HAS_INCLUDE(x)             __has_include(x)
+#else
+#  define QT_HAS_INCLUDE(x)             0
+#endif
+#ifdef __has_include_next
+#  define QT_HAS_INCLUDE_NEXT(x)        __has_include_next(x)
+#else
+#  define QT_HAS_INCLUDE_NEXT(x)        0
 #endif
 
 /*

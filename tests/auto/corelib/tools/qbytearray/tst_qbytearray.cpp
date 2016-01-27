@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -212,12 +208,12 @@ QByteArray verifyZeroTermination(const QByteArray &ba)
 
     const_cast<char *>(baData)[baSize] = 'x';
     if ('x' != ba.constData()[baSize]) {
-        return QString::fromLatin1("*** Failed to replace null-terminator in "
-                "result ('%1') ***").arg(QString::fromLatin1(ba)).toLatin1();
+        return "*** Failed to replace null-terminator in "
+                "result ('" + ba + "') ***";
     }
     if (ba != baCopy) {
-        return QString::fromLatin1( "*** Result ('%1') differs from its copy "
-                "after null-terminator was replaced ***").arg(QString::fromLatin1(ba)).toLatin1();
+        return  "*** Result ('" + ba + "') differs from its copy "
+                "after null-terminator was replaced ***";
     }
     const_cast<char *>(baData)[baSize] = '\0'; // Restore sanity
 
@@ -896,7 +892,9 @@ void tst_QByteArray::prepend()
     QCOMPARE(ba.prepend("1"), QByteArray("1foo"));
     QCOMPARE(ba.prepend(QByteArray("2")), QByteArray("21foo"));
     QCOMPARE(ba.prepend('3'), QByteArray("321foo"));
-    QCOMPARE(ba.prepend("\0 ", 2), QByteArray::fromRawData("\0 321foo", 8));
+    QCOMPARE(ba.prepend(-1, 'x'), QByteArray("321foo"));
+    QCOMPARE(ba.prepend(3, 'x'), QByteArray("xxx321foo"));
+    QCOMPARE(ba.prepend("\0 ", 2), QByteArray::fromRawData("\0 xxx321foo", 11));
 }
 
 void tst_QByteArray::prependExtended_data()
@@ -924,8 +922,10 @@ void tst_QByteArray::prependExtended()
     QCOMPARE(array.prepend("1"), QByteArray("1data"));
     QCOMPARE(array.prepend(QByteArray("2")), QByteArray("21data"));
     QCOMPARE(array.prepend('3'), QByteArray("321data"));
-    QCOMPARE(array.prepend("\0 ", 2), QByteArray::fromRawData("\0 321data", 9));
-    QCOMPARE(array.size(), 9);
+    QCOMPARE(array.prepend(-1, 'x'), QByteArray("321data"));
+    QCOMPARE(array.prepend(3, 'x'), QByteArray("xxx321data"));
+    QCOMPARE(array.prepend("\0 ", 2), QByteArray::fromRawData("\0 xxx321data", 12));
+    QCOMPARE(array.size(), 12);
 }
 
 void tst_QByteArray::append()
@@ -936,9 +936,11 @@ void tst_QByteArray::append()
     QCOMPARE(ba.append("1"), QByteArray("foo1"));
     QCOMPARE(ba.append(QByteArray("2")), QByteArray("foo12"));
     QCOMPARE(ba.append('3'), QByteArray("foo123"));
-    QCOMPARE(ba.append("\0"), QByteArray("foo123"));
-    QCOMPARE(ba.append("\0", 1), QByteArray::fromRawData("foo123\0", 7));
-    QCOMPARE(ba.size(), 7);
+    QCOMPARE(ba.append(-1, 'x'), QByteArray("foo123"));
+    QCOMPARE(ba.append(3, 'x'), QByteArray("foo123xxx"));
+    QCOMPARE(ba.append("\0"), QByteArray("foo123xxx"));
+    QCOMPARE(ba.append("\0", 1), QByteArray::fromRawData("foo123xxx\0", 10));
+    QCOMPARE(ba.size(), 10);
 }
 
 void tst_QByteArray::appendExtended_data()
@@ -958,9 +960,11 @@ void tst_QByteArray::appendExtended()
     QCOMPARE(array.append("1"), QByteArray("data1"));
     QCOMPARE(array.append(QByteArray("2")), QByteArray("data12"));
     QCOMPARE(array.append('3'), QByteArray("data123"));
-    QCOMPARE(array.append("\0"), QByteArray("data123"));
-    QCOMPARE(array.append("\0", 1), QByteArray::fromRawData("data123\0", 8));
-    QCOMPARE(array.size(), 8);
+    QCOMPARE(array.append(-1, 'x'), QByteArray("data123"));
+    QCOMPARE(array.append(3, 'x'), QByteArray("data123xxx"));
+    QCOMPARE(array.append("\0"), QByteArray("data123xxx"));
+    QCOMPARE(array.append("\0", 1), QByteArray::fromRawData("data123xxx\0", 11));
+    QCOMPARE(array.size(), 11);
 }
 
 void tst_QByteArray::insert()
@@ -975,6 +979,12 @@ void tst_QByteArray::insert()
     ba = "ac";
     QCOMPARE(ba.insert(1, 'b'), QByteArray("abc"));
     QCOMPARE(ba.size(), 3);
+
+    ba = "ac";
+    QCOMPARE(ba.insert(-1, 3, 'x'), QByteArray("ac"));
+    QCOMPARE(ba.insert(1, 3, 'x'), QByteArray("axxxc"));
+    QCOMPARE(ba.insert(6, 3, 'x'), QByteArray("axxxc xxx"));
+    QCOMPARE(ba.size(), 9);
 
     ba = "ikl";
     QCOMPARE(ba.insert(1, "j"), QByteArray("ijkl"));
@@ -994,7 +1004,8 @@ void tst_QByteArray::insertExtended()
 {
     QFETCH(QByteArray, array);
     QCOMPARE(array.insert(1, "i"), QByteArray("diata"));
-    QCOMPARE(array.size(), 5);
+    QCOMPARE(array.insert(1, 3, 'x'), QByteArray("dxxxiata"));
+    QCOMPARE(array.size(), 8);
 }
 
 void tst_QByteArray::remove_data()
@@ -1969,15 +1980,15 @@ void tst_QByteArray::movablity()
     QCOMPARE(array.isEmpty(), newIsEmpty);
     QCOMPARE(array.isNull(), newIsNull);
     QCOMPARE(array.capacity(), newCapacity);
-    QVERIFY(array.startsWith("a"));
-    QVERIFY(array.endsWith("b"));
+    QVERIFY(array.startsWith('a'));
+    QVERIFY(array.endsWith('b'));
 
     QCOMPARE(copy.size(), newSize);
     QCOMPARE(copy.isEmpty(), newIsEmpty);
     QCOMPARE(copy.isNull(), newIsNull);
     QCOMPARE(copy.capacity(), newCapacity);
-    QVERIFY(copy.startsWith("a"));
-    QVERIFY(copy.endsWith("b"));
+    QVERIFY(copy.startsWith('a'));
+    QVERIFY(copy.endsWith('b'));
 
     // try to not crash
     array.squeeze();

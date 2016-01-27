@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -34,8 +40,11 @@
 #include "qjnihelpers_p.h"
 #include "qmutex.h"
 #include "qlist.h"
+#include "qsemaphore.h"
 #include "qvector.h"
 #include <QtCore/qrunnable.h>
+
+#include <deque>
 
 QT_BEGIN_NAMESPACE
 
@@ -44,17 +53,24 @@ static jobject g_jActivity = Q_NULLPTR;
 static jobject g_jClassLoader = Q_NULLPTR;
 static jint g_androidSdkVersion = 0;
 static jclass g_jNativeClass = Q_NULLPTR;
-static jmethodID g_runQtOnUiThreadMethodID = Q_NULLPTR;
+static jmethodID g_runPendingCppRunnablesMethodID = Q_NULLPTR;
+Q_GLOBAL_STATIC(std::deque<QtAndroidPrivate::Runnable>, g_pendingRunnables);
+Q_GLOBAL_STATIC(QMutex, g_pendingRunnablesMutex);
 
-static void onAndroidUiThread(JNIEnv *, jclass, jlong thiz)
+// function called from Java from Android UI thread
+static void runPendingCppRunnables(JNIEnv */*env*/, jobject /*obj*/)
 {
-    QRunnable *runnable = reinterpret_cast<QRunnable *>(thiz);
-    if (runnable == 0)
-        return;
-
-    runnable->run();
-    if (runnable->autoDelete())
-        delete runnable;
+    for (;;) { // run all posted runnables
+        g_pendingRunnablesMutex->lock();
+        if (g_pendingRunnables->empty()) {
+            g_pendingRunnablesMutex->unlock();
+            break;
+        }
+        QtAndroidPrivate::Runnable runnable(std::move(g_pendingRunnables->front()));
+        g_pendingRunnables->pop_front();
+        g_pendingRunnablesMutex->unlock();
+        runnable(); // run it outside the sync block!
+    }
 }
 
 namespace {
@@ -69,7 +85,7 @@ static jboolean dispatchGenericMotionEvent(JNIEnv *, jclass, jobject event)
 {
     jboolean ret = JNI_FALSE;
     QMutexLocker locker(&g_genericMotionEventListeners()->mutex);
-    foreach (auto listener, g_genericMotionEventListeners()->listeners)
+    for (auto *listener : qAsConst(g_genericMotionEventListeners()->listeners))
         ret |= listener->handleGenericMotionEvent(event);
     return ret;
 }
@@ -86,7 +102,7 @@ static jboolean dispatchKeyEvent(JNIEnv *, jclass, jobject event)
 {
     jboolean ret = JNI_FALSE;
     QMutexLocker locker(&g_keyEventListeners()->mutex);
-    foreach (auto listener, g_keyEventListeners()->listeners)
+    for (auto *listener : qAsConst(g_keyEventListeners()->listeners))
         ret |= listener->handleKeyEvent(event);
     return ret;
 }
@@ -262,7 +278,7 @@ jint QtAndroidPrivate::initJNI(JavaVM *vm, JNIEnv *env)
     g_javaVM = vm;
 
     static const JNINativeMethod methods[] = {
-        {"onAndroidUiThread", "(J)V", reinterpret_cast<void *>(onAndroidUiThread)},
+        {"runPendingCppRunnables", "()V",  reinterpret_cast<void *>(runPendingCppRunnables)},
         {"dispatchGenericMotionEvent", "(Landroid/view/MotionEvent;)Z", reinterpret_cast<void *>(dispatchGenericMotionEvent)},
         {"dispatchKeyEvent", "(Landroid/view/KeyEvent;)Z", reinterpret_cast<void *>(dispatchKeyEvent)},
     };
@@ -272,9 +288,9 @@ jint QtAndroidPrivate::initJNI(JavaVM *vm, JNIEnv *env)
     if (!regOk && exceptionCheck(env))
         return JNI_ERR;
 
-    g_runQtOnUiThreadMethodID = env->GetStaticMethodID(jQtNative,
-                                                       "runQtOnUiThread",
-                                                       "(J)V");
+    g_runPendingCppRunnablesMethodID = env->GetStaticMethodID(jQtNative,
+                                                       "runPendingCppRunnablesOnUiThread",
+                                                       "()V");
 
     g_jNativeClass = static_cast<jclass>(env->NewGlobalRef(jQtNative));
     env->DeleteLocalRef(jQtNative);
@@ -305,10 +321,21 @@ jint QtAndroidPrivate::androidSdkVersion()
 
 void QtAndroidPrivate::runOnUiThread(QRunnable *runnable, JNIEnv *env)
 {
-    Q_ASSERT(runnable != 0);
-    env->CallStaticVoidMethod(g_jNativeClass, g_runQtOnUiThreadMethodID, reinterpret_cast<jlong>(runnable));
-    if (exceptionCheck(env) && runnable != 0 && runnable->autoDelete())
-        delete runnable;
+    runOnAndroidThread([runnable]() {
+        runnable->run();
+        if (runnable->autoDelete())
+            delete runnable;
+    }, env);
+}
+
+void QtAndroidPrivate::runOnAndroidThread(const QtAndroidPrivate::Runnable &runnable, JNIEnv *env)
+{
+    g_pendingRunnablesMutex->lock();
+    const bool triggerRun = g_pendingRunnables->empty();
+    g_pendingRunnables->push_back(runnable);
+    g_pendingRunnablesMutex->unlock();
+    if (triggerRun)
+        env->CallStaticVoidMethod(g_jNativeClass, g_runPendingCppRunnablesMethodID);
 }
 
 void QtAndroidPrivate::registerGenericMotionEventListener(QtAndroidPrivate::GenericMotionEventListener *listener)

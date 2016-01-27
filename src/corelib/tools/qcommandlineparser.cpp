@@ -2,31 +2,37 @@
 **
 ** Copyright (C) 2013 Laszlo Papp <lpapp@kde.org>
 ** Copyright (C) 2013 David Faure <faure@kde.org>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -348,10 +354,10 @@ void QCommandLineParser::setOptionsAfterPositionalArgumentsMode(QCommandLinePars
  */
 bool QCommandLineParser::addOption(const QCommandLineOption &option)
 {
-    QStringList optionNames = option.names();
+    const QStringList optionNames = option.names();
 
     if (!optionNames.isEmpty()) {
-        foreach (const QString &name, optionNames) {
+        for (const QString &name : optionNames) {
             if (d->nameHash.contains(name))
                 return false;
         }
@@ -359,7 +365,7 @@ bool QCommandLineParser::addOption(const QCommandLineOption &option)
         d->commandLineOptionList.append(option);
 
         const int offset = d->commandLineOptionList.size() - 1;
-        foreach (const QString &name, optionNames)
+        for (const QString &name : optionNames)
             d->nameHash.insert(name, offset);
 
         return true;
@@ -797,7 +803,7 @@ bool QCommandLineParser::isSet(const QString &name) const
     if (d->optionNames.contains(name))
         return true;
     const QStringList aliases = d->aliases(name);
-    foreach (const QString &optionName, d->optionNames) {
+    for (const QString &optionName : qAsConst(d->optionNames)) {
         if (aliases.contains(optionName))
             return true;
     }
@@ -1075,16 +1081,12 @@ QString QCommandLineParserPrivate::helpText() const
 {
     const QLatin1Char nl('\n');
     QString text;
-    const QString exeName = QCoreApplication::instance()->arguments().first();
-    QString usage = exeName;
-    if (!commandLineOptionList.isEmpty()) {
-        usage += QLatin1Char(' ');
-        usage += QCommandLineParser::tr("[options]");
-    }
-    foreach (const PositionalArgumentDefinition &arg, positionalArgumentDefinitions) {
-        usage += QLatin1Char(' ');
-        usage += arg.syntax;
-    }
+    QString usage;
+    usage += QCoreApplication::instance()->arguments().constFirst(); // executable name
+    if (!commandLineOptionList.isEmpty())
+        usage += QLatin1Char(' ') + QCommandLineParser::tr("[options]");
+    for (const PositionalArgumentDefinition &arg : positionalArgumentDefinitions)
+        usage += QLatin1Char(' ') + arg.syntax;
     text += QCommandLineParser::tr("Usage: %1").arg(usage) + nl;
     if (!description.isEmpty())
        text += description + nl;
@@ -1092,35 +1094,39 @@ QString QCommandLineParserPrivate::helpText() const
     if (!commandLineOptionList.isEmpty())
         text += QCommandLineParser::tr("Options:") + nl;
     QStringList optionNameList;
+    optionNameList.reserve(commandLineOptionList.size());
     int longestOptionNameString = 0;
-    foreach (const QCommandLineOption &option, commandLineOptionList) {
-        QStringList optionNames;
-        foreach (const QString &optionName, option.names()) {
-            if (optionName.length() == 1)
-                optionNames.append(QLatin1Char('-') + optionName);
-            else
-                optionNames.append(QStringLiteral("--") + optionName);
+    for (const QCommandLineOption &option : commandLineOptionList) {
+        if (option.isHidden())
+            continue;
+        const QStringList optionNames = option.names();
+        QString optionNamesString;
+        for (const QString &optionName : optionNames) {
+            const int numDashes = optionName.length() == 1 ? 1 : 2;
+            optionNamesString += QLatin1String("--", numDashes) + optionName + QLatin1String(", ");
         }
-        QString optionNamesString = optionNames.join(QStringLiteral(", "));
-        if (!option.valueName().isEmpty())
-            optionNamesString += QStringLiteral(" <") + option.valueName() + QLatin1Char('>');
+        if (!optionNames.isEmpty())
+            optionNamesString.chop(2); // remove trailing ", "
+        const auto valueName = option.valueName();
+        if (!valueName.isEmpty())
+            optionNamesString += QLatin1String(" <") + valueName + QLatin1Char('>');
         optionNameList.append(optionNamesString);
         longestOptionNameString = qMax(longestOptionNameString, optionNamesString.length());
     }
     ++longestOptionNameString;
-    for (int i = 0; i < commandLineOptionList.count(); ++i) {
-        const QCommandLineOption &option = commandLineOptionList.at(i);
+    auto optionNameIterator = optionNameList.cbegin();
+    for (const QCommandLineOption &option : commandLineOptionList) {
         if (option.isHidden())
             continue;
-        text += wrapText(optionNameList.at(i), longestOptionNameString, option.description());
+        text += wrapText(*optionNameIterator, longestOptionNameString, option.description());
+        ++optionNameIterator;
     }
     if (!positionalArgumentDefinitions.isEmpty()) {
         if (!commandLineOptionList.isEmpty())
             text += nl;
         text += QCommandLineParser::tr("Arguments:") + nl;
-        foreach (const PositionalArgumentDefinition &arg, positionalArgumentDefinitions) {
+        for (const PositionalArgumentDefinition &arg : positionalArgumentDefinitions)
             text += wrapText(arg.name, longestOptionNameString, arg.description);
-        }
     }
     return text;
 }

@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2014 Governikus GmbH & Co. KG.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -102,7 +97,6 @@ class tst_QSslSocket : public QObject
 
 public:
     tst_QSslSocket();
-    virtual ~tst_QSslSocket();
 
     static void enterLoop(int secs)
     {
@@ -233,6 +227,8 @@ private slots:
 #ifndef QT_NO_OPENSSL
     void simplePskConnect_data();
     void simplePskConnect();
+    void ephemeralServerKey_data();
+    void ephemeralServerKey();
 #endif
 
     static void exitLoop()
@@ -288,10 +284,6 @@ tst_QSslSocket::tst_QSslSocket()
     qRegisterMetaType<tst_QSslSocket::PskConnectTestType>();
 #endif
 #endif
-}
-
-tst_QSslSocket::~tst_QSslSocket()
-{
 }
 
 enum ProxyTests {
@@ -3349,6 +3341,40 @@ void tst_QSslSocket::simplePskConnect()
     QCOMPARE(socket.state(), QAbstractSocket::UnconnectedState);
     QCOMPARE(disconnectedSpy.count(), 1);
 }
+
+void tst_QSslSocket::ephemeralServerKey_data()
+{
+    QTest::addColumn<QString>("cipher");
+    QTest::addColumn<bool>("emptyKey");
+
+    QTest::newRow("NonForwardSecrecyCipher") << "RC4-SHA" << true;
+    QTest::newRow("ForwardSecrecyCipher") << "ECDHE-RSA-AES256-SHA" << (QSslSocket::sslLibraryVersionNumber() < 0x10002000L);
+}
+
+void tst_QSslSocket::ephemeralServerKey()
+{
+    QFETCH_GLOBAL(bool, setProxy);
+    if (!QSslSocket::supportsSsl() || setProxy)
+        return;
+
+    QFETCH(QString, cipher);
+    QFETCH(bool, emptyKey);
+    SslServer server;
+    server.config.setCiphers(QList<QSslCipher>() << QSslCipher(cipher));
+    QVERIFY(server.listen());
+    QSslSocketPtr client = newSocket();
+    socket = client.data();
+    connect(socket, SIGNAL(sslErrors(QList<QSslError>)), this, SLOT(ignoreErrorSlot()));
+    QSignalSpy spy(client.data(), &QSslSocket::encrypted);
+
+    client->connectToHostEncrypted(QHostAddress(QHostAddress::LocalHost).toString(), server.serverPort());
+    spy.wait();
+
+    QCOMPARE(spy.count(), 1);
+    QVERIFY(server.config.ephemeralServerKey().isNull());
+    QCOMPARE(client->sslConfiguration().ephemeralServerKey().isNull(), emptyKey);
+}
+
 #endif // QT_NO_OPENSSL
 
 #endif // QT_NO_SSL

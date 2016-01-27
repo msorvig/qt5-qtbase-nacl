@@ -1,33 +1,40 @@
 
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
 ** Copyright (C) 2012 Giuseppe D'Angelo <dangelog@gmail.com>.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -128,6 +135,55 @@ static uint crc32(const Char *ptr, size_t len, uint h)
     }
     if (sizeof(Char) == 1 && len & 1)
         h = _mm_crc32_u8(h, *p);
+    return h;
+}
+#elif defined(Q_PROCESSOR_ARM_V8)
+static inline bool hasFastCrc32()
+{
+    return qCpuHasFeature(CRC32);
+}
+
+template <typename Char>
+QT_FUNCTION_TARGET(CRC32)
+static uint crc32(const Char *ptr, size_t len, uint h)
+{
+    // The crc32[whbd] instructions on Aarch64/Aarch32 calculate a 32-bit CRC32 checksum
+    const uchar *p = reinterpret_cast<const uchar *>(ptr);
+    const uchar *const e = p + (len * sizeof(Char));
+
+#ifndef __ARM_FEATURE_UNALIGNED
+    if (Q_UNLIKELY(reinterpret_cast<quintptr>(p) & 7)) {
+        if ((sizeof(Char) == 1) && (reinterpret_cast<quintptr>(p) & 1) && (e - p > 0)) {
+            h = __crc32b(h, *p);
+            ++p;
+        }
+        if ((reinterpret_cast<quintptr>(p) & 2) && (e >= p + 2)) {
+            h = __crc32h(h, *reinterpret_cast<const uint16_t *>(p));
+            p += 2;
+        }
+        if ((reinterpret_cast<quintptr>(p) & 4) && (e >= p + 4)) {
+            h = __crc32w(h, *reinterpret_cast<const uint32_t *>(p));
+            p += 4;
+        }
+    }
+#endif
+
+    for ( ; p + 8 <= e; p += 8)
+        h = __crc32d(h, *reinterpret_cast<const uint64_t *>(p));
+
+    len = e - p;
+    if (len == 0)
+        return h;
+    if (len & 4) {
+        h = __crc32w(h, *reinterpret_cast<const uint32_t *>(p));
+        p += 4;
+    }
+    if (len & 2) {
+        h = __crc32h(h, *reinterpret_cast<const uint16_t *>(p));
+        p += 2;
+    }
+    if (sizeof(Char) == 1 && len & 1)
+        h = __crc32b(h, *p);
     return h;
 }
 #else
@@ -682,17 +738,17 @@ void QHashData::dump()
 
 void QHashData::checkSanity()
 {
-    if (fakeNext)
+    if (Q_UNLIKELY(fakeNext))
         qFatal("Fake next isn't 0");
 
     for (int i = 0; i < numBuckets; ++i) {
         Node *n = buckets[i];
         Node *p = n;
-        if (!n)
+        if (Q_UNLIKELY(!n))
             qFatal("%d: Bucket entry is 0", i);
         if (n != reinterpret_cast<Node *>(this)) {
             while (n != reinterpret_cast<Node *>(this)) {
-                if (!n->next)
+                if (Q_UNLIKELY(!n->next))
                     qFatal("%d: Next of %p is 0, should be %p", i, n, this);
                 n = n->next;
             }
@@ -709,6 +765,23 @@ void QHashData::checkSanity()
     Returns the hash value for the \a key, using \a seed to seed the calculation.
 
     Types \c T1 and \c T2 must be supported by qHash().
+*/
+
+/*!
+    \fn uint qHash(const std::pair<T1, T2> &key, uint seed = 0)
+    \since 5.7
+    \relates QHash
+
+    Returns the hash value for the \a key, using \a seed to seed the calculation.
+
+    Types \c T1 and \c T2 must be supported by qHash().
+
+    \note The return type of this function is \e{not} the same as that of
+    \code
+    qHash(qMakePair(key.first, key.second), seed);
+    \endcode
+    The two functions use different hashing algorithms; due to binary compatibility
+    constraints, we cannot change the QPair algorithm to match the std::pair one before Qt 6.
 */
 
 /*! \fn uint qHashRange(InputIterator first, InputIterator last, uint seed = 0)
@@ -1632,7 +1705,8 @@ uint qHash(long double key, uint seed) Q_DECL_NOTHROW
     \sa keyBegin()
 */
 
-/*! \fn QHash::iterator QHash::erase(iterator pos)
+/*! \fn QHash::iterator QHash::erase(const_iterator pos)
+    \since 5.7
 
     Removes the (key, value) pair associated with the iterator \a pos
     from the hash, and returns an iterator to the next item in the
@@ -1646,6 +1720,10 @@ uint qHash(long double key, uint seed) Q_DECL_NOTHROW
     \snippet code/src_corelib_tools_qhash.cpp 15
 
     \sa remove(), take(), find()
+*/
+
+/*! \fn QHash::iterator QHash::erase(iterator pos)
+    \overload
 */
 
 /*! \fn QHash::iterator QHash::find(const Key &key)

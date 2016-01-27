@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -311,17 +306,14 @@ static QString classNameForInterface(const QString &interface, ClassType classTy
     if (!globalClassName.isEmpty())
         return globalClassName;
 
-    QStringList parts = interface.split(QLatin1Char('.'));
+    const auto parts = interface.splitRef(QLatin1Char('.'));
 
     QString retval;
-    if (classType == Proxy)
-        foreach (QString part, parts) {
-            part[0] = part[0].toUpper();
-            retval += part;
-        }
-    else {
-        retval = parts.last();
-        retval[0] = retval[0].toUpper();
+    if (classType == Proxy) {
+        for (const auto &part : parts)
+            retval += part[0].toUpper() + part.mid(1);
+    } else {
+        retval += parts.last()[0].toUpper() + parts.last().mid(1);
     }
 
     if (classType == Proxy)
@@ -567,7 +559,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
        << includeList
        << "#include <QtDBus/QtDBus>" << endl;
 
-    foreach (const QString &include, includes) {
+    for (const QString &include : qAsConst(includes)) {
         hs << "#include \"" << include << "\"" << endl;
         if (headerName.isEmpty())
             cs << "#include \"" << include << "\"" << endl;
@@ -580,7 +572,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
             cs << "#include \"" << headerName << "\"" << endl << endl;
     }
 
-    foreach (const QDBusIntrospection::Interface *interface, interfaces) {
+    for (const QDBusIntrospection::Interface *interface : interfaces) {
         QString className = classNameForInterface(interface->name, Proxy);
 
         // comment:
@@ -620,7 +612,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
            << endl;
 
         // properties:
-        foreach (const QDBusIntrospection::Property &property, interface->properties) {
+        for (const QDBusIntrospection::Property &property : interface->properties) {
             QByteArray type = qtTypeName(property.type, property.annotations);
             QString templateType = templateArg(type);
             QString constRefType = constRefArg(type);
@@ -660,7 +652,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
 
         // methods:
         hs << "public Q_SLOTS: // METHODS" << endl;
-        foreach (const QDBusIntrospection::Method &method, interface->methods) {
+        for (const QDBusIntrospection::Method &method : interface->methods) {
             bool isDeprecated = method.annotations.value(QLatin1String("org.freedesktop.DBus.Deprecated")) == QLatin1String("true");
             bool isNoReply =
                 method.annotations.value(QLatin1String(ANNOTATION_NO_WAIT)) == QLatin1String("true");
@@ -753,7 +745,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
         }
 
         hs << "Q_SIGNALS: // SIGNALS" << endl;
-        foreach (const QDBusIntrospection::Signal &signal, interface->signals_) {
+        for (const QDBusIntrospection::Signal &signal : interface->signals_) {
             hs << "    ";
             if (signal.annotations.value(QLatin1String("org.freedesktop.DBus.Deprecated")) ==
                 QLatin1String("true"))
@@ -876,7 +868,7 @@ static void writeAdaptor(const QString &filename, const QDBusIntrospection::Inte
            << "#include <QtCore/QVariant>" << endl;
     hs << "#include <QtDBus/QtDBus>" << endl;
 
-    foreach (const QString &include, includes) {
+    for (const QString &include : qAsConst(includes)) {
         hs << "#include \"" << include << "\"" << endl;
         if (headerName.isEmpty())
             cs << "#include \"" << include << "\"" << endl;
@@ -900,7 +892,7 @@ static void writeAdaptor(const QString &filename, const QDBusIntrospection::Inte
     if (parentClassName.isEmpty())
         parent = QLatin1String("QObject");
 
-    foreach (const QDBusIntrospection::Interface *interface, interfaces) {
+    for (const QDBusIntrospection::Interface *interface : interfaces) {
         QString className = classNameForInterface(interface->name, Adaptor);
 
         // comment:
@@ -945,7 +937,7 @@ static void writeAdaptor(const QString &filename, const QDBusIntrospection::Inte
            << endl;
 
         hs << "public: // PROPERTIES" << endl;
-        foreach (const QDBusIntrospection::Property &property, interface->properties) {
+        for (const QDBusIntrospection::Property &property : interface->properties) {
             QByteArray type = qtTypeName(property.type, property.annotations);
             QString constRefType = constRefArg(type);
             QString getter = propertyGetter(property);
@@ -988,7 +980,7 @@ static void writeAdaptor(const QString &filename, const QDBusIntrospection::Inte
         }
 
         hs << "public Q_SLOTS: // METHODS" << endl;
-        foreach (const QDBusIntrospection::Method &method, interface->methods) {
+        for (const QDBusIntrospection::Method &method : interface->methods) {
             bool isNoReply =
                 method.annotations.value(QLatin1String(ANNOTATION_NO_WAIT)) == QLatin1String("true");
             if (isNoReply && !method.outputArgs.isEmpty()) {
@@ -1097,7 +1089,7 @@ static void writeAdaptor(const QString &filename, const QDBusIntrospection::Inte
         }
 
         hs << "Q_SIGNALS: // SIGNALS" << endl;
-        foreach (const QDBusIntrospection::Signal &signal, interface->signals_) {
+        for (const QDBusIntrospection::Signal &signal : interface->signals_) {
             hs << "    ";
             if (signal.annotations.value(QLatin1String("org.freedesktop.DBus.Deprecated")) ==
                 QLatin1String("true"))

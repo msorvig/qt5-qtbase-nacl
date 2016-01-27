@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -93,15 +88,19 @@ protected:
         QPushButton *b11 = new QPushButton(sq11.toString());
         b11->setShortcut(sq11);
 
-        // LATIN SMALL LETTER O WITH STROKE
-        QKeySequence sq12(QString(QChar(ushort(0xf8))));
+        QKeySequence sq12(Qt::ControlModifier + Qt::Key_Slash);
         QPushButton *b12 = new QPushButton(sq12.toString());
         b12->setShortcut(sq12);
 
-        // CYRILLIC SMALL LETTER ZHE
-        QKeySequence sq13(QString(QChar(ushort(0x436))));
+        // LATIN SMALL LETTER O WITH STROKE
+        QKeySequence sq13(QString(QChar(ushort(0xf8))));
         QPushButton *b13 = new QPushButton(sq13.toString());
         b13->setShortcut(sq13);
+
+        // CYRILLIC SMALL LETTER ZHE
+        QKeySequence sq14(QString(QChar(ushort(0x436))));
+        QPushButton *b14 = new QPushButton(sq14.toString());
+        b14->setShortcut(sq14);
 
         QLabel *testPurpose = new QLabel();
         testPurpose->setWordWrap(true);
@@ -120,10 +119,11 @@ protected:
         layout->addWidget(b9);
         layout->addWidget(b10);
         layout->addWidget(b11);
-        layout->addWidget(new QLabel("Norwegian layout"));
         layout->addWidget(b12);
-        layout->addWidget(new QLabel("Russian layout"));
+        layout->addWidget(new QLabel("Norwegian layout"));
         layout->addWidget(b13);
+        layout->addWidget(new QLabel("Russian layout"));
+        layout->addWidget(b14);
 
         setLayout(layout);
     }

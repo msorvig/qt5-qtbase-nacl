@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -84,13 +79,9 @@ class tst_QGraphicsProxyWidget : public QObject
 {
     Q_OBJECT
 
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
-
 private slots:
+    void initTestCase();
+    void cleanup();
     void qgraphicsproxywidget_data();
     void qgraphicsproxywidget();
     void paint();
@@ -162,7 +153,9 @@ private slots:
     void fontPropagation();
     void dontCrashWhenDie();
     void createProxyForChildWidget();
+#ifndef QT_NO_CONTEXTMENU
     void actionsContextMenu();
+#endif // QT_NO_CONTEXTMENU
     void actionsContextMenu_data();
     void deleteProxyForChildWidget();
     void bypassGraphicsProxyWidget_data();
@@ -287,17 +280,6 @@ void tst_QGraphicsProxyWidget::initTestCase()
     QApplication::setEffectEnabled(Qt::UI_AnimateMenu, false);
     // Disable combo for QTBUG_43780_visibility()/Windows Vista.
     QApplication::setEffectEnabled(Qt::UI_AnimateCombo, false);
-}
-
-// This will be called after the last test function is executed.
-// It is only called once.
-void tst_QGraphicsProxyWidget::cleanupTestCase()
-{
-}
-
-// This will be called before each test function is executed.
-void tst_QGraphicsProxyWidget::init()
-{
 }
 
 // This will be called after every test function.
@@ -492,7 +474,7 @@ void tst_QGraphicsProxyWidget::setWidget()
         QCOMPARE(proxy->rect().toRect(), widget->rect());
         QCOMPARE(proxy->focusPolicy(), Qt::WheelFocus);
         QVERIFY(proxy->acceptDrops());
-        QCOMPARE(proxy->acceptsHoverEvents(), true); // to get widget enter events
+        QCOMPARE(proxy->acceptHoverEvents(), true); // to get widget enter events
         int left, top, right, bottom;
         widget->getContentsMargins(&left, &top, &right, &bottom);
         qreal rleft, rtop, rright, rbottom;
@@ -541,14 +523,15 @@ void tst_QGraphicsProxyWidget::testEventFilter_data()
     QTest::newRow("none") << QEvent::None << false;
     for (int i = 0; i < 2; ++i) {
         bool fromObject = (i == 0);
-        QTest::newRow(QString("resize %1").arg(fromObject).toLatin1()) << QEvent::Resize << fromObject;
-        QTest::newRow(QString("move %1").arg(fromObject).toLatin1()) << QEvent::Move << fromObject;
-        QTest::newRow(QString("hide %1").arg(fromObject).toLatin1()) << QEvent::Hide << fromObject;
-        QTest::newRow(QString("show %1").arg(fromObject).toLatin1()) << QEvent::Show << fromObject;
-        QTest::newRow(QString("enabled %1").arg(fromObject).toLatin1()) << QEvent::EnabledChange << fromObject;
-        QTest::newRow(QString("focusIn %1").arg(fromObject).toLatin1()) << QEvent::FocusIn << fromObject;
-        QTest::newRow(QString("focusOut %1").arg(fromObject).toLatin1()) << QEvent::FocusOut << fromObject;
-        QTest::newRow(QString("keyPress %1").arg(fromObject).toLatin1()) << QEvent::KeyPress << fromObject;
+        const char fromObjectC = fromObject ? '1' : '0';
+        QTest::newRow((QByteArrayLiteral("resize ") + fromObjectC).constData()) << QEvent::Resize << fromObject;
+        QTest::newRow((QByteArrayLiteral("move ") + fromObjectC).constData()) << QEvent::Move << fromObject;
+        QTest::newRow((QByteArrayLiteral("hide ") + fromObjectC).constData()) << QEvent::Hide << fromObject;
+        QTest::newRow((QByteArrayLiteral("show ") + fromObjectC).constData()) << QEvent::Show << fromObject;
+        QTest::newRow((QByteArrayLiteral("enabled ") + fromObjectC).constData()) << QEvent::EnabledChange << fromObject;
+        QTest::newRow((QByteArrayLiteral("focusIn ") + fromObjectC).constData()) << QEvent::FocusIn << fromObject;
+        QTest::newRow((QByteArrayLiteral("focusOut ") + fromObjectC).constData()) << QEvent::FocusOut << fromObject;
+        QTest::newRow((QByteArrayLiteral("keyPress ") + fromObjectC).constData()) << QEvent::KeyPress << fromObject;
     }
 }
 
@@ -760,8 +743,10 @@ void tst_QGraphicsProxyWidget::focusNextPrevChild_data()
                 bool hasWidget = (j == 0);
                 bool hasScene = (k == 0);
                 bool result = hasScene && hasWidget;
-                QString name = QString("Forward: %1, hasWidget: %2, hasScene: %3, result: %4").arg(next).arg(hasWidget).arg(hasScene).arg(result);
-                QTest::newRow(name.toLatin1()) << hasWidget << hasScene << next << result;
+                QByteArray name = QByteArrayLiteral("Forward: ") + (next ? '1' : '0')
+                    + ", hasWidget: " + (hasWidget ? '1' : '0') + ", hasScene: "
+                    + (hasScene ? '1' : '0') + ", result: " + (result ? '1' : '0');
+                QTest::newRow(name.constData()) << hasWidget << hasScene << next << result;
             }
         }
     }
@@ -1026,8 +1011,10 @@ void tst_QGraphicsProxyWidget::hoverMoveEvent_data()
                     bool hoverEnabled = (j == 0);
                     bool mouseTracking = (k == 0);
                     bool mouseDown = (l == 0);
-                    QString name = QString("hasWidget:%1, hover:%2, mouseTracking:%3, mouseDown: %4").arg(hasWidget).arg(hoverEnabled).arg(mouseTracking).arg(mouseDown);
-                    QTest::newRow(name.toLatin1()) << hasWidget << hoverEnabled << mouseTracking << mouseDown;
+                    QByteArray name = QByteArrayLiteral("hasWidget:") + (hasWidget ? '1' : '0') + ", hover:"
+                        + (hoverEnabled ? '1' : '0') + ", mouseTracking:"
+                        + (mouseTracking ? '1' : '0') + ", mouseDown: " + (mouseDown ? '1' : '0');
+                    QTest::newRow(name.constData()) << hasWidget << hoverEnabled << mouseTracking << mouseDown;
                 }
             }
         }
@@ -3072,6 +3059,7 @@ void tst_QGraphicsProxyWidget::createProxyForChildWidget()
     delete boxProxy;
 }
 
+#ifndef QT_NO_CONTEXTMENU
 class ContextMenuWidget : public QLabel
 {
     Q_OBJECT
@@ -3120,6 +3108,7 @@ private:
     bool m_embeddedPopupSet;
     QTimer *m_timer;
 };
+#endif // QT_NO_CONTEXTMENU
 
 void tst_QGraphicsProxyWidget::actionsContextMenu_data()
 {
@@ -3132,6 +3121,7 @@ void tst_QGraphicsProxyWidget::actionsContextMenu_data()
     QTest::newRow("with actionsContextMenu without focus") << true << false;
 }
 
+#ifndef QT_NO_CONTEXTMENU
 void tst_QGraphicsProxyWidget::actionsContextMenu()
 {
     QFETCH(bool, hasFocus);
@@ -3186,7 +3176,7 @@ void tst_QGraphicsProxyWidget::actionsContextMenu()
     }
 
 }
-
+#endif // QT_NO_CONTEXTMENU
 
 void tst_QGraphicsProxyWidget::deleteProxyForChildWidget()
 {

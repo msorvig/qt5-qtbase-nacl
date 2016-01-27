@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1515,7 +1510,7 @@ class MyStandardItemModel: public QStandardItemModel
     Q_OBJECT
 public:
     inline MyStandardItemModel(int i1, int i2): QStandardItemModel(i1, i2) {}
-    inline void reset() { QStandardItemModel::reset(); }
+    inline void reset() { beginResetModel(); endResetModel(); }
 };
 
 void tst_QItemSelectionModel::resetModel()
@@ -1760,7 +1755,7 @@ void tst_QItemSelectionModel::modelLayoutChanged()
     // verify that selection is as expected
     QItemSelection selection = selectionModel.selection();
     QCOMPARE(selection.count(), expectedSelectedRanges.count());
-    QVERIFY(selectionModel.hasSelection() == !expectedSelectedRanges.isEmpty());
+    QCOMPARE(selectionModel.hasSelection(), !expectedSelectedRanges.isEmpty());
 
     for (int i = 0; i < expectedSelectedRanges.count(); ++i) {
         IntPairPair expectedRange = expectedSelectedRanges.at(i);
@@ -1974,8 +1969,9 @@ void tst_QItemSelectionModel::rowIntersectsSelection2()
 {
     QStandardItemModel m;
     for (int i=0; i<8; ++i) {
+        const QString text = QLatin1String("Item number ") + QString::number(i);
         for (int j=0; j<8; ++j) {
-            QStandardItem *item = new QStandardItem(QString("Item number %1").arg(i));
+            QStandardItem *item = new QStandardItem(text);
             if ((i % 2 == 0 && j == 0)  ||
                 (j % 2 == 0 && i == 0)  ||
                  j == 5 || i == 5 ) {
@@ -2021,7 +2017,7 @@ void tst_QItemSelectionModel::rowIntersectsSelection3()
     QStandardItemModel model;
     QStandardItem *parentItem = model.invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
         parentItem = item;
     }
@@ -2046,7 +2042,7 @@ void tst_QItemSelectionModel::unselectable()
     QStandardItem *parentItem = model.invisibleRootItem();
 
     for (int i = 0; i < 10; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
     }
     QItemSelectionModel selectionModel(&model);
@@ -2093,7 +2089,8 @@ public:
     QVariant data(const QModelIndex &idx, int role) const
     {
         if (role == Qt::DisplayRole || role == Qt::EditRole)
-            return QString("[%1,%2]").arg(idx.row()).arg(idx.column());
+            return QLatin1Char('[') + QString::number(idx.row()) + QLatin1Char(',')
+                + QString::number(idx.column()) + QLatin1Char(']');
         return QVariant();
     }
 
@@ -2202,7 +2199,7 @@ void tst_QItemSelectionModel::childrenDeselectionSignal()
 
     QStandardItem *parentItem = model.invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
         parentItem = item;
     }
@@ -2217,7 +2214,7 @@ void tst_QItemSelectionModel::childrenDeselectionSignal()
     QSignalSpy deselectSpy(&selectionModel, &QItemSelectionModel::selectionChanged);
     QVERIFY(deselectSpy.isValid());
     model.removeRows(0, 1, root);
-    QVERIFY(deselectSpy.count() == 1);
+    QCOMPARE(deselectSpy.count(), 1);
 
     // More testing stress for the patch.
     model.clear();
@@ -2225,13 +2222,14 @@ void tst_QItemSelectionModel::childrenDeselectionSignal()
 
     parentItem = model.invisibleRootItem();
     for (int i = 0; i < 2; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
     }
     for (int i = 0; i < 2; ++i) {
         parentItem = model.invisibleRootItem()->child(i, 0);
+        const QString prefix = QLatin1String("item ") + QString::number(i) + QLatin1Char('.');
         for (int j = 0; j < 2; ++j) {
-            QStandardItem *item = new QStandardItem(QString("item %0.%1").arg(i).arg(j));
+            QStandardItem *item = new QStandardItem(prefix + QString::number(j));
             parentItem->appendRow(item);
         }
     }
@@ -2245,7 +2243,7 @@ void tst_QItemSelectionModel::childrenDeselectionSignal()
     QVERIFY(selectionModel.selection().contains(sel2));
     deselectSpy.clear();
     model.removeRow(0, model.index(0, 0));
-    QVERIFY(deselectSpy.count() == 1);
+    QCOMPARE(deselectSpy.count(), 1);
     QVERIFY(!selectionModel.selection().contains(sel));
     QVERIFY(selectionModel.selection().contains(sel2));
 }
@@ -2304,13 +2302,12 @@ void tst_QItemSelectionModel::layoutChangedWithAllSelected2()
 
     // Populate the tree view.
     for (unsigned int i = 0; i < cNumCols; i++)
-        model.setHeaderData( i, Qt::Horizontal, QString::fromLatin1("Column %1").arg(i));
+        model.setHeaderData( i, Qt::Horizontal, QLatin1String("Column ") + QString::number(i));
 
     for (unsigned int r = 0; r < cNumRows; r++) {
-        for (unsigned int c = 0; c < cNumCols; c++) {
-            model.setData(model.index(r, c, QModelIndex()),
-                          QString::fromLatin1("r:%1/c:%2").arg(r, c));
-        }
+        const QString prefix = QLatin1String("r:") + QString::number(r) + QLatin1String("/c:");
+        for (unsigned int c = 0; c < cNumCols; c++)
+            model.setData(model.index(r, c, QModelIndex()), prefix + QString::number(c));
     }
 
     QCOMPARE(model.rowCount(), int(cNumRows));
@@ -2375,7 +2372,7 @@ public slots:
         foreach(const QModelIndex &index, deselected.indexes()) {
             QVERIFY(!m_itemSelectionModel->selection().contains(index));
         }
-        QVERIFY(m_itemSelectionModel->selection().size() == 2);
+        QCOMPARE(m_itemSelectionModel->selection().size(), 2);
     }
 };
 
@@ -2393,7 +2390,7 @@ void tst_QItemSelectionModel::deselectRemovedMiddleRange()
 
     selModel.select(QItemSelection(model.index(3, 0), model.index(6, 0)), QItemSelectionModel::Select);
 
-    QVERIFY(selModel.selection().size() == 1);
+    QCOMPARE(selModel.selection().size(), 1);
 
     RemovalObserver ro(&selModel);
 
@@ -2402,7 +2399,7 @@ void tst_QItemSelectionModel::deselectRemovedMiddleRange()
     bool ok = model.removeRows(4, 2);
 
     QVERIFY(ok);
-    QVERIFY(spy.size() == 1);
+    QCOMPARE(spy.size(), 1);
 }
 
 static QStandardItemModel* getModel(QObject *parent)
@@ -2412,15 +2409,16 @@ static QStandardItemModel* getModel(QObject *parent)
     for (int i = 0; i < 4; ++i) {
         QStandardItem *parentItem = model->invisibleRootItem();
         QList<QStandardItem*> list;
+        const QString prefix = QLatin1String("item ") + QString::number(i) + QLatin1String(", ");
         for (int j = 0; j < 4; ++j) {
-            list.append(new QStandardItem(QString("item %1, %2").arg(i).arg(j)));
+            list.append(new QStandardItem(prefix + QString::number(j)));
         }
         parentItem->appendRow(list);
         parentItem = list.first();
         for (int j = 0; j < 4; ++j) {
             QList<QStandardItem*> list;
             for (int k = 0; k < 4; ++k) {
-                list.append(new QStandardItem(QString("item %1, %2").arg(i).arg(j)));
+                list.append(new QStandardItem(prefix + QString::number(j)));
             }
             parentItem->appendRow(list);
         }
@@ -2713,8 +2711,8 @@ void tst_QItemSelectionModel::testChainedSelectionClear()
         QModelIndexList selectedIndexes = selectionModel.selection().indexes();
         QModelIndexList duplicatedIndexes = duplicate.selection().indexes();
 
-        QVERIFY(selectedIndexes.size() == duplicatedIndexes.size());
-        QVERIFY(selectedIndexes.size() == 1);
+        QCOMPARE(selectedIndexes.size(), duplicatedIndexes.size());
+        QCOMPARE(selectedIndexes.size(), 1);
         QVERIFY(selectedIndexes.first() == model.index(0, 0));
     }
 
@@ -2724,18 +2722,18 @@ void tst_QItemSelectionModel::testChainedSelectionClear()
         QModelIndexList selectedIndexes = selectionModel.selection().indexes();
         QModelIndexList duplicatedIndexes = duplicate.selection().indexes();
 
-        QVERIFY(selectedIndexes.size() == duplicatedIndexes.size());
-        QVERIFY(selectedIndexes.size() == 0);
+        QCOMPARE(selectedIndexes.size(), duplicatedIndexes.size());
+        QCOMPARE(selectedIndexes.size(), 0);
     }
 
     duplicate.setCurrentIndex(model.index(0, 0), QItemSelectionModel::NoUpdate);
 
-    QVERIFY(selectionModel.currentIndex() == duplicate.currentIndex());
+    QCOMPARE(selectionModel.currentIndex(), duplicate.currentIndex());
 
     duplicate.clearCurrentIndex();
 
     QVERIFY(!duplicate.currentIndex().isValid());
-    QVERIFY(selectionModel.currentIndex() == duplicate.currentIndex());
+    QCOMPARE(selectionModel.currentIndex(), duplicate.currentIndex());
 }
 
 void tst_QItemSelectionModel::testClearCurrentIndex()
@@ -2750,13 +2748,13 @@ void tst_QItemSelectionModel::testClearCurrentIndex()
     QModelIndex firstIndex = model.index(0, 0);
     QVERIFY(firstIndex.isValid());
     selectionModel.setCurrentIndex(firstIndex, QItemSelectionModel::NoUpdate);
-    QVERIFY(selectionModel.currentIndex() == firstIndex);
-    QVERIFY(currentIndexSpy.size() == 1);
+    QCOMPARE(selectionModel.currentIndex(), firstIndex);
+    QCOMPARE(currentIndexSpy.size(), 1);
 
     selectionModel.clearCurrentIndex();
 
-    QVERIFY(selectionModel.currentIndex() == QModelIndex());
-    QVERIFY(currentIndexSpy.size() == 2);
+    QCOMPARE(selectionModel.currentIndex(), QModelIndex());
+    QCOMPARE(currentIndexSpy.size(), 2);
 }
 
 void tst_QItemSelectionModel::QTBUG48402_data()

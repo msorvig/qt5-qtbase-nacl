@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2013 Olivier Goffart <ogoffart@woboq.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the tools applications of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -155,16 +150,17 @@ bool Generator::registerableMetaType(const QByteArray &propertyType)
 #undef STREAM_SMART_POINTER
         ;
 
-    foreach (const QByteArray &smartPointer, smartPointers)
+    for (const QByteArray &smartPointer : smartPointers) {
         if (propertyType.startsWith(smartPointer + "<") && !propertyType.endsWith("&"))
             return knownQObjectClasses.contains(propertyType.mid(smartPointer.size() + 1, propertyType.size() - smartPointer.size() - 1 - 1));
+    }
 
     static const QVector<QByteArray> oneArgTemplates = QVector<QByteArray>()
 #define STREAM_1ARG_TEMPLATE(TEMPLATENAME) << #TEMPLATENAME
       QT_FOR_EACH_AUTOMATIC_TEMPLATE_1ARG(STREAM_1ARG_TEMPLATE)
 #undef STREAM_1ARG_TEMPLATE
     ;
-    foreach (const QByteArray &oneArgTemplateType, oneArgTemplates)
+    for (const QByteArray &oneArgTemplateType : oneArgTemplates) {
         if (propertyType.startsWith(oneArgTemplateType + "<") && propertyType.endsWith(">")) {
             const int argumentSize = propertyType.size() - oneArgTemplateType.size() - 1
                                      // The closing '>'
@@ -174,6 +170,7 @@ bool Generator::registerableMetaType(const QByteArray &propertyType)
             const QByteArray templateArg = propertyType.mid(oneArgTemplateType.size() + 1, argumentSize);
             return isBuiltinType(templateArg) || registerableMetaType(templateArg);
         }
+    }
     return false;
 }
 
@@ -1207,10 +1204,14 @@ void Generator::generateStaticMetacall()
                 fprintf(out, "        case %d:\n", it.key());
                 fprintf(out, "            switch (*reinterpret_cast<int*>(_a[1])) {\n");
                 fprintf(out, "            default: *reinterpret_cast<int*>(_a[0]) = -1; break;\n");
-                foreach (const QByteArray &key, it->uniqueKeys()) {
-                    foreach (int argumentID, it->values(key))
-                        fprintf(out, "            case %d:\n", argumentID);
-                    fprintf(out, "                *reinterpret_cast<int*>(_a[0]) = qRegisterMetaType< %s >(); break;\n", key.constData());
+                auto jt = it->begin();
+                const auto jend = it->end();
+                while (jt != jend) {
+                    fprintf(out, "            case %d:\n", jt.value());
+                    const QByteArray &lastKey = jt.key();
+                    ++jt;
+                    if (jt == jend || jt.key() != lastKey)
+                        fprintf(out, "                *reinterpret_cast<int*>(_a[0]) = qRegisterMetaType< %s >(); break;\n", lastKey.constData());
                 }
                 fprintf(out, "            }\n");
                 fprintf(out, "            break;\n");
@@ -1263,7 +1264,7 @@ void Generator::generateStaticMetacall()
         needElse = true;
     }
 
-    QMultiMap<QByteArray, int> automaticPropertyMetaTypes = automaticPropertyMetaTypesHelper();
+    const QMultiMap<QByteArray, int> automaticPropertyMetaTypes = automaticPropertyMetaTypesHelper();
 
     if (!automaticPropertyMetaTypes.isEmpty()) {
         if (needElse)
@@ -1273,10 +1274,14 @@ void Generator::generateStaticMetacall()
         fprintf(out, "if (_c == QMetaObject::RegisterPropertyMetaType) {\n");
         fprintf(out, "        switch (_id) {\n");
         fprintf(out, "        default: *reinterpret_cast<int*>(_a[0]) = -1; break;\n");
-        foreach (const QByteArray &key, automaticPropertyMetaTypes.uniqueKeys()) {
-            foreach (int propertyID, automaticPropertyMetaTypes.values(key))
-                fprintf(out, "        case %d:\n", propertyID);
-            fprintf(out, "            *reinterpret_cast<int*>(_a[0]) = qRegisterMetaType< %s >(); break;\n", key.constData());
+        auto it = automaticPropertyMetaTypes.begin();
+        const auto end = automaticPropertyMetaTypes.end();
+        while (it != end) {
+            fprintf(out, "        case %d:\n", it.value());
+            const QByteArray &lastKey = it.key();
+            ++it;
+            if (it == end || it.key() != lastKey)
+                fprintf(out, "            *reinterpret_cast<int*>(_a[0]) = qRegisterMetaType< %s >(); break;\n", lastKey.constData());
         }
         fprintf(out, "        }\n");
         fprintf(out, "    }\n");
@@ -1567,8 +1572,8 @@ void Generator::generatePluginMetaData()
     data.insert(QStringLiteral("MetaData"), cdef->pluginData.metaData.object());
 
     // Add -M args from the command line:
-    foreach (const QString &key, cdef->pluginData.metaArgs.keys())
-        data.insert(key, cdef->pluginData.metaArgs.value(key));
+    for (auto it = cdef->pluginData.metaArgs.cbegin(), end = cdef->pluginData.metaArgs.cend(); it != end; ++it)
+        data.insert(it.key(), it.value());
 
     fputs("\nQT_PLUGIN_METADATA_SECTION const uint qt_section_alignment_dummy = 42;\n\n"
           "#ifdef QT_NO_DEBUG\n", out);

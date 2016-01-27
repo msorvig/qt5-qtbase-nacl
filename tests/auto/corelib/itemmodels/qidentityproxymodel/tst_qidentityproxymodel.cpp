@@ -1,31 +1,26 @@
 /****************************************************************************
 **
 ** Copyright (C) 2011 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author Stephen Kelly <stephen.kelly@kdab.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -111,25 +106,25 @@ void tst_QIdentityProxyModel::verifyIdentity(QAbstractItemModel *model, const QM
     const int columns = model->columnCount(parent);
     const QModelIndex proxyParent = m_proxy->mapFromSource(parent);
 
-    QVERIFY(m_proxy->mapToSource(proxyParent) == parent);
-    QVERIFY(rows == m_proxy->rowCount(proxyParent));
-    QVERIFY(columns == m_proxy->columnCount(proxyParent));
+    QCOMPARE(m_proxy->mapToSource(proxyParent), parent);
+    QCOMPARE(rows, m_proxy->rowCount(proxyParent));
+    QCOMPARE(columns, m_proxy->columnCount(proxyParent));
 
     for (int row = 0; row < rows; ++row) {
         for (int column = 0; column < columns; ++column) {
             const QModelIndex idx = model->index(row, column, parent);
             const QModelIndex proxyIdx = m_proxy->mapFromSource(idx);
-            QVERIFY(proxyIdx.model() == m_proxy);
-            QVERIFY(m_proxy->mapToSource(proxyIdx) == idx);
+            QCOMPARE(proxyIdx.model(), m_proxy);
+            QCOMPARE(m_proxy->mapToSource(proxyIdx), idx);
             QVERIFY(proxyIdx.isValid());
-            QVERIFY(proxyIdx.row() == row);
-            QVERIFY(proxyIdx.column() == column);
-            QVERIFY(proxyIdx.parent() == proxyParent);
-            QVERIFY(proxyIdx.data() == idx.data());
-            QVERIFY(proxyIdx.flags() == idx.flags());
+            QCOMPARE(proxyIdx.row(), row);
+            QCOMPARE(proxyIdx.column(), column);
+            QCOMPARE(proxyIdx.parent(), proxyParent);
+            QCOMPARE(proxyIdx.data(), idx.data());
+            QCOMPARE(proxyIdx.flags(), idx.flags());
             const int childCount = m_proxy->rowCount(proxyIdx);
             const bool hasChildren = m_proxy->hasChildren(proxyIdx);
-            QVERIFY(model->hasChildren(idx) == hasChildren);
+            QCOMPARE(model->hasChildren(idx), hasChildren);
             QVERIFY((childCount > 0) == hasChildren);
 
             if (hasChildren)
@@ -146,7 +141,7 @@ void tst_QIdentityProxyModel::insertRows()
 {
     QStandardItem *parentItem = m_model->invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
         parentItem = item;
     }
@@ -171,13 +166,13 @@ void tst_QIdentityProxyModel::insertRows()
     QVERIFY(modelBeforeSpy.size() == 1 && 1 == proxyBeforeSpy.size());
     QVERIFY(modelAfterSpy.size() == 1 && 1 == proxyAfterSpy.size());
 
-    QVERIFY(modelBeforeSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelBeforeSpy.first().at(1) == proxyBeforeSpy.first().at(1));
-    QVERIFY(modelBeforeSpy.first().at(2) == proxyBeforeSpy.first().at(2));
+    QCOMPARE(modelBeforeSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelBeforeSpy.first().at(1), proxyBeforeSpy.first().at(1));
+    QCOMPARE(modelBeforeSpy.first().at(2), proxyBeforeSpy.first().at(2));
 
-    QVERIFY(modelAfterSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelAfterSpy.first().at(1) == proxyAfterSpy.first().at(1));
-    QVERIFY(modelAfterSpy.first().at(2) == proxyAfterSpy.first().at(2));
+    QCOMPARE(modelAfterSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelAfterSpy.first().at(1), proxyAfterSpy.first().at(1));
+    QCOMPARE(modelAfterSpy.first().at(2), proxyAfterSpy.first().at(2));
 
     verifyIdentity(m_model);
 }
@@ -186,7 +181,7 @@ void tst_QIdentityProxyModel::removeRows()
 {
     QStandardItem *parentItem = m_model->invisibleRootItem();
     for (int i = 0; i < 4; ++i) {
-        QStandardItem *item = new QStandardItem(QString("item %0").arg(i));
+        QStandardItem *item = new QStandardItem(QLatin1String("item ") + QString::number(i));
         parentItem->appendRow(item);
         parentItem = item;
     }
@@ -216,13 +211,13 @@ void tst_QIdentityProxyModel::removeRows()
     QVERIFY(modelBeforeSpy.size() == 1 && 1 == proxyBeforeSpy.size());
     QVERIFY(modelAfterSpy.size() == 1 && 1 == proxyAfterSpy.size());
 
-    QVERIFY(modelBeforeSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelBeforeSpy.first().at(1) == proxyBeforeSpy.first().at(1));
-    QVERIFY(modelBeforeSpy.first().at(2) == proxyBeforeSpy.first().at(2));
+    QCOMPARE(modelBeforeSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelBeforeSpy.first().at(1), proxyBeforeSpy.first().at(1));
+    QCOMPARE(modelBeforeSpy.first().at(2), proxyBeforeSpy.first().at(2));
 
-    QVERIFY(modelAfterSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelAfterSpy.first().at(1) == proxyAfterSpy.first().at(1));
-    QVERIFY(modelAfterSpy.first().at(2) == proxyAfterSpy.first().at(2));
+    QCOMPARE(modelAfterSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelAfterSpy.first().at(1), proxyAfterSpy.first().at(1));
+    QCOMPARE(modelAfterSpy.first().at(2), proxyAfterSpy.first().at(2));
 
     verifyIdentity(m_model);
 }
@@ -271,17 +266,17 @@ void tst_QIdentityProxyModel::moveRows()
     QVERIFY(modelBeforeSpy.size() == 1 && 1 == proxyBeforeSpy.size());
     QVERIFY(modelAfterSpy.size() == 1 && 1 == proxyAfterSpy.size());
 
-    QVERIFY(modelBeforeSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelBeforeSpy.first().at(1) == proxyBeforeSpy.first().at(1));
-    QVERIFY(modelBeforeSpy.first().at(2) == proxyBeforeSpy.first().at(2));
-    QVERIFY(modelBeforeSpy.first().at(3).value<QModelIndex>() == m_proxy->mapToSource(proxyBeforeSpy.first().at(3).value<QModelIndex>()));
-    QVERIFY(modelBeforeSpy.first().at(4) == proxyBeforeSpy.first().at(4));
+    QCOMPARE(modelBeforeSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyBeforeSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelBeforeSpy.first().at(1), proxyBeforeSpy.first().at(1));
+    QCOMPARE(modelBeforeSpy.first().at(2), proxyBeforeSpy.first().at(2));
+    QCOMPARE(modelBeforeSpy.first().at(3).value<QModelIndex>(), m_proxy->mapToSource(proxyBeforeSpy.first().at(3).value<QModelIndex>()));
+    QCOMPARE(modelBeforeSpy.first().at(4), proxyBeforeSpy.first().at(4));
 
-    QVERIFY(modelAfterSpy.first().first().value<QModelIndex>() == m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
-    QVERIFY(modelAfterSpy.first().at(1) == proxyAfterSpy.first().at(1));
-    QVERIFY(modelAfterSpy.first().at(2) == proxyAfterSpy.first().at(2));
-    QVERIFY(modelAfterSpy.first().at(3).value<QModelIndex>() == m_proxy->mapToSource(proxyAfterSpy.first().at(3).value<QModelIndex>()));
-    QVERIFY(modelAfterSpy.first().at(4) == proxyAfterSpy.first().at(4));
+    QCOMPARE(modelAfterSpy.first().first().value<QModelIndex>(), m_proxy->mapToSource(proxyAfterSpy.first().first().value<QModelIndex>()));
+    QCOMPARE(modelAfterSpy.first().at(1), proxyAfterSpy.first().at(1));
+    QCOMPARE(modelAfterSpy.first().at(2), proxyAfterSpy.first().at(2));
+    QCOMPARE(modelAfterSpy.first().at(3).value<QModelIndex>(), m_proxy->mapToSource(proxyAfterSpy.first().at(3).value<QModelIndex>()));
+    QCOMPARE(modelAfterSpy.first().at(4), proxyAfterSpy.first().at(4));
 
     verifyIdentity(&model);
 
@@ -352,7 +347,7 @@ void tst_QIdentityProxyModel::dataChanged()
     model.changeData();
 
     QCOMPARE(modelSpy.first().at(2).value<QVector<int> >(), QVector<int>() << 1);
-    QVERIFY(modelSpy.first().at(2) == proxySpy.first().at(2));
+    QCOMPARE(modelSpy.first().at(2), proxySpy.first().at(2));
 
     verifyIdentity(&model);
     m_proxy->setSourceModel(0);

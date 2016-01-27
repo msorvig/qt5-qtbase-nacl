@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -57,8 +63,14 @@
 
 QT_BEGIN_NAMESPACE
 
+typedef NETIO_STATUS (WINAPI *PtrConvertInterfaceIndexToLuid)(NET_IFINDEX, PNET_LUID);
 typedef NETIO_STATUS (WINAPI *PtrConvertInterfaceLuidToName)(const NET_LUID *, PWSTR, SIZE_T);
+typedef NETIO_STATUS (WINAPI *PtrConvertInterfaceLuidToIndex)(const NET_LUID *, PNET_IFINDEX);
+typedef NETIO_STATUS (WINAPI *PtrConvertInterfaceNameToLuid)(const WCHAR *, PNET_LUID);
+static PtrConvertInterfaceIndexToLuid ptrConvertInterfaceIndexToLuid = 0;
 static PtrConvertInterfaceLuidToName ptrConvertInterfaceLuidToName = 0;
+static PtrConvertInterfaceLuidToIndex ptrConvertInterfaceLuidToIndex = 0;
+static PtrConvertInterfaceNameToLuid ptrConvertInterfaceNameToLuid = 0;
 
 static void resolveLibs()
 {
@@ -71,10 +83,16 @@ static void resolveLibs()
 
 #if defined(Q_OS_WINCE)
         // since Windows Embedded Compact 7
+        ptrConvertInterfaceIndexToLuid = (PtrConvertInterfaceIndexToLuid)GetProcAddress(iphlpapiHnd, L"ConvertInterfaceIndexToLuid");
         ptrConvertInterfaceLuidToName = (PtrConvertInterfaceLuidToName)GetProcAddress(iphlpapiHnd, L"ConvertInterfaceLuidToNameW");
+        ptrConvertInterfaceLuidToIndex = (PtrConvertInterfaceLuidToIndex)GetProcAddress(iphlpapiHnd, L"ConvertInterfaceLuidToIndex");
+        ptrConvertInterfaceNameToLuid = (PtrConvertInterfaceNameToLuid)GetProcAddress(iphlpapiHnd, L"ConvertInterfaceNameToLuidW");
 #else
         // since Windows Vista
+        ptrConvertInterfaceIndexToLuid = (PtrConvertInterfaceIndexToLuid)GetProcAddress(iphlpapiHnd, "ConvertInterfaceIndexToLuid");
         ptrConvertInterfaceLuidToName = (PtrConvertInterfaceLuidToName)GetProcAddress(iphlpapiHnd, "ConvertInterfaceLuidToNameW");
+        ptrConvertInterfaceLuidToIndex = (PtrConvertInterfaceLuidToIndex)GetProcAddress(iphlpapiHnd, "ConvertInterfaceLuidToIndex");
+        ptrConvertInterfaceNameToLuid = (PtrConvertInterfaceNameToLuid)GetProcAddress(iphlpapiHnd, "ConvertInterfaceNameToLuidW");
 #endif
         done = true;
     }
@@ -92,11 +110,40 @@ static QHostAddress addressFromSockaddr(sockaddr *sa)
         address.setAddress(((sockaddr_in6 *)sa)->sin6_addr.s6_addr);
         int scope = ((sockaddr_in6 *)sa)->sin6_scope_id;
         if (scope)
-            address.setScopeId(QString::number(scope));
+            address.setScopeId(QNetworkInterfaceManager::interfaceNameFromIndex(scope));
     } else
         qWarning("Got unknown socket family %d", sa->sa_family);
     return address;
 
+}
+
+uint QNetworkInterfaceManager::interfaceIndexFromName(const QString &name)
+{
+    resolveLibs();
+    if (!ptrConvertInterfaceNameToLuid || !ptrConvertInterfaceLuidToIndex)
+        return 0;
+
+    NET_IFINDEX id;
+    NET_LUID luid;
+    if (ptrConvertInterfaceNameToLuid(reinterpret_cast<const wchar_t *>(name.constData()), &luid) == NO_ERROR
+            && ptrConvertInterfaceLuidToIndex(&luid, &id) == NO_ERROR)
+        return uint(id);
+    return 0;
+}
+
+QString QNetworkInterfaceManager::interfaceNameFromIndex(uint index)
+{
+    resolveLibs();
+    if (ptrConvertInterfaceIndexToLuid && ptrConvertInterfaceLuidToName) {
+        NET_LUID luid;
+        if (ptrConvertInterfaceIndexToLuid(index, &luid) == NO_ERROR) {
+            WCHAR buf[IF_MAX_STRING_SIZE + 1];
+            if (ptrConvertInterfaceLuidToName(&luid, buf, sizeof(buf)/sizeof(buf[0])) == NO_ERROR)
+                return QString::fromWCharArray(buf);
+        }
+    }
+
+    return QString::number(index);
 }
 
 static QHash<QHostAddress, QHostAddress> ipv4Netmasks()

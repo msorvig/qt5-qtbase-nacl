@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 TARGET  = ../tst_qpluginloader
 QT = core testlib
 contains(QT_CONFIG, private_tests): QT += core-private
@@ -16,4 +15,3 @@ win32 {
 }
 
 TESTDATA += ../elftest ../machtest
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0

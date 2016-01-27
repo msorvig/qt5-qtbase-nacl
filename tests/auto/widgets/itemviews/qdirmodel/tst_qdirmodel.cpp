@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -416,14 +411,14 @@ void tst_QDirModel::rowsAboutToBeRemoved_data()
 
 bool tst_QDirModel::rowsAboutToBeRemoved_init(const QString &test_path, const QStringList &initial_files)
 {
-    QString path = QDir::currentPath() + "/" + test_path;
+    QString path = QDir::currentPath() + QLatin1Char('/') + test_path;
     if (!QDir::current().mkdir(test_path) && false) { // FIXME
         qDebug() << "failed to create dir" << path;
         return false;
     }
 
     for (int i = 0; i < initial_files.count(); ++i) {
-        QFile file(path + "/" + initial_files.at(i));
+        QFile file(path + QLatin1Char('/') + initial_files.at(i));
         if (!file.open(QIODevice::WriteOnly)) {
             qDebug() << "failed to open file" << initial_files.at(i);
             return false;
@@ -443,7 +438,7 @@ bool tst_QDirModel::rowsAboutToBeRemoved_init(const QString &test_path, const QS
 
 bool tst_QDirModel::rowsAboutToBeRemoved_cleanup(const QString &test_path)
 {
-    QString path = QDir::currentPath() + "/" + test_path;
+    QString path = QDir::currentPath() + QLatin1Char('/') + test_path;
     QDir dir(path, "*", QDir::SortFlags(QDir::Name|QDir::IgnoreCase), QDir::Files);
     QStringList files = dir.entryList();
 
@@ -584,8 +579,8 @@ void tst_QDirModel::filePath()
     QString path = SRCDIR;
 #else
     QString path = QFileInfo(SRCDIR).absoluteFilePath();
-    if (!path.endsWith("/"))
-        path += "/";
+    if (!path.endsWith(QLatin1Char('/')))
+        path += QLatin1Char('/');
 #endif
     QCOMPARE(model.filePath(index), path + QString( "test.lnk"));
     model.setResolveSymlinks(true);

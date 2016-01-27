@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -33,7 +39,7 @@
 
 #include "qfactoryloader_p.h"
 
-#ifndef QT_NO_LIBRARY
+#ifndef QT_NO_QOBJECT
 #include "qfactoryinterface.h"
 #include "qmap.h"
 #include <qdir.h>
@@ -49,10 +55,6 @@
 #include "qjsonarray.h"
 
 QT_BEGIN_NAMESPACE
-
-Q_GLOBAL_STATIC(QList<QFactoryLoader *>, qt_factory_loaders)
-
-Q_GLOBAL_STATIC_WITH_ARGS(QMutex, qt_factoryloader_mutex, (QMutex::Recursive))
 
 namespace {
 
@@ -71,15 +73,23 @@ class QFactoryLoaderPrivate : public QObjectPrivate
     Q_DECLARE_PUBLIC(QFactoryLoader)
 public:
     QFactoryLoaderPrivate(){}
+    QByteArray iid;
+#ifndef QT_NO_LIBRARY
     ~QFactoryLoaderPrivate();
     mutable QMutex mutex;
-    QByteArray iid;
     QList<QLibraryPrivate*> libraryList;
     QMap<QString,QLibraryPrivate*> keyMap;
     QString suffix;
     Qt::CaseSensitivity cs;
     QStringList loadedPaths;
+#endif
 };
+
+#ifndef QT_NO_LIBRARY
+
+Q_GLOBAL_STATIC(QList<QFactoryLoader *>, qt_factory_loaders)
+
+Q_GLOBAL_STATIC_WITH_ARGS(QMutex, qt_factoryloader_mutex, (QMutex::Recursive))
 
 QFactoryLoaderPrivate::~QFactoryLoaderPrivate()
 {
@@ -89,25 +99,6 @@ QFactoryLoaderPrivate::~QFactoryLoaderPrivate()
         library->release();
     }
 }
-
-QFactoryLoader::QFactoryLoader(const char *iid,
-                               const QString &suffix,
-                               Qt::CaseSensitivity cs)
-    : QObject(*new QFactoryLoaderPrivate)
-{
-    moveToThread(QCoreApplicationPrivate::mainThread());
-    Q_D(QFactoryLoader);
-    d->iid = iid;
-    d->cs = cs;
-    d->suffix = suffix;
-
-
-    QMutexLocker locker(qt_factoryloader_mutex());
-    update();
-    qt_factory_loaders()->append(this);
-}
-
-
 
 void QFactoryLoader::update()
 {
@@ -246,59 +237,6 @@ QFactoryLoader::~QFactoryLoader()
     qt_factory_loaders()->removeAll(this);
 }
 
-QList<QJsonObject> QFactoryLoader::metaData() const
-{
-    Q_D(const QFactoryLoader);
-    QMutexLocker locker(&d->mutex);
-    QList<QJsonObject> metaData;
-    for (int i = 0; i < d->libraryList.size(); ++i)
-        metaData.append(d->libraryList.at(i)->metaData);
-
-    foreach (const QStaticPlugin &plugin, QPluginLoader::staticPlugins()) {
-        const QJsonObject object = plugin.metaData();
-        if (object.value(iidKeyLiteral()) != QLatin1String(d->iid.constData(), d->iid.size()))
-            continue;
-        metaData.append(object);
-    }
-    return metaData;
-}
-
-QObject *QFactoryLoader::instance(int index) const
-{
-    Q_D(const QFactoryLoader);
-    if (index < 0)
-        return 0;
-
-    if (index < d->libraryList.size()) {
-        QLibraryPrivate *library = d->libraryList.at(index);
-        if (library->instance || library->loadPlugin()) {
-            if (!library->inst)
-                library->inst = library->instance();
-            QObject *obj = library->inst.data();
-            if (obj) {
-                if (!obj->parent())
-                    obj->moveToThread(QCoreApplicationPrivate::mainThread());
-                return obj;
-            }
-        }
-        return 0;
-    }
-
-    index -= d->libraryList.size();
-    QVector<QStaticPlugin> staticPlugins = QPluginLoader::staticPlugins();
-    for (int i = 0; i < staticPlugins.count(); ++i) {
-        const QJsonObject object = staticPlugins.at(i).metaData();
-        if (object.value(iidKeyLiteral()) != QLatin1String(d->iid.constData(), d->iid.size()))
-            continue;
-
-        if (index == 0)
-            return staticPlugins.at(i).instance();
-        --index;
-    }
-
-    return 0;
-}
-
 #if defined(Q_OS_UNIX) && !defined (Q_OS_MAC)
 QLibraryPrivate *QFactoryLoader::library(const QString &key) const
 {
@@ -315,6 +253,87 @@ void QFactoryLoader::refreshAll()
          it != loaders->constEnd(); ++it) {
         (*it)->update();
     }
+}
+
+#endif // QT_NO_LIBRARY
+
+QFactoryLoader::QFactoryLoader(const char *iid,
+                               const QString &suffix,
+                               Qt::CaseSensitivity cs)
+    : QObject(*new QFactoryLoaderPrivate)
+{
+    moveToThread(QCoreApplicationPrivate::mainThread());
+    Q_D(QFactoryLoader);
+    d->iid = iid;
+#ifndef QT_NO_LIBRARY
+    d->cs = cs;
+    d->suffix = suffix;
+
+    QMutexLocker locker(qt_factoryloader_mutex());
+    update();
+    qt_factory_loaders()->append(this);
+#else
+    Q_UNUSED(suffix);
+    Q_UNUSED(cs);
+#endif
+}
+
+QList<QJsonObject> QFactoryLoader::metaData() const
+{
+    Q_D(const QFactoryLoader);
+    QList<QJsonObject> metaData;
+#ifndef QT_NO_LIBRARY
+    QMutexLocker locker(&d->mutex);
+    for (int i = 0; i < d->libraryList.size(); ++i)
+        metaData.append(d->libraryList.at(i)->metaData);
+#endif
+
+    const auto staticPlugins = QPluginLoader::staticPlugins();
+    for (const QStaticPlugin &plugin : staticPlugins) {
+        const QJsonObject object = plugin.metaData();
+        if (object.value(iidKeyLiteral()) != QLatin1String(d->iid.constData(), d->iid.size()))
+            continue;
+        metaData.append(object);
+    }
+    return metaData;
+}
+
+QObject *QFactoryLoader::instance(int index) const
+{
+    Q_D(const QFactoryLoader);
+    if (index < 0)
+        return 0;
+
+#ifndef QT_NO_LIBRARY
+    if (index < d->libraryList.size()) {
+        QLibraryPrivate *library = d->libraryList.at(index);
+        if (library->instance || library->loadPlugin()) {
+            if (!library->inst)
+                library->inst = library->instance();
+            QObject *obj = library->inst.data();
+            if (obj) {
+                if (!obj->parent())
+                    obj->moveToThread(QCoreApplicationPrivate::mainThread());
+                return obj;
+            }
+        }
+        return 0;
+    }
+    index -= d->libraryList.size();
+#endif
+
+    QVector<QStaticPlugin> staticPlugins = QPluginLoader::staticPlugins();
+    for (int i = 0; i < staticPlugins.count(); ++i) {
+        const QJsonObject object = staticPlugins.at(i).metaData();
+        if (object.value(iidKeyLiteral()) != QLatin1String(d->iid.constData(), d->iid.size()))
+            continue;
+
+        if (index == 0)
+            return staticPlugins.at(i).instance();
+        --index;
+    }
+
+    return 0;
 }
 
 QMultiMap<int, QString> QFactoryLoader::keyMap() const
@@ -352,4 +371,4 @@ int QFactoryLoader::indexOf(const QString &needle) const
 
 QT_END_NAMESPACE
 
-#endif // QT_NO_LIBRARY
+#endif // QT_NO_QOBJECT

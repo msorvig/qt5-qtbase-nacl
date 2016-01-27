@@ -104,11 +104,9 @@ isEmpty(BUILDS)|build_pass {
         tnam ~= s,[?*],wildcard,
         tnam ~= s,[^A-Za-z0-9],_,
         tdi = testdata_$$tnam
-        tdif = $${tdi}.files
-        tdip = $${tdi}.path
 
         # TESTDATA consists of the files to install (source)...
-        $$tdif = $$file
+        $${tdi}.files = $$file
 
         # ... and the destination preserves the relative path.
         # Strip any leading ../ from the testdata, so that installation does not escape
@@ -124,7 +122,7 @@ isEmpty(BUILDS)|build_pass {
         # and testdata in the build and install tree, but should cover most cases.
         #
         file = $$replace(file, ^(\\.\\./)+, )
-        $$tdip = $${target.path}/$$dirname(file)
+        $${tdi}.path = $${target.path}/$$dirname(file)
 
         INSTALLS += $$tdi
     }
@@ -138,15 +136,12 @@ isEmpty(BUILDS)|build_pass {
         tnam ~= s,[?*],wildcard,
         tnam ~= s,[^A-Za-z0-9],_,
         tdi = testdata_$$tnam
-        tdif = $${tdi}.files
-        tdip = $${tdi}.path
-        tdic = $${tdi}.CONFIG
 
-        $$tdif = $$file
-        $$tdic = no_check_exist
+        $${tdi}.files = $$file
+        $${tdi}.CONFIG = no_check_exist
 
         file = $$replace(file, ^(\\.\\./)+, )
-        $$tdip = $${target.path}/$$dirname(file)
+        $${tdi}.path = $${target.path}/$$dirname(file)
 
         INSTALLS += $$tdi
     }

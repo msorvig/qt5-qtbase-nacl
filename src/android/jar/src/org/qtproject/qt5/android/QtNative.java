@@ -1,32 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2014 BogDan Vatra <bogdan@kde.org>
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the Android port of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -84,6 +90,12 @@ public class QtNative
     private static final int m_moveThreshold = 0;
     private static ClipboardManager m_clipboardManager = null;
     private static Method m_checkSelfPermissionMethod = null;
+    private static final Runnable runPendingCppRunnablesRunnable = new Runnable() {
+        @Override
+        public void run() {
+            runPendingCppRunnables();
+        }
+    };
 
     private static ClassLoader m_classLoader = null;
     public static ClassLoader classLoader()
@@ -204,14 +216,14 @@ public class QtNative
         }
     }
 
-    private static void runQtOnUiThread(final long id)
+    private static void runPendingCppRunnablesOnUiThread()
     {
-        runAction(new Runnable() {
-            @Override
-            public void run() {
-                QtNative.onAndroidUiThread(id);
-            }
-        });
+        synchronized (m_mainActivityMutex) {
+            if (!m_activityPaused && m_activity != null)
+                m_activity.runOnUiThread(runPendingCppRunnablesRunnable);
+            else
+                runAction(runPendingCppRunnablesRunnable);
+        }
     }
 
     private static void setViewVisibility(final View view, final boolean visible)
@@ -343,16 +355,14 @@ public class QtNative
     {
         int pointerType = 0;
 
-        if (Build.VERSION.SDK_INT >= 14) {
-            switch (event.getToolType(0)) {
-            case MotionEvent.TOOL_TYPE_STYLUS:
-                pointerType = 1; // QTabletEvent::Pen
-                break;
-            case MotionEvent.TOOL_TYPE_ERASER:
-                pointerType = 3; // QTabletEvent::Eraser
-                break;
-            // TODO TOOL_TYPE_MOUSE
-            }
+        switch (event.getToolType(0)) {
+        case MotionEvent.TOOL_TYPE_STYLUS:
+            pointerType = 1; // QTabletEvent::Pen
+            break;
+        case MotionEvent.TOOL_TYPE_ERASER:
+            pointerType = 3; // QTabletEvent::Eraser
+            break;
+        // TODO TOOL_TYPE_MOUSE
         }
 
         if (pointerType != 0) {
@@ -726,5 +736,5 @@ public class QtNative
     public static native void onActivityResult(int requestCode, int resultCode, Intent data);
     public static native void onNewIntent(Intent data);
 
-    public static native void onAndroidUiThread(long id);
+    public static native void runPendingCppRunnables();
 }

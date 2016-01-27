@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -843,10 +849,17 @@ public:
 
     enum FormatType { LongFormat, ShortFormat, NarrowFormat };
     enum NumberOption {
+        DefaultNumberOptions = 0x0,
         OmitGroupSeparator = 0x01,
-        RejectGroupSeparator = 0x02
+        RejectGroupSeparator = 0x02,
+        OmitLeadingZeroInExponent = 0x04,
+        RejectLeadingZeroInExponent = 0x08
     };
     Q_DECLARE_FLAGS(NumberOptions, NumberOption)
+
+    enum FloatingPointPrecisionOption {
+        FloatingPointShortest = -128
+    };
 
     enum CurrencySymbolFormat {
         CurrencyIsoCode,
@@ -859,9 +872,13 @@ public:
     QLocale(Language language, Country country = AnyCountry);
     QLocale(Language language, Script script, Country country);
     QLocale(const QLocale &other);
+#ifdef Q_COMPILER_RVALUE_REFS
+    QLocale &operator=(QLocale &&other) Q_DECL_NOTHROW { swap(other); return *this; }
+#endif
+    QLocale &operator=(const QLocale &other);
     ~QLocale();
 
-    QLocale &operator=(const QLocale &other);
+    void swap(QLocale &other) Q_DECL_NOTHROW { qSwap(d, other.d); }
 
     Language language() const;
     Script script() const;
@@ -952,8 +969,18 @@ public:
     inline QString toCurrencyString(ushort, const QString &symbol = QString()) const;
     inline QString toCurrencyString(int, const QString &symbol = QString()) const;
     inline QString toCurrencyString(uint, const QString &symbol = QString()) const;
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    QString toCurrencyString(double, const QString &symbol = QString(), int precision = -1) const;
+    inline QString toCurrencyString(float i, const QString &symbol = QString(), int precision = -1) const
+    { return toCurrencyString(double(i), symbol, precision); }
+#else
     QString toCurrencyString(double, const QString &symbol = QString()) const;
-    inline QString toCurrencyString(float, const QString &symbol = QString()) const;
+    QString toCurrencyString(double, const QString &symbol, int precision) const;
+    inline QString toCurrencyString(float i, const QString &symbol = QString()) const
+    { return toCurrencyString(double(i), symbol); }
+    inline QString toCurrencyString(float i, const QString &symbol, int precision) const
+    { return toCurrencyString(double(i), symbol, precision); }
+#endif
 
     QStringList uiLanguages() const;
 
@@ -987,7 +1014,7 @@ private:
 
     QSharedDataPointer<QLocalePrivate> d;
 };
-Q_DECLARE_TYPEINFO(QLocale, Q_MOVABLE_TYPE);
+Q_DECLARE_SHARED(QLocale)
 Q_DECLARE_OPERATORS_FOR_FLAGS(QLocale::NumberOptions)
 
 inline QString QLocale::toString(short i) const
@@ -1009,8 +1036,6 @@ inline QString QLocale::toCurrencyString(int i, const QString &symbol) const
 { return toCurrencyString(qlonglong(i), symbol); }
 inline QString QLocale::toCurrencyString(uint i, const QString &symbol) const
 { return toCurrencyString(qulonglong(i), symbol); }
-inline QString QLocale::toCurrencyString(float i, const QString &symbol) const
-{ return toCurrencyString(double(i), symbol); }
 
 #ifndef QT_NO_DATASTREAM
 Q_CORE_EXPORT QDataStream &operator<<(QDataStream &, const QLocale &);

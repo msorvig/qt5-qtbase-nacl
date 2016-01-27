@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -650,7 +645,7 @@ template <typename T> T PaintCommands::image_load(const QString &filepath)
         QDir dir = fi.absoluteDir();
         dir.cdUp();
         dir.cd("images");
-        QString fileName = QString("%1/%2").arg(dir.absolutePath()).arg(fi.fileName());
+        QString fileName = dir.absolutePath() + QLatin1Char('/') + fi.fileName();
         t = T(fileName);
         if (t.isNull() && !fileName.endsWith(".png")) {
             fileName.append(".png");
@@ -841,10 +836,11 @@ void PaintCommands::command_import(QRegExp re)
                qPrintable(fi.fileName()));
 
     QFileInfo fileinfo(*file);
-    m_commands[m_currentCommandIndex] = QString("# import file (%1) start").arg(fileinfo.fileName());
+    m_commands[m_currentCommandIndex] = QLatin1String("# import file (") + fileinfo.fileName()
+        + QLatin1String(") start");
     QString rawContent = QString::fromUtf8(file->readAll());
     QStringList importedData = rawContent.split('\n', QString::SkipEmptyParts);
-    importedData.append(QString("# import file (%1) end ---").arg(fileinfo.fileName()));
+    importedData.append(QLatin1String("# import file (") + fileinfo.fileName() + QLatin1String(") end ---"));
     insertAt(m_currentCommandIndex, importedData);
 
     if (m_verboseMode) {
@@ -862,13 +858,13 @@ void PaintCommands::command_begin_block(QRegExp re)
     if (m_verboseMode)
         printf(" -(lance) begin_block (%s)\n", qPrintable(blockName));
 
-    m_commands[m_currentCommandIndex] = QString("# begin block (%1)").arg(blockName);
+    m_commands[m_currentCommandIndex] = QLatin1String("# begin block (") + blockName + QLatin1Char(')');
     QStringList newBlock;
     int i = m_currentCommandIndex + 1;
     for (; i < m_commands.count(); ++i) {
         const QString &nextCmd = m_commands.at(i);
         if (nextCmd.startsWith("end_block")) {
-            m_commands[i] = QString("# end block (%1)").arg(blockName);
+            m_commands[i] = QLatin1String("# end block (") + blockName + QLatin1Char(')');
             break;
         }
         newBlock += nextCmd;
@@ -905,7 +901,7 @@ void PaintCommands::command_repeat_block(QRegExp re)
         return;
     }
 
-    m_commands[m_currentCommandIndex] = QString("# repeated block (%1)").arg(blockName);
+    m_commands[m_currentCommandIndex] = QLatin1String("# repeated block (") + blockName + QLatin1Char(')');
     insertAt(m_currentCommandIndex, block);
 }
 
@@ -946,7 +942,7 @@ void PaintCommands::command_drawPixmap(QRegExp re)
         QDir dir = fi.absoluteDir();
         dir.cdUp();
         dir.cd("images");
-        QString fileName = QString("%1/%2").arg(dir.absolutePath()).arg(re.cap(1));
+        QString fileName = dir.absolutePath() + QLatin1Char('/') + re.cap(1);
         pm = QPixmap(fileName);
         if (pm.isNull() && !fileName.endsWith(".png")) {
             fileName.append(".png");
@@ -995,7 +991,7 @@ void PaintCommands::command_drawImage(QRegExp re)
         QDir dir = fi.absoluteDir();
         dir.cdUp();
         dir.cd("images");
-        QString fileName = QString("%1/%2").arg(dir.absolutePath()).arg(re.cap(1));
+        QString fileName = dir.absolutePath() + QLatin1Char('/') + re.cap(1);
         im = QImage(fileName);
         if (im.isNull() && !fileName.endsWith(".png")) {
             fileName.append(".png");
@@ -1041,7 +1037,7 @@ void PaintCommands::command_drawTiledPixmap(QRegExp re)
         QDir dir = fi.absoluteDir();
         dir.cdUp();
         dir.cd("images");
-        QString fileName = QString("%1/%2").arg(dir.absolutePath()).arg(re.cap(1));
+        QString fileName = dir.absolutePath() + QLatin1Char('/') + re.cap(1);
         pm = QPixmap(fileName);
         if (pm.isNull() && !fileName.endsWith(".png")) {
             fileName.append(".png");

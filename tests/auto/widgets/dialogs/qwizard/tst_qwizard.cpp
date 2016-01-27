@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -59,11 +54,8 @@ class tst_QWizard : public QObject
 public:
     tst_QWizard();
 
-public slots:
-    void init();
-    void cleanup();
-
 private slots:
+    void cleanup();
     void buttonText();
     void setButtonLayout();
     void setButton();
@@ -137,10 +129,6 @@ private slots:
 };
 
 tst_QWizard::tst_QWizard()
-{
-}
-
-void tst_QWizard::init()
 {
 #ifdef Q_OS_WINCE //disable magic for WindowsCE
     qApp->setAutoMaximizeThreshold(-1);
@@ -547,8 +535,8 @@ void tst_QWizard::setDefaultProperty()
 
     // make sure the data structure is reasonable
     for (int i = 0; i < 200000; ++i) {
-        wizard.setDefaultProperty("QLineEdit", QByteArray("x" + QByteArray::number(i)).constData(), 0);
-        wizard.setDefaultProperty("QLabel", QByteArray("y" + QByteArray::number(i)).constData(), 0);
+        wizard.setDefaultProperty("QLineEdit", QByteArray('x' + QByteArray::number(i)).constData(), 0);
+        wizard.setDefaultProperty("QLabel", QByteArray('y' + QByteArray::number(i)).constData(), 0);
     }
 }
 
@@ -1625,7 +1613,7 @@ class SetPage : public Operation
         for (int j = 0; j < page; ++j)
             wizard->next();
     }
-    QString describe() const { return QString("set page %1").arg(page); }
+    QString describe() const { return QLatin1String("set page ") + QString::number(page); }
     const int page;
 public:
     SetPage(int page) : page(page) {}
@@ -1634,7 +1622,7 @@ public:
 class SetStyle : public Operation
 {
     void apply(QWizard *wizard) const { wizard->setWizardStyle(style); }
-    QString describe() const { return QString("set style %1").arg(style); }
+    QString describe() const { return QLatin1String("set style ") + QString::number(style); }
     const QWizard::WizardStyle style;
 public:
     SetStyle(QWizard::WizardStyle style) : style(style) {}
@@ -1697,7 +1685,8 @@ public:
 
 QString SetOption::describe() const
 {
-    return QString("set opt %1 %2").arg(OptionInfo::instance().tag(option)).arg(on);
+    return QLatin1String("set opt ") + OptionInfo::instance().tag(option)
+        + QLatin1Char(on ? '1' : '0');
 }
 
 Q_DECLARE_METATYPE(Operation *)
@@ -1726,7 +1715,7 @@ public:
     void createTestRows()
     {
         for (int i = 0; i < combinations.count(); ++i) {
-            QTest::newRow((name + QString(", row %1").arg(i)).toLatin1().data())
+            QTest::newRow((name.toLatin1() + ", row " + QByteArray::number(i)).constData())
                 << (i == 0) << (type == Equality) << *(combinations.at(i));
             ++nRows_;
         }
@@ -1827,7 +1816,7 @@ public:
         foreach (Operation * op, operations) {
             if (op) {
                 op->apply(this);
-                opsDescr += QString("(%1) ").arg(op->describe());
+                opsDescr += QLatin1Char('(') + op->describe() + QLatin1String(") ");
             }
         }
     }
@@ -2115,7 +2104,7 @@ void tst_QWizard::combinations()
     }
 
     if (minSizeTest)
-        qDebug() << "minimum sizes" << reason.latin1() << ";" << wizard.minimumSizeHint()
+        qDebug() << "minimum sizes" << reason.latin1() << ';' << wizard.minimumSizeHint()
                  << otor.latin1() << refMinSize;
 
     if (imageTest)
@@ -2612,9 +2601,6 @@ void tst_QWizard::task161658_alignments()
 
 void tst_QWizard::task177022_setFixedSize()
 {
-#ifdef Q_OS_BLACKBERRY
-    QSKIP("Window is forced fullscreen");
-#endif
     int width = 300;
     int height = 200;
     QWizard wiz;

@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -1547,7 +1553,7 @@ QVector<QCss::StyleRule> QStyleSheetStyle::styleRules(const QObject *obj) const
             if (ss.startsWith(QLatin1String("file:///")))
                 ss.remove(0, 8);
             parser.init(ss, qApp->styleSheet() != ss);
-            if (!parser.parse(&appSs))
+            if (Q_UNLIKELY(!parser.parse(&appSs)))
                 qWarning("Could not parse application stylesheet");
             appSs.origin = StyleSheetOrigin_Inline;
             appSs.depth = 1;
@@ -1569,7 +1575,7 @@ QVector<QCss::StyleRule> QStyleSheetStyle::styleRules(const QObject *obj) const
             parser.init(styleSheet);
             if (!parser.parse(&ss)) {
                 parser.init(QLatin1String("* {") + styleSheet + QLatin1Char('}'));
-                if (!parser.parse(&ss))
+                if (Q_UNLIKELY(!parser.parse(&ss)))
                    qWarning("Could not parse stylesheet of object %p", o);
             }
             ss.origin = StyleSheetOrigin_Inline;
@@ -2515,12 +2521,12 @@ void QStyleSheetStyle::setProperties(QWidget *w)
 
         const QMetaObject *metaObject = w->metaObject();
         int index = metaObject->indexOfProperty(property.toLatin1());
-        if (index == -1) {
+        if (Q_UNLIKELY(index == -1)) {
             qWarning() << w << " does not have a property named " << property;
             continue;
         }
         const QMetaProperty metaProperty = metaObject->property(index);
-        if (!metaProperty.isWritable() || !metaProperty.isDesignable()) {
+        if (Q_UNLIKELY(!metaProperty.isWritable() || !metaProperty.isDesignable())) {
             qWarning() << w << " cannot design property named " << property;
             continue;
         }
@@ -2556,7 +2562,13 @@ void QStyleSheetStyle::setPalette(QWidget *w)
         { PseudoClass_Enabled, QPalette::Inactive }
     };
 
-    QPalette p = w->palette();
+    const bool useStyleSheetPropagationInWidgetStyles =
+        QCoreApplication::testAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles);
+
+    QPalette p;
+    if (!useStyleSheetPropagationInWidgetStyles)
+        p = w->palette();
+
     QWidget *ew = embeddedWidget(w);
 
     for (int i = 0; i < 3; i++) {
@@ -2573,29 +2585,81 @@ void QStyleSheetStyle::setPalette(QWidget *w)
         rule.configurePalette(&p, map[i].group, ew, ew != w);
     }
 
-    styleSheetCaches->customPaletteWidgets.insert(w, w->palette());
-    w->setPalette(p);
-    if (ew != w)
-        ew->setPalette(p);
+    if (!useStyleSheetPropagationInWidgetStyles || p.resolve() != 0) {
+        QPalette wp = w->palette();
+        styleSheetCaches->customPaletteWidgets.insert(w, qMakePair(wp, p.resolve()));
+
+        if (useStyleSheetPropagationInWidgetStyles) {
+            p = p.resolve(wp);
+            p.resolve(p.resolve() | wp.resolve());
+        }
+
+        w->setPalette(p);
+        if (ew != w)
+            ew->setPalette(p);
+    }
 }
 
 void QStyleSheetStyle::unsetPalette(QWidget *w)
 {
+    const bool useStyleSheetPropagationInWidgetStyles =
+        QCoreApplication::testAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles);
+
     if (styleSheetCaches->customPaletteWidgets.contains(w)) {
-        QPalette p = styleSheetCaches->customPaletteWidgets.value(w);
-        w->setPalette(p);
+        QPair<QPalette, uint> p = styleSheetCaches->customPaletteWidgets.value(w);
+        styleSheetCaches->customPaletteWidgets.remove(w);
+
+        QPalette original = p.first;
+
+        if (useStyleSheetPropagationInWidgetStyles) {
+            original.resolve(original.resolve() & p.second);
+
+            QPalette wp = w->palette();
+            wp.resolve(wp.resolve() & ~p.second);
+            wp.resolve(original);
+            wp.resolve(wp.resolve() | original.resolve());
+            original = wp;
+        }
+
+        w->setPalette(original);
         QWidget *ew = embeddedWidget(w);
         if (ew != w)
-            ew->setPalette(p);
-        styleSheetCaches->customPaletteWidgets.remove(w);
+            ew->setPalette(original);
     }
-    QVariant oldFont = w->property("_q_styleSheetWidgetFont");
-    if (oldFont.isValid()) {
-        w->setFont(qvariant_cast<QFont>(oldFont));
+
+    if (useStyleSheetPropagationInWidgetStyles) {
+        unsetStyleSheetFont(w);
+        QWidget *ew = embeddedWidget(w);
+        if (ew != w)
+            unsetStyleSheetFont(ew);
+    } else {
+        QVariant oldFont = w->property("_q_styleSheetWidgetFont");
+        if (oldFont.isValid()) {
+            w->setFont(qvariant_cast<QFont>(oldFont));
+        }
     }
+
     if (styleSheetCaches->autoFillDisabledWidgets.contains(w)) {
         embeddedWidget(w)->setAutoFillBackground(true);
         styleSheetCaches->autoFillDisabledWidgets.remove(w);
+    }
+}
+
+void QStyleSheetStyle::unsetStyleSheetFont(QWidget *w) const
+{
+    if (styleSheetCaches->customFontWidgets.contains(w)) {
+        QPair<QFont, uint> f = styleSheetCaches->customFontWidgets.value(w);
+        styleSheetCaches->customFontWidgets.remove(w);
+
+        QFont original = f.first;
+        original.resolve(original.resolve() & f.second);
+
+        QFont font = w->font();
+        font.resolve(font.resolve() & ~f.second);
+        font.resolve(original);
+        font.resolve(font.resolve() | original.resolve());
+
+        w->setFont(font);
     }
 }
 
@@ -2658,6 +2722,7 @@ void QStyleSheetStyleCaches::objectDestroyed(QObject *o)
     hasStyleRuleCache.remove(o);
     renderRulesCache.remove(o);
     customPaletteWidgets.remove((const QWidget *)o);
+    customFontWidgets.remove(static_cast<QWidget *>(o));
     styleSheetCache.remove(o);
     autoFillDisabledWidgets.remove((const QWidget *)o);
 }
@@ -5846,24 +5911,42 @@ void QStyleSheetStyle::updateStyleSheetFont(QWidget* w) const
     // we should never override it.
     if (w->objectName() == QLatin1String("qt_fontDialog_sampleEdit"))
         return;
+
     QWidget *container = containerWidget(w);
     QRenderRule rule = renderRule(container, PseudoElement_None,
             PseudoClass_Active | PseudoClass_Enabled | extendedPseudoClass(container));
-    QFont font = rule.font.resolve(w->font());
 
-    if ((!w->isWindow() || w->testAttribute(Qt::WA_WindowPropagation))
-        && isNaturalChild(w) && qobject_cast<QWidget *>(w->parent())) {
+    const bool useStyleSheetPropagationInWidgetStyles =
+        QCoreApplication::testAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles);
 
-        font = font.resolve(static_cast<QWidget *>(w->parent())->font());
+    if (useStyleSheetPropagationInWidgetStyles) {
+        unsetStyleSheetFont(w);
+
+        if (rule.font.resolve()) {
+            QFont wf = w->font();
+            styleSheetCaches->customFontWidgets.insert(w, qMakePair(wf, rule.font.resolve()));
+
+            QFont font = rule.font.resolve(wf);
+            font.resolve(wf.resolve() | rule.font.resolve());
+            w->setFont(font);
+        }
+    } else {
+        QFont font = rule.font.resolve(w->font());
+
+        if ((!w->isWindow() || w->testAttribute(Qt::WA_WindowPropagation))
+            && isNaturalChild(w) && qobject_cast<QWidget *>(w->parent())) {
+
+            font = font.resolve(static_cast<QWidget *>(w->parent())->font());
+        }
+
+        if (w->data->fnt == font)
+            return;
+
+        w->data->fnt = font;
+
+        QEvent e(QEvent::FontChange);
+        QApplication::sendEvent(w, &e);
     }
-
-    if (w->data->fnt == font)
-        return;
-
-    w->data->fnt = font;
-
-    QEvent e(QEvent::FontChange);
-    QApplication::sendEvent(w, &e);
 }
 
 void QStyleSheetStyle::saveWidgetFont(QWidget* w, const QFont& font) const

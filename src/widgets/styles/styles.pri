@@ -14,7 +14,9 @@ HEADERS += \
         styles/qproxystyle_p.h \
         styles/qcommonstyle_p.h \
         styles/qstylepainter.h \
-        styles/qstylesheetstyle_p.h
+        styles/qstylesheetstyle_p.h \
+        styles/qpixmapstyle_p.h \
+        styles/qpixmapstyle_p_p.h
 
 SOURCES += \
         styles/qdrawutil.cpp \
@@ -28,7 +30,8 @@ SOURCES += \
         styles/qproxystyle.cpp \
         styles/qstylepainter.cpp \
         styles/qstylesheetstyle.cpp \
-        styles/qstylesheetstyle_default.cpp
+        styles/qstylesheetstyle_default.cpp \
+        styles/qpixmapstyle.cpp
 
 wince* {
     RESOURCES += styles/qstyle_wince.qrc
@@ -42,18 +45,12 @@ contains( styles, all ) {
 
 !macx:styles -= mac
 
-contains(QT_CONFIG, gtkstyle) {
-    QMAKE_CXXFLAGS += $$QT_CFLAGS_QGTKSTYLE
-    LIBS_PRIVATE += $$QT_LIBS_QGTKSTYLE
-    styles += gtk
-    CONFIG += x11
-}
-
 contains( styles, mac ) {
     HEADERS += \
         styles/qmacstyle_mac_p.h \
         styles/qmacstyle_mac_p_p.h
-        OBJECTIVE_SOURCES += styles/qmacstyle_mac.mm
+    OBJECTIVE_SOURCES += styles/qmacstyle_mac.mm
+    LIBS_PRIVATE += -framework Carbon
 } else {
     DEFINES += QT_NO_STYLE_MAC
 }
@@ -90,19 +87,6 @@ contains( styles, windows ) {
     DEFINES += QT_NO_STYLE_WINDOWS
 }
 
-contains( styles, gtk ) {
-        HEADERS += styles/qgtkglobal_p.h
-        HEADERS += styles/qgtkstyle_p.h
-        HEADERS += styles/qgtkpainter_p.h
-        HEADERS += styles/qgtk2painter_p.h
-        HEADERS += styles/qgtkstyle_p_p.h
-        SOURCES += styles/qgtkstyle.cpp
-        SOURCES += styles/qgtkpainter.cpp
-        SOURCES += styles/qgtk2painter.cpp
-        SOURCES += styles/qgtkstyle_p.cpp
-} else {
-    DEFINES += QT_NO_STYLE_GTK
-}
 contains( styles, fusion ) {
         HEADERS += styles/qfusionstyle_p.h
         HEADERS += styles/qfusionstyle_p_p.h

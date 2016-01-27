@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -205,7 +200,6 @@ class tst_QAccessibility : public QObject
     Q_OBJECT
 public:
     tst_QAccessibility();
-    virtual ~tst_QAccessibility();
 
 public slots:
     void initTestCase();
@@ -284,10 +278,6 @@ QAccessible::State state(QWidget * const widget)
 tst_QAccessibility::tst_QAccessibility()
 {
     click_count = 0;
-}
-
-tst_QAccessibility::~tst_QAccessibility()
-{
 }
 
 void tst_QAccessibility::onClicked()
@@ -573,7 +563,7 @@ static QWidget *createWidgets()
 
     int i = 0;
     box->addWidget(new QComboBox(w));
-    box->addWidget(new QPushButton(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QPushButton(QLatin1String("widget text ") + QString::number(i++), w));
     box->addWidget(new QHeaderView(Qt::Vertical, w));
     box->addWidget(new QTreeView(w));
     box->addWidget(new QTreeWidget(w));
@@ -583,25 +573,25 @@ static QWidget *createWidgets()
     box->addWidget(new QTableWidget(w));
     box->addWidget(new QCalendarWidget(w));
     box->addWidget(new QDialogButtonBox(w));
-    box->addWidget(new QGroupBox(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QGroupBox(QLatin1String("widget text ") + QString::number(i++), w));
     box->addWidget(new QFrame(w));
-    box->addWidget(new QLineEdit(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QLineEdit(QLatin1String("widget text ") + QString::number(i++), w));
     box->addWidget(new QProgressBar(w));
     box->addWidget(new QTabWidget(w));
-    box->addWidget(new QCheckBox(QString::fromLatin1("widget text %1").arg(i++), w));
-    box->addWidget(new QRadioButton(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QCheckBox(QLatin1String("widget text ") + QString::number(i++), w));
+    box->addWidget(new QRadioButton(QLatin1String("widget text ") + QString::number(i++), w));
     box->addWidget(new QDial(w));
     box->addWidget(new QScrollBar(w));
     box->addWidget(new QSlider(w));
     box->addWidget(new QDateTimeEdit(w));
     box->addWidget(new QDoubleSpinBox(w));
     box->addWidget(new QSpinBox(w));
-    box->addWidget(new QLabel(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QLabel(QLatin1String("widget text ") + QString::number(i++), w));
     box->addWidget(new QLCDNumber(w));
     box->addWidget(new QStackedWidget(w));
     box->addWidget(new QToolBox(w));
-    box->addWidget(new QLabel(QString::fromLatin1("widget text %1").arg(i++), w));
-    box->addWidget(new QTextEdit(QString::fromLatin1("widget text %1").arg(i++), w));
+    box->addWidget(new QLabel(QLatin1String("widget text ") + QString::number(i++), w));
+    box->addWidget(new QTextEdit(QLatin1String("widget text ") + QString::number(i++), w));
 
     /* Not in the list
      * QAbstractItemView, QGraphicsView, QScrollArea,
@@ -1763,7 +1753,7 @@ void tst_QAccessibility::textEditTest()
         }
 
         edit.show();
-        QTest::qWaitForWindowShown(&edit);
+        QTest::qWaitForWindowExposed(&edit);
         QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&edit);
         QCOMPARE(iface->text(QAccessible::Value), edit.toPlainText());
         QVERIFY(iface->state().focusable);
@@ -2175,7 +2165,7 @@ void tst_QAccessibility::lineEditTest()
         QLineEdit le(QStringLiteral("My characters have geometries."), toplevel);
         // characterRect()
         le.show();
-        QTest::qWaitForWindowShown(&le);
+        QTest::qWaitForWindowExposed(&le);
         QAccessibleInterface *iface(QAccessible::queryAccessibleInterface(&le));
         QAccessibleTextInterface* textIface = iface->textInterface();
         QVERIFY(textIface);
@@ -2322,9 +2312,13 @@ void tst_QAccessibility::lineEditTextFunctions_data()
     QTest::newRow("char after 6") << "hello" << 2 << (int) QAccessible::CharBoundary << 3 << 6 << -1 << -1 << "";
 
     for (int i = -2; i < 6; ++i) {
-        QTest::newRow(QString::fromLatin1("line before %1").arg(i).toLocal8Bit().constData()) << "hello" << 0 << (int) QAccessible::LineBoundary << 3 << i << -1 << -1 << "";
-        QTest::newRow(QString::fromLatin1("line at %1").arg(i).toLocal8Bit().constData()) << "hello" << 1 << (int) QAccessible::LineBoundary << 3 << i << 0 << 5 << "hello";
-        QTest::newRow(QString::fromLatin1("line after %1").arg(i).toLocal8Bit().constData()) << "hello" << 2 << (int) QAccessible::LineBoundary << 3 << i << -1 << -1 << "";
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow(("line before " + iB).constData())
+                      << "hello" << 0 << (int) QAccessible::LineBoundary << 3 << i << -1 << -1 << "";
+        QTest::newRow(("line at " + iB).constData())
+                      << "hello" << 1 << (int) QAccessible::LineBoundary << 3 << i << 0 << 5 << "hello";
+        QTest::newRow(("line after " + iB).constData())
+                      << "hello" << 2 << (int) QAccessible::LineBoundary << 3 << i << -1 << -1 << "";
     }
 }
 
@@ -3576,7 +3570,7 @@ void tst_QAccessibility::comboBoxTest()
     // Fully decorated windows have a minimum width of 160 on Windows.
     combo.setMinimumWidth(200);
     combo.show();
-    QVERIFY(QTest::qWaitForWindowShown(&combo));
+    QVERIFY(QTest::qWaitForWindowExposed(&combo));
 
     QAccessibleInterface *iface = QAccessible::queryAccessibleInterface(&combo);
     QCOMPARE(verifyHierarchy(iface), 0);

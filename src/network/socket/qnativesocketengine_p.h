@@ -1,31 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -45,6 +52,7 @@
 // We mean it.
 //
 #include "QtNetwork/qhostaddress.h"
+#include "QtNetwork/qnetworkinterface.h"
 #include "private/qabstractsocketengine_p.h"
 #ifndef Q_OS_WIN
 #  include "qplatformdefs.h"
@@ -97,6 +105,16 @@ union qt_sockaddr {
     sockaddr_in a4;
     sockaddr_in6 a6;
 };
+
+namespace {
+namespace SetSALen {
+    template <typename T> void set(T *sa, typename QtPrivate::QEnableIf<(&T::sa_len, true), QT_SOCKLEN_T>::Type len)
+    { sa->sa_len = len; }
+    template <typename T> void set(T *sin6, typename QtPrivate::QEnableIf<(&T::sin6_len, true), QT_SOCKLEN_T>::Type len)
+    { sin6->sin6_len = len; }
+    template <typename T> void set(T *, ...) {}
+}
+}
 
 class QNativeSocketEnginePrivate;
 #ifndef QT_NO_NETWORKINTERFACE
@@ -268,7 +286,8 @@ public:
     bool checkProxy(const QHostAddress &address);
     bool fetchConnectionParameters();
 
-    static uint scopeIdFromString(const QString &scopeid);
+    static uint scopeIdFromString(const QString &scopeid)
+    { return QNetworkInterface::interfaceIndexFromName(scopeid); }
 
     /*! \internal
         Sets \a address and \a port in the \a aa sockaddr structure and the size in \a sockAddrSize.
@@ -287,12 +306,14 @@ public:
             Q_IPV6ADDR tmp = address.toIPv6Address();
             memcpy(&aa->a6.sin6_addr, &tmp, sizeof(tmp));
             *sockAddrSize = sizeof(sockaddr_in6);
+            SetSALen::set(&aa->a, sizeof(sockaddr_in6));
         } else {
             memset(&aa->a, 0, sizeof(sockaddr_in));
             aa->a4.sin_family = AF_INET;
             aa->a4.sin_port = htons(port);
             aa->a4.sin_addr.s_addr = htonl(address.toIPv4Address());
             *sockAddrSize = sizeof(sockaddr_in);
+            SetSALen::set(&aa->a, sizeof(sockaddr_in));
         }
     }
 

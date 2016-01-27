@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -138,7 +133,8 @@ private slots:
     void spaceArgsTest();
 #if defined(Q_OS_WIN)
     void nativeArguments();
-#endif
+    void createProcessArgumentsModifier();
+#endif // Q_OS_WIN
     void exitCodeTest();
     void systemEnvironment();
     void lockupsInStartDetached();
@@ -840,11 +836,11 @@ void tst_QProcess::openModes()
 {
     QProcess proc;
     QVERIFY(!proc.isOpen());
-    QVERIFY(proc.openMode() == QProcess::NotOpen);
+    QCOMPARE(proc.openMode(), QProcess::NotOpen);
     proc.start("testProcessEcho3/testProcessEcho3");
     QVERIFY(proc.waitForStarted(5000));
     QVERIFY(proc.isOpen());
-    QVERIFY(proc.openMode() == QProcess::ReadWrite);
+    QCOMPARE(proc.openMode(), QProcess::ReadWrite);
     QVERIFY(proc.isReadable());
     QVERIFY(proc.isWritable());
 
@@ -853,7 +849,7 @@ void tst_QProcess::openModes()
     proc.closeWriteChannel();
 
     QVERIFY(proc.isWritable());
-    QVERIFY(proc.openMode() == QProcess::ReadWrite);
+    QCOMPARE(proc.openMode(), QProcess::ReadWrite);
 
     while (proc.bytesAvailable() < 4 && proc.waitForReadyRead(5000))
     { }
@@ -862,12 +858,12 @@ void tst_QProcess::openModes()
 
     proc.closeReadChannel(QProcess::StandardOutput);
 
-    QVERIFY(proc.openMode() == QProcess::ReadWrite);
+    QCOMPARE(proc.openMode(), QProcess::ReadWrite);
     QVERIFY(proc.isReadable());
 
     proc.closeReadChannel(QProcess::StandardError);
 
-    QVERIFY(proc.openMode() == QProcess::ReadWrite);
+    QCOMPARE(proc.openMode(), QProcess::ReadWrite);
     QVERIFY(proc.isReadable());
 
     proc.close();
@@ -1439,11 +1435,11 @@ void tst_QProcess::spaceArgsTest()
         QCOMPARE(actual, args);
 #endif
 
-        if (program.contains(" "))
-            program = "\"" + program + "\"";
+        if (program.contains(QLatin1Char(' ')))
+            program = QLatin1Char('"') + program + QLatin1Char('"');
 
         if (!stringArgs.isEmpty())
-            program += QString::fromLatin1(" ") + stringArgs;
+            program += QLatin1Char(' ') + stringArgs;
 
         errorMessage.clear();
         process.start(program);
@@ -1496,9 +1492,9 @@ void tst_QProcess::nativeArguments()
     char buf[256];
     fgets(buf, 256, file);
     fclose(file);
-    QStringList actual = QString::fromLatin1(buf).split("|");
+    QStringList actual = QString::fromLatin1(buf).split(QLatin1Char('|'));
 #else
-    QStringList actual = QString::fromLatin1(proc.readAll()).split("|");
+    QStringList actual = QString::fromLatin1(proc.readAll()).split(QLatin1Char('|'));
 #endif
     QVERIFY(!actual.isEmpty());
     // not interested in the program name, it might be different.
@@ -1512,7 +1508,26 @@ void tst_QProcess::nativeArguments()
     QCOMPARE(actual, expected);
 }
 
-#endif
+void tst_QProcess::createProcessArgumentsModifier()
+{
+    int calls = 0;
+    const QString reversedCommand = "lamroNssecorPtset/lamroNssecorPtset";
+    QProcess process;
+    process.setCreateProcessArgumentsModifier([&calls] (QProcess::CreateProcessArguments *args)
+    {
+        calls++;
+        std::reverse(args->arguments, args->arguments + wcslen(args->arguments) - 1);
+    });
+    process.start(reversedCommand);
+    QVERIFY2(process.waitForStarted(), qUtf8Printable(process.errorString()));
+    QVERIFY(process.waitForFinished());
+    QCOMPARE(calls, 1);
+
+    process.setCreateProcessArgumentsModifier(QProcess::CreateProcessArgumentModifier());
+    QVERIFY(!process.waitForStarted());
+    QCOMPARE(calls, 1);
+}
+#endif // Q_OS_WIN
 
 void tst_QProcess::exitCodeTest()
 {
@@ -2300,6 +2315,13 @@ void tst_QProcess::setNonExistentWorkingDirectory()
     QEXPECT_FAIL("", "QProcess cannot detect failure to start when using posix_spawn()", Continue);
 #endif
     QCOMPARE(int(process.error()), int(QProcess::FailedToStart));
+
+#ifdef Q_OS_UNIX
+#  ifdef QPROCESS_USE_SPAWN
+    QEXPECT_FAIL("", "QProcess cannot detect failure to start when using posix_spawn()", Continue);
+#  endif
+    QVERIFY2(process.errorString().startsWith("chdir:"), process.errorString().toLocal8Bit());
+#endif
 }
 #endif
 

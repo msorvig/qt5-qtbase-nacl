@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -247,7 +243,7 @@ void tst_QDBusAbstractInterface::initTestCase()
     // get peer server address
     QDBusMessage req = QDBusMessage::createMethodCall(serviceName, objectPath, interfaceName, "address");
     QDBusMessage rpl = con.call(req);
-    QVERIFY(rpl.type() == QDBusMessage::ReplyMessage);
+    QCOMPARE(rpl.type(), QDBusMessage::ReplyMessage);
     peerAddress = rpl.arguments().at(0).toString();
 }
 
@@ -283,7 +279,7 @@ void tst_QDBusAbstractInterface::cleanup()
     targetObj.m_complexProp = RegisteredType();
 
     QDBusMessage resetCall = QDBusMessage::createMethodCall(serviceName, objectPath, interfaceName, "reset");
-    QVERIFY(QDBusConnection::sessionBus().call(resetCall).type() == QDBusMessage::ReplyMessage);
+    QCOMPARE(QDBusConnection::sessionBus().call(resetCall).type(), QDBusMessage::ReplyMessage);
 }
 
 void tst_QDBusAbstractInterface::makeVoidCall()
@@ -441,7 +437,7 @@ void tst_QDBusAbstractInterface::makeAsyncStringCallPeer()
     QVERIFY2(p, "Not connected to D-Bus");
 
     QDBusMessage reply = p->call(QDBus::BlockWithGui, QLatin1String("voidMethod"));
-    QVERIFY(reply.type() == QDBusMessage::ReplyMessage);
+    QCOMPARE(reply.type(), QDBusMessage::ReplyMessage);
 
     QDBusPendingReply<QString> r = p->stringMethod();
     r.waitForFinished();
@@ -622,7 +618,7 @@ void tst_QDBusAbstractInterface::complexPropRead()
 
     RegisteredType expectedValue = targetObj.m_complexProp = RegisteredType("This is a test");
     QVariant v = p->property("complexProp");
-    QVERIFY(v.userType() == qMetaTypeId<RegisteredType>());
+    QCOMPARE(v.userType(), qMetaTypeId<RegisteredType>());
     QCOMPARE(v.value<RegisteredType>(), targetObj.m_complexProp);
 }
 
@@ -694,7 +690,7 @@ void tst_QDBusAbstractInterface::complexPropReadPeer()
 
     RegisteredType expectedValue = RegisteredType("This is a test");
     QVariant v = p->property("complexProp");
-    QVERIFY(v.userType() == qMetaTypeId<RegisteredType>());
+    QCOMPARE(v.userType(), qMetaTypeId<RegisteredType>());
     QCOMPARE(v.value<RegisteredType>(), expectedValue);
 }
 
@@ -861,8 +857,8 @@ void tst_QDBusAbstractInterface::getVoidSignal()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s.at(0).size() == 0);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s.at(0).size(), 0);
 }
 
 void tst_QDBusAbstractInterface::getStringSignal_data()
@@ -886,8 +882,8 @@ void tst_QDBusAbstractInterface::getStringSignal()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s[0].size() == 1);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s[0].size(), 1);
     QCOMPARE(s[0][0].userType(), int(QVariant::String));
     QCOMPARE(s[0][0].toString(), expectedValue);
 }
@@ -913,8 +909,8 @@ void tst_QDBusAbstractInterface::getComplexSignal()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s[0].size() == 1);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s[0].size(), 1);
     QCOMPARE(s[0][0].userType(), qMetaTypeId<RegisteredType>());
     QCOMPARE(s[0][0].value<RegisteredType>(), expectedValue);
 }
@@ -942,8 +938,8 @@ void tst_QDBusAbstractInterface::getVoidSignalPeer()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s.at(0).size() == 0);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s.at(0).size(), 0);
 }
 
 void tst_QDBusAbstractInterface::getStringSignalPeer_data()
@@ -968,8 +964,8 @@ void tst_QDBusAbstractInterface::getStringSignalPeer()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s[0].size() == 1);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s[0].size(), 1);
     QCOMPARE(s[0][0].userType(), int(QVariant::String));
     QCOMPARE(s[0][0].toString(), expectedValue);
 }
@@ -996,8 +992,8 @@ void tst_QDBusAbstractInterface::getComplexSignalPeer()
     QTestEventLoop::instance().enterLoop(2);
     QVERIFY(!QTestEventLoop::instance().timeout());
 
-    QVERIFY(s.size() == 1);
-    QVERIFY(s[0].size() == 1);
+    QCOMPARE(s.size(), 1);
+    QCOMPARE(s[0].size(), 1);
     QCOMPARE(s[0][0].userType(), qMetaTypeId<RegisteredType>());
     QCOMPARE(s[0][0].value<RegisteredType>(), expectedValue);
 }
@@ -1045,7 +1041,7 @@ void tst_QDBusAbstractInterface::followSignal()
 
     // now the signal must have been received:
     QCOMPARE(s.size(), 1);
-    QVERIFY(s.at(0).size() == 0);
+    QCOMPARE(s.at(0).size(), 0);
 
     // cleanup:
     con.interface()->unregisterService(serviceToFollow);

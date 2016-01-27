@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -89,16 +95,14 @@ public:
     {
     public:
         TextEdit(QWidget *parent=0) : QTextEdit(parent) { }
+#ifndef QT_NO_CONTEXTMENU
         void contextMenuEvent(QContextMenuEvent * e) Q_DECL_OVERRIDE
         {
-#ifndef QT_NO_CONTEXTMENU
             QMenu *menu = createStandardContextMenu();
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(e->globalPos());
-#else
-            Q_UNUSED(e);
-#endif
         }
+#endif // QT_NO_CONTEXTMENU
     };
 
     QMessageBoxDetailsText(QWidget *parent=0)
@@ -1049,26 +1053,26 @@ void QMessageBoxPrivate::detectEscapeButton()
     }
 
     // if the message box has one RejectRole button, make it the escape button
-    for (int i = 0; i < buttons.count(); i++) {
-        if (buttonBox->buttonRole(buttons.at(i)) == QDialogButtonBox::RejectRole) {
+    for (auto *button : buttons) {
+        if (buttonBox->buttonRole(button) == QDialogButtonBox::RejectRole) {
             if (detectedEscapeButton) { // already detected!
                 detectedEscapeButton = 0;
                 break;
             }
-            detectedEscapeButton = buttons.at(i);
+            detectedEscapeButton = button;
         }
     }
     if (detectedEscapeButton)
         return;
 
     // if the message box has one NoRole button, make it the escape button
-    for (int i = 0; i < buttons.count(); i++) {
-        if (buttonBox->buttonRole(buttons.at(i)) == QDialogButtonBox::NoRole) {
+    for (auto *button : buttons) {
+        if (buttonBox->buttonRole(button) == QDialogButtonBox::NoRole) {
             if (detectedEscapeButton) { // already detected!
                 detectedEscapeButton = 0;
                 break;
             }
-            detectedEscapeButton = buttons.at(i);
+            detectedEscapeButton = button;
         }
     }
 }
@@ -1480,24 +1484,21 @@ void QMessageBox::keyPressEvent(QKeyEvent *e)
 
 #if defined(Q_OS_WIN)
         if (e == QKeySequence::Copy) {
-            QString separator = QString::fromLatin1("---------------------------\n");
-            QString textToCopy = separator;
-            separator.prepend(QLatin1Char('\n'));
-            textToCopy += windowTitle() + separator; // title
-            textToCopy += d->label->text() + separator; // text
+            const QLatin1String separator("---------------------------\n");
+            QString textToCopy;
+            textToCopy += separator + windowTitle() + QLatin1Char('\n') + separator // title
+                          + d->label->text() + QLatin1Char('\n') + separator;       // text
 
             if (d->informativeLabel)
-                textToCopy += d->informativeLabel->text() + separator;
+                textToCopy += d->informativeLabel->text() + QLatin1Char('\n') + separator;
 
-            QString buttonTexts;
-            QList<QAbstractButton *> buttons = d->buttonBox->buttons();
-            for (int i = 0; i < buttons.count(); i++) {
-                buttonTexts += buttons[i]->text() + QLatin1String("   ");
-            }
-            textToCopy += buttonTexts + separator;
+            const QList<QAbstractButton *> buttons = d->buttonBox->buttons();
+            for (const auto *button : buttons)
+                textToCopy += button->text() + QLatin1String("   ");
+            textToCopy += QLatin1Char('\n') + separator;
 #ifndef QT_NO_TEXTEDIT
             if (d->detailsText)
-                textToCopy += d->detailsText->text() + separator;
+                textToCopy += d->detailsText->text() + QLatin1Char('\n') + separator;
 #endif
             QApplication::clipboard()->setText(textToCopy);
             return;
@@ -1511,8 +1512,7 @@ void QMessageBox::keyPressEvent(QKeyEvent *e)
         int key = e->key() & ~Qt::MODIFIER_MASK;
         if (key) {
             const QList<QAbstractButton *> buttons = d->buttonBox->buttons();
-            for (int i = 0; i < buttons.count(); ++i) {
-                QAbstractButton *pb = buttons.at(i);
+            for (auto *pb : buttons) {
                 QKeySequence shortcut = pb->shortcut();
                 if (!shortcut.isEmpty() && key == int(shortcut[0] & ~Qt::MODIFIER_MASK)) {
                     pb->animateClick();

@@ -7,9 +7,12 @@ HEADERS += kernel/qauthenticator.h \
 	       kernel/qauthenticator_p.h \
            kernel/qhostaddress.h \
            kernel/qhostaddress_p.h \
-           kernel/qurlinfo_p.h \
+           kernel/qnetworkdatagram_p.h \
+           kernel/qnetworkinterface.h \
+           kernel/qnetworkinterface_p.h \
            kernel/qnetworkproxy.h \
            kernel/qnetworkproxy_p.h \
+           kernel/qurlinfo_p.h
 
 SOURCES += kernel/qauthenticator.cpp \
            kernel/qhostaddress.cpp \
@@ -60,10 +63,6 @@ mac {
 
 mac:!ios:SOURCES += kernel/qnetworkproxy_mac.cpp
 else:win32:SOURCES += kernel/qnetworkproxy_win.cpp
-else:blackberry {
-    SOURCES += kernel/qnetworkproxy_blackberry.cpp
-    LIBS_PRIVATE += -lbps
-}
 else:contains(QT_CONFIG, libproxy) {
     SOURCES += kernel/qnetworkproxy_libproxy.cpp
     LIBS_PRIVATE += -lproxy

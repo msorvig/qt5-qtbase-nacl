@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -46,7 +52,6 @@
 //
 
 #include <QtSql/qsqldriver.h>
-#include <QtSql/qsqlresult.h>
 
 #if defined (Q_OS_WIN32)
 #include <QtCore/qt_windows.h>
@@ -75,81 +80,46 @@
 
 QT_BEGIN_NAMESPACE
 
-class QODBCPrivate;
 class QODBCDriverPrivate;
-class QODBCDriver;
-class QSqlRecordInfo;
-
-class QODBCResult : public QSqlResult
-{
-public:
-    QODBCResult(const QODBCDriver * db, QODBCDriverPrivate* p);
-    virtual ~QODBCResult();
-
-    bool prepare(const QString& query);
-    bool exec();
-
-    QVariant lastInsertId() const;
-    QVariant handle() const;
-    virtual void setForwardOnly(bool forward);
-
-protected:
-    bool fetchNext();
-    bool fetchFirst();
-    bool fetchLast();
-    bool fetchPrevious();
-    bool fetch(int i);
-    bool reset (const QString& query);
-    QVariant data(int field);
-    bool isNull(int field);
-    int size();
-    int numRowsAffected();
-    QSqlRecord record() const;
-    void virtual_hook(int id, void *data);
-    void detachFromResultSet();
-    bool nextResult();
-
-private:
-    QODBCPrivate *d;
-};
 
 class Q_EXPORT_SQLDRIVER_ODBC QODBCDriver : public QSqlDriver
 {
     Q_DECLARE_PRIVATE(QODBCDriver)
     Q_OBJECT
+    friend class QODBCResultPrivate;
+
 public:
     explicit QODBCDriver(QObject *parent=0);
     QODBCDriver(SQLHANDLE env, SQLHANDLE con, QObject * parent=0);
     virtual ~QODBCDriver();
-    bool hasFeature(DriverFeature f) const;
-    void close();
-    QSqlResult *createResult() const;
-    QStringList tables(QSql::TableType) const;
-    QSqlRecord record(const QString& tablename) const;
-    QSqlIndex primaryIndex(const QString& tablename) const;
-    QVariant handle() const;
+    bool hasFeature(DriverFeature f) const Q_DECL_OVERRIDE;
+    void close() Q_DECL_OVERRIDE;
+    QSqlResult *createResult() const Q_DECL_OVERRIDE;
+    QStringList tables(QSql::TableType) const Q_DECL_OVERRIDE;
+    QSqlRecord record(const QString &tablename) const Q_DECL_OVERRIDE;
+    QSqlIndex primaryIndex(const QString &tablename) const Q_DECL_OVERRIDE;
+    QVariant handle() const Q_DECL_OVERRIDE;
     QString formatValue(const QSqlField &field,
-                        bool trimStrings) const;
-    bool open(const QString& db,
-              const QString& user,
-              const QString& password,
-              const QString& host,
+                        bool trimStrings) const Q_DECL_OVERRIDE;
+    bool open(const QString &db,
+              const QString &user,
+              const QString &password,
+              const QString &host,
               int port,
-              const QString& connOpts);
+              const QString &connOpts) Q_DECL_OVERRIDE;
 
-    QString escapeIdentifier(const QString &identifier, IdentifierType type) const;
+    QString escapeIdentifier(const QString &identifier, IdentifierType type) const Q_DECL_OVERRIDE;
 
-    bool isIdentifierEscaped(const QString &identifier, IdentifierType type) const;
+    bool isIdentifierEscaped(const QString &identifier, IdentifierType type) const Q_DECL_OVERRIDE;
 
 protected:
-    bool beginTransaction();
-    bool commitTransaction();
-    bool rollbackTransaction();
+    bool beginTransaction() Q_DECL_OVERRIDE;
+    bool commitTransaction() Q_DECL_OVERRIDE;
+    bool rollbackTransaction() Q_DECL_OVERRIDE;
 
 private:
     bool endTrans();
     void cleanup();
-    friend class QODBCPrivate;
 };
 
 QT_END_NAMESPACE

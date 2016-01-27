@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -799,7 +805,8 @@ void QGraphicsViewPrivate::_q_setViewportCursor(const QCursor &cursor)
 void QGraphicsViewPrivate::_q_unsetViewportCursor()
 {
     Q_Q(QGraphicsView);
-    foreach (QGraphicsItem *item, q->items(lastMouseEvent.pos())) {
+    const auto items = q->items(lastMouseEvent.pos());
+    for (QGraphicsItem *item : items) {
         if (item->hasCursor()) {
             _q_setViewportCursor(item->cursor());
             return;
@@ -1139,7 +1146,8 @@ QList<QGraphicsItem *> QGraphicsViewPrivate::findItems(const QRegion &exposedReg
     // the expose region, convert it to a path, and then search for items
     // using QGraphicsScene::items(QPainterPath);
     QRegion adjustedRegion;
-    foreach (const QRect &r, exposedRegion.rects())
+    const auto rects = exposedRegion.rects();
+    for (const QRect &r : rects)
         adjustedRegion += r.adjusted(-1, -1, 1, 1);
 
     const QPainterPath exposedScenePath(q->mapToScene(qt_regionToPath(adjustedRegion)));
@@ -2465,7 +2473,7 @@ QPolygonF QGraphicsView::mapToScene(const QPolygon &polygon) const
 {
     QPolygonF poly;
     poly.reserve(polygon.count());
-    foreach (const QPoint &point, polygon)
+    for (const QPoint &point : polygon)
         poly << mapToScene(point);
     return poly;
 }
@@ -2561,7 +2569,7 @@ QPolygon QGraphicsView::mapFromScene(const QPolygonF &polygon) const
 {
     QPolygon poly;
     poly.reserve(polygon.count());
-    foreach (const QPointF &point, polygon)
+    for (const QPointF &point : polygon)
         poly << mapFromScene(point);
     return poly;
 }
@@ -2694,7 +2702,7 @@ void QGraphicsView::updateScene(const QList<QRectF> &rects)
     QTransform transform = viewportTransform();
 
     // Convert scene rects to viewport rects.
-    foreach (const QRectF &rect, rects) {
+    for (const QRectF &rect : rects) {
         QRect xrect = transform.mapRect(rect).toAlignedRect();
         if (!(d->optimizationFlags & DontAdjustForAntialiasing))
             xrect.adjust(-2, -2, 2, 2);
@@ -2791,7 +2799,8 @@ void QGraphicsView::setupViewport(QWidget *widget)
 
 #ifndef QT_NO_GESTURES
     if (d->scene) {
-        foreach (Qt::GestureType gesture, d->scene->d_func()->grabbedGestures.keys())
+        const auto gestures = d->scene->d_func()->grabbedGestures.keys();
+        for (Qt::GestureType gesture : gestures)
             widget->grabGesture(gesture);
     }
 #endif

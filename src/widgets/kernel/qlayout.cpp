@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -129,11 +135,11 @@ QLayout::QLayout(QLayoutPrivate &dd, QLayout *lay, QWidget *w)
     if (lay) {
         lay->addItem(this);
     } else if (w) {
-        if (w->layout()) {
-            qWarning("QLayout: Attempting to add QLayout \"%s\" to %s \"%s\", which"
+        if (Q_UNLIKELY(w->layout())) {
+            qWarning("QLayout: Attempting to add QLayout \"%ls\" to %s \"%ls\", which"
                      " already has a layout",
-                     qPrintable(QObject::objectName()), w->metaObject()->className(),
-                     w->objectName().toLocal8Bit().data());
+                     qUtf16Printable(QObject::objectName()), w->metaObject()->className(),
+                     qUtf16Printable(w->objectName()));
             setParent(0);
         } else {
             d->topLevel = true;
@@ -469,7 +475,7 @@ QWidget *QLayout::parentWidget() const
     if (!d->topLevel) {
         if (parent()) {
             QLayout *parentLayout = qobject_cast<QLayout*>(parent());
-            if (!parentLayout) {
+            if (Q_UNLIKELY(!parentLayout)) {
                 qWarning("QLayout::parentWidget: A layout can only have another layout as a parent.");
                 return 0;
             }
@@ -776,9 +782,9 @@ QLayout::~QLayout()
 */
 void QLayout::addChildLayout(QLayout *l)
 {
-    if (l->parent()) {
-        qWarning("QLayout::addChildLayout: layout \"%s\" already has a parent",
-                 l->objectName().toLocal8Bit().data());
+    if (Q_UNLIKELY(l->parent())) {
+        qWarning("QLayout::addChildLayout: layout \"%ls\" already has a parent",
+                 qUtf16Printable(l->objectName()));
         return;
     }
     l->setParent(this);
@@ -826,9 +832,9 @@ void QLayoutPrivate::reparentChildWidgets(QWidget *mw)
         if (QWidget *w = item->widget()) {
             QWidget *pw = w->parentWidget();
 #ifdef QT_DEBUG
-            if (pw && pw != mw && layoutDebug()) {
-                qWarning("QLayout::addChildLayout: widget %s \"%s\" in wrong parent; moved to correct parent",
-                         w->metaObject()->className(), w->objectName().toLocal8Bit().data());
+            if (Q_UNLIKELY(pw && pw != mw && layoutDebug())) {
+                qWarning("QLayout::addChildLayout: widget %s \"%ls\" in wrong parent; moved to correct parent",
+                         w->metaObject()->className(), qUtf16Printable(w->objectName()));
             }
 #endif
             bool needShow = mwVisible && !(w->isHidden() && w->testAttribute(Qt::WA_WState_ExplicitShowHide));
@@ -849,15 +855,15 @@ void QLayoutPrivate::reparentChildWidgets(QWidget *mw)
 bool QLayoutPrivate::checkWidget(QWidget *widget) const
 {
     Q_Q(const QLayout);
-    if (!widget) {
-        qWarning("QLayout: Cannot add a null widget to %s/%s", q->metaObject()->className(),
-                  qPrintable(q->objectName()));
+    if (Q_UNLIKELY(!widget)) {
+        qWarning("QLayout: Cannot add a null widget to %s/%ls", q->metaObject()->className(),
+                  qUtf16Printable(q->objectName()));
         return false;
     }
-    if (widget == q->parentWidget()) {
-        qWarning("QLayout: Cannot add parent widget %s/%s to its child layout %s/%s",
-                  widget->metaObject()->className(), qPrintable(widget->objectName()),
-                  q->metaObject()->className(), qPrintable(q->objectName()));
+    if (Q_UNLIKELY(widget == q->parentWidget())) {
+        qWarning("QLayout: Cannot add parent widget %s/%ls to its child layout %s/%ls",
+                  widget->metaObject()->className(), qUtf16Printable(widget->objectName()),
+                  q->metaObject()->className(), qUtf16Printable(q->objectName()));
         return false;
     }
     return true;
@@ -870,14 +876,14 @@ bool QLayoutPrivate::checkWidget(QWidget *widget) const
 bool QLayoutPrivate::checkLayout(QLayout *otherLayout) const
 {
     Q_Q(const QLayout);
-    if (!otherLayout) {
-        qWarning("QLayout: Cannot add a null layout to %s/%s", q->metaObject()->className(),
-                  qPrintable(q->objectName()));
+    if (Q_UNLIKELY(!otherLayout)) {
+        qWarning("QLayout: Cannot add a null layout to %s/%ls",
+                 q->metaObject()->className(), qUtf16Printable(q->objectName()));
         return false;
     }
-    if (otherLayout == q) {
-        qWarning("QLayout: Cannot add layout %s/%s to itself", q->metaObject()->className(),
-                  qPrintable(q->objectName()));
+    if (Q_UNLIKELY(otherLayout == q)) {
+        qWarning("QLayout: Cannot add layout %s/%ls to itself",
+                 q->metaObject()->className(), qUtf16Printable(q->objectName()));
         return false;
     }
     return true;
@@ -902,17 +908,17 @@ void QLayout::addChildWidget(QWidget *w)
         QLayout *l = pw->layout();
         if (l && removeWidgetRecursively(l, w)) {
 #ifdef QT_DEBUG
-            if (layoutDebug())
-                qWarning("QLayout::addChildWidget: %s \"%s\" is already in a layout; moved to new layout",
-                         w->metaObject()->className(), w->objectName().toLocal8Bit().data());
+            if (Q_UNLIKELY(layoutDebug()))
+                qWarning("QLayout::addChildWidget: %s \"%ls\" is already in a layout; moved to new layout",
+                         w->metaObject()->className(), qUtf16Printable(w->objectName()));
 #endif
         }
     }
     if (pw && mw && pw != mw) {
 #ifdef QT_DEBUG
-            if (layoutDebug())
-                qWarning("QLayout::addChildWidget: %s \"%s\" in wrong parent; moved to correct parent",
-                         w->metaObject()->className(), w->objectName().toLocal8Bit().data());
+            if (Q_UNLIKELY(layoutDebug()))
+                qWarning("QLayout::addChildWidget: %s \"%ls\" in wrong parent; moved to correct parent",
+                         w->metaObject()->className(), qUtf16Printable(w->objectName()));
 #endif
         pw = 0;
     }
@@ -1064,9 +1070,9 @@ bool QLayout::activate()
     if (d->activated)
         return false;
     QWidget *mw = static_cast<QWidget*>(parent());
-    if (mw == 0) {
-        qWarning("QLayout::activate: %s \"%s\" does not have a main widget",
-                 QObject::metaObject()->className(), QObject::objectName().toLocal8Bit().data());
+    if (Q_UNLIKELY(!mw)) {
+        qWarning("QLayout::activate: %s \"%ls\" does not have a main widget",
+                 metaObject()->className(), qUtf16Printable(objectName()));
         return false;
     }
     activateRecursiveHelper(this);

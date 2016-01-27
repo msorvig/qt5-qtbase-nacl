@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -46,15 +41,11 @@ class tst_QTreeWidgetItemIterator : public QObject
 
 public:
     tst_QTreeWidgetItemIterator();
-    ~tst_QTreeWidgetItemIterator();
-
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
 
 private slots:
+    void initTestCase();
+    void cleanupTestCase();
+
     void postincrement();
     void preincrement();
     void postdecrement();
@@ -81,10 +72,6 @@ tst_QTreeWidgetItemIterator::tst_QTreeWidgetItemIterator(): testWidget(0)
 {
 }
 
-tst_QTreeWidgetItemIterator::~tst_QTreeWidgetItemIterator()
-{
-}
-
 void tst_QTreeWidgetItemIterator::initTestCase()
 {
     testWidget = new QTreeWidget();
@@ -105,7 +92,8 @@ void tst_QTreeWidgetItemIterator::initTestCase()
      */
     for (int i=0; i <= 16; ++i) {
         QTreeWidgetItem *top = new QTreeWidgetItem(testWidget);
-        top->setText(0, QString("top%1").arg(i));
+        const QString topS = QLatin1String("top") + QString::number(i);
+        top->setText(0, topS);
         switch (i) {
             case 0:  testWidget->setItemHidden(top, true);break;
             case 1:  testWidget->setItemHidden(top, false);break;
@@ -136,7 +124,7 @@ void tst_QTreeWidgetItemIterator::initTestCase()
         }
         for (int j=0; j <= 16; ++j) {
             QTreeWidgetItem *child = new QTreeWidgetItem(top);
-            child->setText(0, QString("top%1,child%2").arg(i).arg(j));
+            child->setText(0, topS + QLatin1String(",child") + QString::number(j));
             switch (j) {
                 case 0:  testWidget->setItemHidden(child, true);break;
                 case 1:  testWidget->setItemHidden(child, false);break;
@@ -172,14 +160,6 @@ void tst_QTreeWidgetItemIterator::cleanupTestCase()
 {
     testWidget->hide();
     delete testWidget;
-}
-
-void tst_QTreeWidgetItemIterator::init()
-{
-}
-
-void tst_QTreeWidgetItemIterator::cleanup()
-{
 }
 
 void tst_QTreeWidgetItemIterator::iteratorflags_data()
@@ -1074,6 +1054,24 @@ void tst_QTreeWidgetItemIterator::updateIfModifiedFromWidget_data()
                 << 3 << 3 << 3 << (int)QTreeWidgetItemIterator::All << 1 << 3 << QString("top0,child1") << QString("top0,child1") << 0;
 }
 
+static void populate3Levels(QTreeWidget &tw, int topLevelItems, int childItems, int grandChildItems)
+{
+    for (int i1 = 0; i1 < topLevelItems; ++i1) {
+        QTreeWidgetItem *top = new QTreeWidgetItem(&tw);
+        const QString top1S = QLatin1String("top") + QString::number(i1);
+        top->setText(0, top1S);
+        for (int i2 = 0; i2 < childItems; ++i2) {
+            QTreeWidgetItem *child = new QTreeWidgetItem(top);
+            const QString childS = top1S + QLatin1String(",child") + QString::number(i2);
+            child->setText(0, childS);
+            for (int i3 = 0; i3 < grandChildItems; ++i3) {
+                QTreeWidgetItem *grandChild = new QTreeWidgetItem(child);
+                grandChild->setText(0, childS + QLatin1String(",grandchild") + QString::number(i3));
+            }
+        }
+    }
+}
+
 void tst_QTreeWidgetItemIterator::updateIfModifiedFromWidget()
 {
     QFETCH(int, topLevelItems);
@@ -1089,18 +1087,7 @@ void tst_QTreeWidgetItemIterator::updateIfModifiedFromWidget()
     QTreeWidget tw;
     tw.clear();
     tw.setColumnCount(2);
-    for (int i1=0; i1 < topLevelItems; ++i1) {
-        QTreeWidgetItem *top = new QTreeWidgetItem(&tw);
-        top->setText(0, QString("top%1").arg(i1));
-        for (int i2=0; i2 < childItems; ++i2) {
-            QTreeWidgetItem *child = new QTreeWidgetItem(top);
-            child->setText(0, QString("top%1,child%2").arg(i1).arg(i2));
-            for (int i3=0; i3 < grandChildItems; ++i3) {
-                QTreeWidgetItem *grandChild = new QTreeWidgetItem(child);
-                grandChild->setText(0, QString("top%1,child%2,grandchild%3").arg(i1).arg(i2).arg(i3));
-            }
-        }
-    }
+    populate3Levels(tw, topLevelItems, childItems, grandChildItems);
 
     QTreeWidgetItemIterator it(&tw, QTreeWidgetItemIterator::IteratorFlags(iteratorflags));
     it+=expecteditemindex;
@@ -1161,18 +1148,7 @@ void tst_QTreeWidgetItemIterator::updateIteratorAfterDeletedItem_and_ContinueIte
     QTreeWidget tw;
     tw.clear();
     tw.setColumnCount(2);
-    for (int i1=0; i1 < topLevelItems; ++i1) {
-        QTreeWidgetItem *top = new QTreeWidgetItem(&tw);
-        top->setText(0, QString("top%1").arg(i1));
-        for (int i2=0; i2 < childItems; ++i2) {
-            QTreeWidgetItem *child = new QTreeWidgetItem(top);
-            child->setText(0, QString("top%1,child%2").arg(i1).arg(i2));
-            for (int i3=0; i3 < grandChildItems; ++i3) {
-                QTreeWidgetItem *grandChild = new QTreeWidgetItem(child);
-                grandChild->setText(0, QString("top%1,child%2,grandchild%3").arg(i1).arg(i2).arg(i3));
-            }
-        }
-    }
+    populate3Levels(tw, topLevelItems, childItems, grandChildItems);
 
     QTreeWidgetItemIterator it(&tw, QTreeWidgetItemIterator::All);
     it += iterator_initial_index;

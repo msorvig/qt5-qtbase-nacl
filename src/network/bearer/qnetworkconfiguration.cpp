@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -34,11 +40,6 @@
 #include "qnetworkconfiguration.h"
 #include "qnetworkconfiguration_p.h"
 #include <QDebug>
-
-#ifdef Q_OS_BLACKBERRY
-#include "private/qcore_unix_p.h" // qt_safe_open
-#include <sys/pps.h>
-#endif // Q_OS_BLACKBERRY
 
 QT_BEGIN_NAMESPACE
 
@@ -201,77 +202,6 @@ QT_BEGIN_NAMESPACE
     \value BearerEVDO       The configuration is for an EVDO (3G) interface.
     \value BearerLTE        The configuration is for a LTE (4G) interface.
 */
-
-#ifdef Q_OS_BLACKBERRY
-static const char cellularStatusFile[] = "/pps/services/radioctrl/modem0/status_public";
-
-static QNetworkConfiguration::BearerType cellularStatus()
-{
-    QNetworkConfiguration::BearerType ret = QNetworkConfiguration::BearerUnknown;
-
-    int cellularStatusFD;
-    if ((cellularStatusFD = qt_safe_open(cellularStatusFile, O_RDONLY)) == -1) {
-        qWarning() << "failed to open" << cellularStatusFile;
-        return ret;
-    }
-    char buf[2048];
-    if (qt_safe_read(cellularStatusFD, &buf, sizeof(buf)) == -1) {
-        qWarning() << "read from PPS file failed:" << strerror(errno);
-        qt_safe_close(cellularStatusFD);
-        return ret;
-    }
-    pps_decoder_t ppsDecoder;
-    if (pps_decoder_initialize(&ppsDecoder, buf) != PPS_DECODER_OK) {
-        qWarning("failed to initialize PPS decoder");
-        qt_safe_close(cellularStatusFD);
-        return ret;
-    }
-    pps_decoder_error_t err;
-    if ((err = pps_decoder_push(&ppsDecoder, 0)) != PPS_DECODER_OK) {
-        qWarning() << "pps_decoder_push failed" << err;
-        pps_decoder_cleanup(&ppsDecoder);
-        qt_safe_close(cellularStatusFD);
-        return ret;
-    }
-    if (!pps_decoder_is_integer(&ppsDecoder, "network_technology")) {
-        qWarning("field has not the expected data type");
-        pps_decoder_cleanup(&ppsDecoder);
-        qt_safe_close(cellularStatusFD);
-        return ret;
-    }
-    int type;
-    if (!pps_decoder_get_int(&ppsDecoder, "network_technology", &type)
-            == PPS_DECODER_OK) {
-        qWarning("could not read bearer type from PPS");
-        pps_decoder_cleanup(&ppsDecoder);
-        qt_safe_close(cellularStatusFD);
-        return ret;
-    }
-    switch (type) {
-    case 0: // 0 == NONE
-        break; // unhandled
-    case 1: // fallthrough, 1 == GSM
-    case 4: // 4 == CDMA_1X
-        ret = QNetworkConfiguration::Bearer2G;
-        break;
-    case 2: // 2 == UMTS
-        ret = QNetworkConfiguration::BearerWCDMA;
-        break;
-    case 8: // 8 == EVDO
-        ret = QNetworkConfiguration::BearerEVDO;
-        break;
-    case 16: // 16 == LTE
-        ret = QNetworkConfiguration::BearerLTE;
-        break;
-    default:
-        qWarning() << "unhandled bearer type" << type;
-        break;
-    }
-    pps_decoder_cleanup(&ppsDecoder);
-    qt_safe_close(cellularStatusFD);
-    return ret;
-}
-#endif // Q_OS_BLACKBERRY
 
 /*!
     Constructs an invalid configuration object.
@@ -494,19 +424,6 @@ QNetworkConfiguration::BearerType QNetworkConfiguration::bearerType() const
         return BearerUnknown;
 
     QMutexLocker locker(&d->mutex);
-
-#ifdef Q_OS_BLACKBERRY
-    // for cellular configurations, we need to determine the exact
-    // type right now, because it might have changed after the last scan
-    if (d->bearerType == QNetworkConfiguration::Bearer2G) {
-        QNetworkConfiguration::BearerType type = cellularStatus();
-        // if reading the status failed for some reason, just
-        // fall back to 2G
-        return (type == QNetworkConfiguration::BearerUnknown)
-                ? QNetworkConfiguration::Bearer2G : type;
-    }
-#endif // Q_OS_BLACKBERRY
-
     return d->bearerType;
 }
 
@@ -639,20 +556,6 @@ QString QNetworkConfiguration::bearerTypeName() const
     case BearerWLAN:
         return QStringLiteral("WLAN");
     case Bearer2G:
-#ifdef Q_OS_BLACKBERRY
-    {
-        // for cellular configurations, we need to determine the exact
-        // type right now, because it might have changed after the last scan
-        QNetworkConfiguration::BearerType type = cellularStatus();
-        if (type == QNetworkConfiguration::BearerWCDMA) {
-            return QStringLiteral("WCDMA");
-        } else if (type == QNetworkConfiguration::BearerEVDO) {
-            return QStringLiteral("EVDO");
-        }else if (type == QNetworkConfiguration::BearerLTE) {
-            return QStringLiteral("LTE");
-        }
-    }
-#endif // Q_OS_BLACKBERRY
         return QStringLiteral("2G");
     case Bearer3G:
         return QStringLiteral("3G");

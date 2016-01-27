@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -63,17 +58,11 @@ class tst_QUdpSocket : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QUdpSocket();
-    virtual ~tst_QUdpSocket();
-
-
-public slots:
+private slots:
     void initTestCase_data();
     void initTestCase();
     void init();
     void cleanup();
-private slots:
     void constructing();
     void unconnectedServerAndClientTest();
     void broadcasting();
@@ -142,14 +131,6 @@ static QHostAddress makeNonAny(const QHostAddress &address, QHostAddress::Specia
     if (address == QHostAddress::AnyIPv6)
         return QHostAddress::LocalHostIPv6;
     return address;
-}
-
-tst_QUdpSocket::tst_QUdpSocket()
-{
-}
-
-tst_QUdpSocket::~tst_QUdpSocket()
-{
 }
 
 void tst_QUdpSocket::initTestCase_data()
@@ -1119,12 +1100,13 @@ void tst_QUdpSocket::multicastTtlOption_data()
     addresses += QHostAddress(QHostAddress::AnyIPv6);
 
     foreach (const QHostAddress &address, addresses) {
-        QTest::newRow(QString("%1 0").arg(address.toString()).toLatin1()) << address << 0 << 0;
-        QTest::newRow(QString("%1 1").arg(address.toString()).toLatin1()) << address << 1 << 1;
-        QTest::newRow(QString("%1 2").arg(address.toString()).toLatin1()) << address << 2 << 2;
-        QTest::newRow(QString("%1 128").arg(address.toString()).toLatin1()) << address << 128 << 128;
-        QTest::newRow(QString("%1 255").arg(address.toString()).toLatin1()) << address << 255 << 255;
-        QTest::newRow(QString("%1 1024").arg(address.toString()).toLatin1()) << address << 1024 << 1;
+        const QByteArray addressB = address.toString().toLatin1();
+        QTest::newRow((addressB + " 0").constData()) << address << 0 << 0;
+        QTest::newRow((addressB + " 1").constData()) << address << 1 << 1;
+        QTest::newRow((addressB + " 2").constData()) << address << 2 << 2;
+        QTest::newRow((addressB + " 128").constData()) << address << 128 << 128;
+        QTest::newRow((addressB + " 255").constData()) << address << 255 << 255;
+        QTest::newRow((addressB + " 1024").constData()) << address << 1024 << 1;
     }
 }
 
@@ -1163,13 +1145,14 @@ void tst_QUdpSocket::multicastLoopbackOption_data()
     addresses += QHostAddress(QHostAddress::AnyIPv6);
 
     foreach (const QHostAddress &address, addresses) {
-        QTest::newRow(QString("%1 0").arg(address.toString()).toLatin1()) << address << 0 << 0;
-        QTest::newRow(QString("%1 1").arg(address.toString()).toLatin1()) << address << 1 << 1;
-        QTest::newRow(QString("%1 2").arg(address.toString()).toLatin1()) << address << 2 << 1;
-        QTest::newRow(QString("%1 0 again").arg(address.toString()).toLatin1()) << address << 0 << 0;
-        QTest::newRow(QString("%1 2 again").arg(address.toString()).toLatin1()) << address << 2 << 1;
-        QTest::newRow(QString("%1 0 last time").arg(address.toString()).toLatin1()) << address << 0 << 0;
-        QTest::newRow(QString("%1 1 again").arg(address.toString()).toLatin1()) << address << 1 << 1;
+        const QByteArray addressB = address.toString().toLatin1();
+        QTest::newRow((addressB + " 0").constData()) << address << 0 << 0;
+        QTest::newRow((addressB + " 1").constData()) << address << 1 << 1;
+        QTest::newRow((addressB + " 2").constData()) << address << 2 << 1;
+        QTest::newRow((addressB + " 0 again").constData()) << address << 0 << 0;
+        QTest::newRow((addressB + " 2 again").constData()) << address << 2 << 1;
+        QTest::newRow((addressB + " 0 last time").constData()) << address << 0 << 0;
+        QTest::newRow((addressB + " 1 again").constData()) << address << 1 << 1;
     }
 }
 
@@ -1266,9 +1249,8 @@ void tst_QUdpSocket::setMulticastInterface_data()
         if ((iface.flags() & QNetworkInterface::IsUp) == 0)
             continue;
         foreach (const QNetworkAddressEntry &entry, iface.addressEntries()) {
-            QTest::newRow(QString("%1:%2").arg(iface.name()).arg(entry.ip().toString()).toLatin1())
-                    << iface
-                    << entry.ip();
+            const QByteArray testName = iface.name().toLatin1() + ':' + entry.ip().toString().toLatin1();
+            QTest::newRow(testName.constData()) << iface << entry.ip();
         }
     }
 }

@@ -1,32 +1,38 @@
 /****************************************************************************
 **
 ** Copyright (C) 2014 BogDan Vatra <bogdan@kde.org>
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the Android port of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -68,6 +74,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.view.ViewTreeObserver;
+import android.widget.PopupMenu;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -79,6 +86,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.qtproject.qt5.android.accessibility.QtAccessibilityDelegate;
 
 public class QtActivityDelegate
 {
@@ -138,35 +147,23 @@ public class QtActivityDelegate
             m_activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             m_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
             try {
-                if (Build.VERSION.SDK_INT >= 14) {
-                    int flags = View.class.getDeclaredField("SYSTEM_UI_FLAG_HIDE_NAVIGATION").getInt(null);
-                    if (Build.VERSION.SDK_INT >= 16) {
-                        flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_LAYOUT_STABLE").getInt(null);
-                        flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION").getInt(null);
-                        flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN").getInt(null);
-                        flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_FULLSCREEN").getInt(null);
+                int flags = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+                flags |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+                flags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+                flags |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+                flags |= View.SYSTEM_UI_FLAG_FULLSCREEN;
 
-                        if (Build.VERSION.SDK_INT >= 19)
-                            flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_IMMERSIVE_STICKY").getInt(null);
-                    }
-                    Method m = View.class.getMethod("setSystemUiVisibility", int.class);
-                    m.invoke(m_activity.getWindow().getDecorView(), flags | View.INVISIBLE);
-                }
+                if (Build.VERSION.SDK_INT >= 19)
+                    flags |= View.class.getDeclaredField("SYSTEM_UI_FLAG_IMMERSIVE_STICKY").getInt(null);
+
+                m_activity.getWindow().getDecorView().setSystemUiVisibility(flags | View.INVISIBLE);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         } else {
             m_activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
             m_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            if (Build.VERSION.SDK_INT >= 14) {
-                try {
-                    int ui_flag_visible = View.class.getDeclaredField("SYSTEM_UI_FLAG_VISIBLE").getInt(null);
-                    Method m = View.class.getMethod("setSystemUiVisibility", int.class);
-                    m.invoke(m_activity.getWindow().getDecorView(), ui_flag_visible);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            m_activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
         }
         m_layout.requestLayout();
     }
@@ -296,8 +293,7 @@ public class QtActivityDelegate
             imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_NEXT;
             break;
         case EnterKeyPrevious:
-            if (Build.VERSION.SDK_INT > 10)
-                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_PREVIOUS;
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_PREVIOUS;
             break;
         }
 
@@ -310,7 +306,7 @@ public class QtActivityDelegate
                               | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
             }
 
-            if (Build.VERSION.SDK_INT > 10 && (inputHints & ImhHiddenText) != 0)
+            if ((inputHints & ImhHiddenText) != 0)
                 inputType |= 0x10 /* TYPE_NUMBER_VARIATION_PASSWORD */;
         } else if ((inputHints & ImhDialableCharactersOnly) != 0) {
             inputType = android.text.InputType.TYPE_CLASS_PHONE;
@@ -520,13 +516,7 @@ public class QtActivityDelegate
             m_super_onKeyUp = m_activity.getClass().getMethod("super_onKeyUp", Integer.TYPE, KeyEvent.class);
             m_super_onConfigurationChanged = m_activity.getClass().getMethod("super_onConfigurationChanged", Configuration.class);
             m_super_onActivityResult = m_activity.getClass().getMethod("super_onActivityResult", Integer.TYPE, Integer.TYPE, Intent.class);
-            if (Build.VERSION.SDK_INT >= 12) {
-                try {
-                    m_super_dispatchGenericMotionEvent = m_activity.getClass().getMethod("super_dispatchGenericMotionEvent", MotionEvent.class);
-                } catch (Exception e) {
-                }
-            }
-
+            m_super_dispatchGenericMotionEvent = m_activity.getClass().getMethod("super_dispatchGenericMotionEvent", MotionEvent.class);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -542,10 +532,8 @@ public class QtActivityDelegate
                                               + "\tNECESSITAS_API_LEVEL=" + necessitasApiLevel
                                               + "\tHOME=" + m_activity.getFilesDir().getAbsolutePath()
                                               + "\tTMPDIR=" + m_activity.getFilesDir().getAbsolutePath();
-        if (Build.VERSION.SDK_INT < 14)
-            additionalEnvironmentVariables += "\tQT_ANDROID_FONTS=Droid Sans;Droid Sans Fallback";
-        else
-            additionalEnvironmentVariables += "\tQT_ANDROID_FONTS=Roboto;Droid Sans;Droid Sans Fallback";
+
+        additionalEnvironmentVariables += "\tQT_ANDROID_FONTS=Roboto;Droid Sans;Droid Sans Fallback";
 
         additionalEnvironmentVariables += getAppIconSize(activity);
 
@@ -926,21 +914,7 @@ public class QtActivityDelegate
 
     public void initializeAccessibility()
     {
-        // Initialize accessibility
-        try {
-            final String a11yDelegateClassName = "org.qtproject.qt5.android.accessibility.QtAccessibilityDelegate";
-            Class<?> qtDelegateClass = Class.forName(a11yDelegateClassName);
-            Constructor constructor = qtDelegateClass.getConstructor(android.app.Activity.class,
-                                                                     android.view.ViewGroup.class,
-                                                                     this.getClass());
-            Object accessibilityDelegate = constructor.newInstance(m_activity, m_layout, this);
-        } catch (ClassNotFoundException e) {
-            // Class not found is fine since we are compatible with Android API < 16, but the function will
-            // only be available with that API level.
-        } catch (Exception e) {
-            // Unknown exception means something went wrong.
-            Log.w("Qt A11y", "Unknown exception: " + e.toString());
-        }
+        new QtAccessibilityDelegate(m_activity, m_layout, this);
     }
 
     public void onConfigurationChanged(Configuration configuration)
@@ -950,6 +924,23 @@ public class QtActivityDelegate
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // if splash screen is defined, then show it
+        // Note: QtActivity handles settting the splash screen
+        // in onCreate, change that too if you are changing
+        // how the splash screen should be displayed
+        try {
+            if (m_surfaces.size() == 0) {
+                ActivityInfo info = m_activity.getPackageManager().getActivityInfo(m_activity.getComponentName(), PackageManager.GET_META_DATA);
+                if (info.metaData.containsKey("android.app.splash_screen_drawable"))
+                    m_activity.getWindow().setBackgroundDrawableResource(info.metaData.getInt("android.app.splash_screen_drawable"));
+                else
+                    m_activity.getWindow().setBackgroundDrawable(new ColorDrawable(0xff000000));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         int rotation = m_activity.getWindowManager().getDefaultDisplay().getRotation();
         if (rotation != m_currentRotation) {
             QtNative.handleOrientationChanged(rotation, m_nativeOrientation);
@@ -1144,17 +1135,9 @@ public class QtActivityDelegate
 
     public void resetOptionsMenu()
     {
-        if (Build.VERSION.SDK_INT > 10) {
-            try {
-                Activity.class.getMethod("invalidateOptionsMenu").invoke(m_activity);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        else
-            if (m_optionsMenuIsVisible)
-                m_activity.closeOptionsMenu();
+        m_activity.invalidateOptionsMenu();
     }
+
     private boolean m_contextMenuVisible = false;
     public void onCreateContextMenu(ContextMenu menu,
                                     View v,
@@ -1190,15 +1173,22 @@ public class QtActivityDelegate
         m_layout.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    if (Build.VERSION.SDK_INT < 11 || w <= 0 || h <= 0) {
-                        m_activity.openContextMenu(m_layout);
-                    } else if (Build.VERSION.SDK_INT < 14) {
-                        m_layout.setLayoutParams(m_editText, new QtLayout.LayoutParams(w, h, x, y), false);
-                        QtPopupMenu.getInstance().showMenu(m_editText);
-                    } else {
-                        m_layout.setLayoutParams(m_editText, new QtLayout.LayoutParams(w, h, x, y), false);
-                        QtPopupMenu14.getInstance().showMenu(m_editText);
-                    }
+                    m_layout.setLayoutParams(m_editText, new QtLayout.LayoutParams(w, h, x, y), false);
+                    PopupMenu popup = new PopupMenu(m_activity, m_editText);
+                    QtActivityDelegate.this.onCreatePopupMenu(popup.getMenu());
+                    popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem menuItem) {
+                            return QtActivityDelegate.this.onContextItemSelected(menuItem);
+                        }
+                    });
+                    popup.setOnDismissListener(new PopupMenu.OnDismissListener() {
+                        @Override
+                        public void onDismiss(PopupMenu popupMenu) {
+                            QtActivityDelegate.this.onContextMenuClosed(popupMenu.getMenu());
+                        }
+                    });
+                    popup.show();
                 }
             }, 100);
     }
@@ -1208,46 +1198,12 @@ public class QtActivityDelegate
         m_activity.closeContextMenu();
     }
 
-    private boolean hasPermanentMenuKey()
-    {
-        try {
-            return Build.VERSION.SDK_INT < 11 || (Build.VERSION.SDK_INT >= 14 &&
-                    (Boolean)ViewConfiguration.class.getMethod("hasPermanentMenuKey").invoke(ViewConfiguration.get(m_activity)));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    private Object getActionBar()
-    {
-        try {
-            return Activity.class.getMethod("getActionBar").invoke(m_activity);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     private void setActionBarVisibility(boolean visible)
     {
-        if (hasPermanentMenuKey() || !visible) {
-            if (Build.VERSION.SDK_INT > 10 && getActionBar() != null) {
-                try {
-                    Class.forName("android.app.ActionBar").getMethod("hide").invoke(getActionBar());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-        } else {
-            if (Build.VERSION.SDK_INT > 10 && getActionBar() != null)
-                try {
-                    Class.forName("android.app.ActionBar").getMethod("show").invoke(getActionBar());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-        }
+        if (ViewConfiguration.get(m_activity).hasPermanentMenuKey() || !visible)
+            m_activity.getActionBar().hide();
+        else
+            m_activity.getActionBar().show();
     }
 
     public void insertNativeView(int id, View view, int x, int y, int w, int h) {

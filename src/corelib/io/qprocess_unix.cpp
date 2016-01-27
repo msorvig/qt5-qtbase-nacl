@@ -1,31 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -564,7 +571,7 @@ static int doSpawn(pid_t *ppid, const posix_spawn_file_actions_t *file_actions,
             qWarning("ThreadCtl(): failed to chdir to %s", oldWorkingDir);
 
 #  ifdef Q_OS_QNX
-        if (ThreadCtl(_NTO_TCTL_THREADS_CONT, 0) == -1)
+        if (Q_UNLIKELY(ThreadCtl(_NTO_TCTL_THREADS_CONT, 0) == -1))
             qFatal("ThreadCtl(): cannot resume threads: %s", qPrintable(qt_error_string(errno)));
 #  endif
     }
@@ -676,6 +683,7 @@ void QProcessPrivate::execChild(const char *workingDir, char **path, char **argv
     qt_safe_close(childStartedPipe[0]);
 
     // enter the working directory
+    const char *callthatfailed = "chdir: ";
     if (workingDir && QT_CHDIR(workingDir) == -1) {
         // failed, stop the process
         goto report_errno;
@@ -687,6 +695,7 @@ void QProcessPrivate::execChild(const char *workingDir, char **path, char **argv
     // execute the process
     if (!envp) {
         qt_safe_execvp(argv[0], argv);
+        callthatfailed = "execvp: ";
     } else {
         if (path) {
             char **arg = path;
@@ -704,15 +713,19 @@ void QProcessPrivate::execChild(const char *workingDir, char **path, char **argv
 #endif
             qt_safe_execve(argv[0], argv, envp);
         }
+        callthatfailed = "execve: ";
     }
 
     // notify failure
+    // we're running in the child process, so we don't need to be thread-safe;
+    // we can use strerror
 report_errno:
-    QString error = qt_error_string(errno);
+    const char *msg = strerror(errno);
 #if defined (QPROCESS_DEBUG)
-    fprintf(stderr, "QProcessPrivate::execChild() failed (%s), notifying parent process\n", qPrintable(error));
+    fprintf(stderr, "QProcessPrivate::execChild() failed (%s), notifying parent process\n", msg);
 #endif
-    qt_safe_write(childStartedPipe[1], error.data(), error.length() * sizeof(QChar));
+    qt_safe_write(childStartedPipe[1], callthatfailed, strlen(callthatfailed));
+    qt_safe_write(childStartedPipe[1], msg, strlen(msg));
     qt_safe_close(childStartedPipe[1]);
     childStartedPipe[1] = -1;
 }
@@ -720,8 +733,15 @@ report_errno:
 
 bool QProcessPrivate::processStarted(QString *errorMessage)
 {
-    ushort buf[errorBufferMax];
-    int i = qt_safe_read(childStartedPipe[0], &buf, sizeof buf);
+    char buf[errorBufferMax];
+    int i = 0;
+    int ret;
+    do {
+        ret = qt_safe_read(childStartedPipe[0], buf + i, sizeof buf - i);
+        if (ret > 0)
+            i += ret;
+    } while (ret > 0 && i < int(sizeof buf));
+
     if (startupSocketNotifier) {
         startupSocketNotifier->setEnabled(false);
         startupSocketNotifier->deleteLater();
@@ -736,7 +756,7 @@ bool QProcessPrivate::processStarted(QString *errorMessage)
 
     // did we read an error message?
     if ((i > 0) && errorMessage)
-        *errorMessage = QString((const QChar *)buf, i / sizeof(QChar));
+        *errorMessage = QString::fromLocal8Bit(buf, i);
 
     return i <= 0;
 }
@@ -830,17 +850,6 @@ bool QProcessPrivate::waitForStarted(int msecs)
     return startedEmitted;
 }
 
-#ifdef Q_OS_BLACKBERRY
-QList<QSocketNotifier *> QProcessPrivate::defaultNotifiers() const
-{
-    QList<QSocketNotifier *> notifiers;
-    notifiers << stdoutChannel.notifier
-              << stderrChannel.notifier
-              << stdinChannel.notifier;
-    return notifiers;
-}
-#endif // Q_OS_BLACKBERRY
-
 bool QProcessPrivate::waitForReadyRead(int msecs)
 {
 #if defined (QPROCESS_DEBUG)
@@ -849,10 +858,6 @@ bool QProcessPrivate::waitForReadyRead(int msecs)
 
     QElapsedTimer stopWatch;
     stopWatch.start();
-
-#ifdef Q_OS_BLACKBERRY
-    QList<QSocketNotifier *> notifiers = defaultNotifiers();
-#endif
 
     forever {
         fd_set fdread;
@@ -876,11 +881,8 @@ bool QProcessPrivate::waitForReadyRead(int msecs)
             add_fd(nfds, stdinChannel.pipe[1], &fdwrite);
 
         int timeout = qt_subtract_from_timeout(msecs, stopWatch.elapsed());
-#ifdef Q_OS_BLACKBERRY
-        int ret = bb_select(notifiers, nfds + 1, &fdread, &fdwrite, timeout);
-#else
         int ret = qt_select_msecs(nfds + 1, &fdread, &fdwrite, timeout);
-#endif
+
         if (ret < 0) {
             break;
         }
@@ -928,10 +930,6 @@ bool QProcessPrivate::waitForBytesWritten(int msecs)
     QElapsedTimer stopWatch;
     stopWatch.start();
 
-#ifdef Q_OS_BLACKBERRY
-    QList<QSocketNotifier *> notifiers = defaultNotifiers();
-#endif
-
     while (!stdinChannel.buffer.isEmpty()) {
         fd_set fdread;
         fd_set fdwrite;
@@ -955,11 +953,8 @@ bool QProcessPrivate::waitForBytesWritten(int msecs)
             add_fd(nfds, stdinChannel.pipe[1], &fdwrite);
 
         int timeout = qt_subtract_from_timeout(msecs, stopWatch.elapsed());
-#ifdef Q_OS_BLACKBERRY
-        int ret = bb_select(notifiers, nfds + 1, &fdread, &fdwrite, timeout);
-#else
         int ret = qt_select_msecs(nfds + 1, &fdread, &fdwrite, timeout);
-#endif
+
         if (ret < 0) {
             break;
         }
@@ -1001,10 +996,6 @@ bool QProcessPrivate::waitForFinished(int msecs)
     QElapsedTimer stopWatch;
     stopWatch.start();
 
-#ifdef Q_OS_BLACKBERRY
-    QList<QSocketNotifier *> notifiers = defaultNotifiers();
-#endif
-
     forever {
         fd_set fdread;
         fd_set fdwrite;
@@ -1028,11 +1019,8 @@ bool QProcessPrivate::waitForFinished(int msecs)
             add_fd(nfds, stdinChannel.pipe[1], &fdwrite);
 
         int timeout = qt_subtract_from_timeout(msecs, stopWatch.elapsed());
-#ifdef Q_OS_BLACKBERRY
-        int ret = bb_select(notifiers, nfds + 1, &fdread, &fdwrite, timeout);
-#else
         int ret = qt_select_msecs(nfds + 1, &fdread, &fdwrite, timeout);
-#endif
+
         if (ret < 0) {
             break;
         }

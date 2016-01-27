@@ -1,31 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -54,9 +50,8 @@ class tst_QLocalSocket : public QObject
 {
     Q_OBJECT
 
-public Q_SLOTS:
-    void init();
-    void cleanup();
+public:
+    tst_QLocalSocket();
 
 private slots:
     // basics
@@ -116,16 +111,12 @@ private slots:
 
 };
 
-void tst_QLocalSocket::init()
+tst_QLocalSocket::tst_QLocalSocket()
 {
     qRegisterMetaType<QLocalSocket::LocalSocketState>("QLocalSocket::LocalSocketState");
     qRegisterMetaType<QLocalSocket::LocalSocketError>("QLocalSocket::LocalSocketError");
     qRegisterMetaType<QLocalServer::SocketOption>("QLocalServer::SocketOption");
     qRegisterMetaType<QFile::Permissions>("QFile::Permissions");
-}
-
-void tst_QLocalSocket::cleanup()
-{
 }
 
 class LocalServer : public QLocalServer
@@ -190,7 +181,7 @@ private slots:
     }
     void slotError(QLocalSocket::LocalSocketError newError)
     {
-        QVERIFY(errorString() != "Unknown error");
+        QVERIFY(errorString() != QLatin1String("Unknown error"));
         QCOMPARE(error(), newError);
     }
     void slotStateChanged(QLocalSocket::LocalSocketState newState)
@@ -328,8 +319,9 @@ void tst_QLocalSocket::listenAndConnect_data()
         int connections = i;
         if (i == 2)
             connections = 5;
-        QTest::newRow(QString("null %1").arg(i).toLatin1()) << QString() << false << connections;
-        QTest::newRow(QString("tst_localsocket %1").arg(i).toLatin1()) << "tst_localsocket" << true << connections;
+        const QByteArray iB = QByteArray::number(i);
+        QTest::newRow(("null " + iB).constData()) << QString() << false << connections;
+        QTest::newRow(("tst_localsocket " + iB).constData()) << "tst_localsocket" << true << connections;
     }
 }
 
@@ -535,7 +527,7 @@ void tst_QLocalSocket::sendData()
     if (server.hasPendingConnections()) {
         QString testLine = "test";
         for (int i = 0; i < 50000; ++i)
-            testLine += "a";
+            testLine += QLatin1Char('a');
         QLocalSocket *serverSocket = server.nextPendingConnection();
         QVERIFY(serverSocket);
         QCOMPARE(serverSocket->state(), QLocalSocket::ConnectedState);
@@ -1237,7 +1229,7 @@ void tst_QLocalSocket::verifyListenWithDescriptor()
         QVERIFY2(server.fullServerName().at(0) == at, "abstract sockets should start with a '@'");
     } else {
         QCOMPARE(server.fullServerName(), path);
-        if (path.contains(QLatin1String("/"))) {
+        if (path.contains(QLatin1Char('/'))) {
             QVERIFY2(server.serverName() == path.mid(path.lastIndexOf(QLatin1Char('/'))+1), "server name invalid short name");
         } else {
             QVERIFY2(server.serverName() == path, "servier name doesn't match the path provided");

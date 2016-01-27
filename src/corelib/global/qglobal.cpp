@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -75,10 +81,6 @@
 
 #if defined(Q_OS_ANDROID) && !defined(Q_OS_ANDROID_NO_SDK)
 #include <private/qjni_p.h>
-#endif
-
-#if defined(Q_OS_BLACKBERRY)
-#  include <bps/deviceinfo.h>
 #endif
 
 #if defined(Q_OS_SOLARIS)
@@ -1175,17 +1177,8 @@ bool qSharedBuild() Q_DECL_NOTHROW
     \macro Q_OS_DARWIN
     \relates <QtGlobal>
 
-    Defined on Darwin-based operating systems such as OS X and iOS,
-    including any open source version(s) of Darwin.
+    Defined on Darwin-based operating systems such as OS X, iOS, watchOS, and tvOS.
 */
-
-/*!
-    \macro Q_OS_MAC
-    \relates <QtGlobal>
-
-    Defined on Darwin-based operating systems distributed by Apple, which
-    currently includes OS X and iOS, but not the open source versions of Darwin.
- */
 
 /*!
     \macro Q_OS_OSX
@@ -1199,6 +1192,20 @@ bool qSharedBuild() Q_DECL_NOTHROW
     \relates <QtGlobal>
 
     Defined on iOS.
+ */
+
+/*!
+    \macro Q_OS_WATCHOS
+    \relates <QtGlobal>
+
+    Defined on watchOS.
+ */
+
+/*!
+    \macro Q_OS_TVOS
+    \relates <QtGlobal>
+
+    Defined on tvOS.
  */
 
 /*!
@@ -1915,9 +1922,9 @@ static inline HMODULE moduleHandleForFunction(LPCVOID address)
 }
 #endif
 
-static inline OSVERSIONINFO winOsVersion()
+static inline OSVERSIONINFOEX determineWinOsVersion()
 {
-    OSVERSIONINFO result = { sizeof(OSVERSIONINFO), 0, 0, 0, 0, {'\0'}};
+    OSVERSIONINFOEX result = { sizeof(OSVERSIONINFOEX), 0, 0, 0, 0, {'\0'}, 0, 0, 0, 0, 0};
 
 #ifndef Q_OS_WINCE
 #define GetProcAddressA GetProcAddress
@@ -1960,7 +1967,13 @@ static inline OSVERSIONINFO winOsVersion()
 
     // GetVersionEx() has been deprecated in Windows 8.1 and will return
     // only Windows 8 from that version on, so use the kernel API function.
-    pRtlGetVersion(&result); // always returns STATUS_SUCCESS
+    pRtlGetVersion((LPOSVERSIONINFO) &result); // always returns STATUS_SUCCESS
+    return result;
+}
+
+static OSVERSIONINFOEX winOsVersion()
+{
+    static OSVERSIONINFOEX result = determineWinOsVersion();
     return result;
 }
 
@@ -1983,7 +1996,7 @@ QSysInfo::WinVersion QSysInfo::windowsVersion()
     if (winver)
         return winver;
     winver = QSysInfo::WV_NT;
-    const OSVERSIONINFO osver = winOsVersion();
+    const OSVERSIONINFOEX osver = winOsVersion();
     if (osver.dwMajorVersion == 0)
         return QSysInfo::WV_None;
 #ifdef Q_OS_WINCE
@@ -2069,8 +2082,24 @@ QSysInfo::WinVersion QSysInfo::windowsVersion()
     return winver;
 }
 
+static QString winSp_helper()
+{
+    const qint16 major = winOsVersion().wServicePackMajor;
+    if (major) {
+        QString sp = QStringLiteral(" SP ") + QString::number(major);
+        const qint16 minor = winOsVersion().wServicePackMinor;
+        if (minor)
+            sp += QLatin1Char('.') + QString::number(minor);
+
+        return sp;
+    }
+    return QString();
+}
+
 static const char *winVer_helper()
 {
+    const bool workstation = winOsVersion().wProductType == VER_NT_WORKSTATION;
+
     switch (int(QSysInfo::WindowsVersion)) {
     case QSysInfo::WV_NT:
         return "NT";
@@ -2081,15 +2110,15 @@ static const char *winVer_helper()
     case QSysInfo::WV_2003:
         return "2003";
     case QSysInfo::WV_VISTA:
-        return "Vista";
+        return workstation ? "Vista" : "Server 2008";
     case QSysInfo::WV_WINDOWS7:
-        return "7";
+        return workstation ? "7" : "Server 2008 R2";
     case QSysInfo::WV_WINDOWS8:
-        return "8";
+        return workstation ? "8" : "Server 2012";
     case QSysInfo::WV_WINDOWS8_1:
-        return "8.1";
+        return workstation ? "8.1" : "Server 2012 R2";
     case QSysInfo::WV_WINDOWS10:
-        return "10";
+        return workstation ? "10" : "Server 2016";
 
     case QSysInfo::WV_CE:
         return "CE";
@@ -2502,7 +2531,7 @@ static QString unknownText()
 
     Note that this function may return surprising values: it returns "linux"
     for all operating systems running Linux (including Android), "qnx" for all
-    operating systems running QNX (including BlackBerry 10), "freebsd" for
+    operating systems running QNX, "freebsd" for
     Debian/kFreeBSD, and "darwin" for OS X and iOS. For information on the type
     of product the application is running on, see productType().
 
@@ -2530,7 +2559,7 @@ QString QSysInfo::kernelType()
 
     Returns the release version of the operating system kernel. On Windows, it
     returns the version of the NT or CE kernel. On Unix systems, including
-    Android, BlackBerry and OS X, it returns the same as the \c{uname -r}
+    Android and OS X, it returns the same as the \c{uname -r}
     command would return.
 
     If the version could not be determined, this function may return an empty
@@ -2541,7 +2570,7 @@ QString QSysInfo::kernelType()
 QString QSysInfo::kernelVersion()
 {
 #ifdef Q_OS_WIN
-    const OSVERSIONINFO osver = winOsVersion();
+    const OSVERSIONINFOEX osver = winOsVersion();
     return QString::number(int(osver.dwMajorVersion)) + QLatin1Char('.') + QString::number(int(osver.dwMinorVersion))
             + QLatin1Char('.') + QString::number(int(osver.dwBuildNumber));
 #elif defined(Q_OS_NACL)
@@ -2573,10 +2602,6 @@ QString QSysInfo::kernelVersion()
     to determine the distribution name and returns that. If determining the
     distribution name failed, it returns "unknown".
 
-    \b{BlackBerry note}: this function returns "blackberry" for QNX systems
-    running the BlackBerry userspace, but "qnx" for all other QNX-based
-    systems.
-
     \b{Darwin, OS X and iOS note}: this function returns "osx" for OS X
     systems, "ios" for iOS systems and "darwin" in case the system could not be
     determined.
@@ -2604,8 +2629,6 @@ QString QSysInfo::productType()
 #elif defined(Q_OS_WIN)
     return QStringLiteral("windows");
 
-#elif defined(Q_OS_BLACKBERRY)
-    return QStringLiteral("blackberry");
 #elif defined(Q_OS_QNX)
     return QStringLiteral("qnx");
 
@@ -2635,7 +2658,7 @@ QString QSysInfo::productType()
     Returns the product version of the operating system in string form. If the
     version could not be determined, this function returns "unknown".
 
-    It will return the Android, BlackBerry, iOS, OS X, Windows full-product
+    It will return the Android, iOS, OS X, Windows full-product
     versions on those systems. In particular, on OS X, iOS and Windows, the
     returned string is similar to the macVersion() or windowsVersion() enums.
 
@@ -2646,7 +2669,7 @@ QString QSysInfo::productType()
     In all other Unix-type systems, this function always returns "unknown".
 
     \note The version string returned from this function is only guaranteed to
-    be orderable on Android, BlackBerry, OS X and iOS. On Windows, some Windows
+    be orderable on Android, OS X and iOS. On Windows, some Windows
     versions are text ("XP" and "Vista", for example). On Linux, the version of
     the distribution may jump unexpectedly, please refer to the distribution's
     documentation for versioning practices.
@@ -2660,22 +2683,17 @@ QString QSysInfo::productVersion()
     return QString::number(version.major) + QLatin1Char('.') + QString::number(version.minor);
 #elif defined(Q_OS_WIN)
     const char *version = winVer_helper();
-    if (version)
-        return QString::fromLatin1(version).toLower();
+    if (version) {
+        const QLatin1Char spaceChar(' ');
+        return QString::fromLatin1(version).remove(spaceChar).toLower() + winSp_helper().remove(spaceChar).toLower();
+    }
     // fall through
 
-// Android and Blackberry should not fall through to the Unix code
+// Android should not fall through to the Unix code
 #elif defined(Q_OS_ANDROID) && !defined(Q_OS_ANDROID_NO_SDK)
     return QJNIObjectPrivate::getStaticObjectField("android/os/Build$VERSION", "RELEASE", "Ljava/lang/String;").toString();
 #elif defined(Q_OS_ANDROID) // Q_OS_ANDROID_NO_SDK
     // TBD
-#elif defined(Q_OS_BLACKBERRY)
-    deviceinfo_details_t *deviceInfo;
-    if (deviceinfo_get_details(&deviceInfo) == BPS_SUCCESS) {
-        QString bbVersion = QString::fromLatin1(deviceinfo_details_get_device_os_version(deviceInfo));
-        deviceinfo_free_details(&deviceInfo);
-        return bbVersion;
-    }
 #elif defined(USE_ETC_OS_RELEASE) // Q_OS_UNIX
     QUnixOSVersion unixOsVersion;
     findUnixOsVersion(unixOsVersion);
@@ -2748,11 +2766,9 @@ QString QSysInfo::prettyProductName()
 #elif defined(Q_OS_WINPHONE)
     return QLatin1String("Windows Phone ") + QLatin1String(winVer_helper());
 #elif defined(Q_OS_WIN)
-    return QLatin1String("Windows ") + QLatin1String(winVer_helper());
+    return QLatin1String("Windows ") + QLatin1String(winVer_helper()) + winSp_helper();
 #elif defined(Q_OS_ANDROID)
     return QLatin1String("Android ") + productVersion();
-#elif defined(Q_OS_BLACKBERRY)
-    return QLatin1String("BlackBerry ") + productVersion();
 #elif defined(Q_OS_NACL)
     return unknownText();
 #elif defined(Q_OS_HAIKU)
@@ -3554,7 +3570,11 @@ int qrand()
 
     \snippet code/src_corelib_global_qglobal.cpp 33
 
-    \sa Q_FOREACH()
+    \note Since Qt 5.7, the use of this macro is discouraged. It will
+    be removed in a future version of Qt. Please use C++11 range-for,
+    possibly with qAsConst(), as needed.
+
+    \sa qAsConst()
 */
 
 /*!
@@ -3566,7 +3586,76 @@ int qrand()
     This macro is available even when \c no_keywords is specified
     using the \c .pro file's \c CONFIG variable.
 
-    \sa foreach()
+    \note Since Qt 5.7, the use of this macro is discouraged. It will
+    be removed in a future version of Qt. Please use C++11 range-for,
+    possibly with qAsConst(), as needed.
+
+    \sa qAsConst()
+*/
+
+/*!
+    \fn qAsConst(T &t)
+    \relates <QtGlobal>
+    \since 5.7
+
+    Returns \a t cast to \c{const T}.
+
+    This function is a Qt implementation of C++17's std::as_const(),
+    a cast function like std::move(). But while std::move() turns
+    lvalues into rvalues, this function turns non-const lvalues into
+    const lvalues. Like std::as_const(), it doesn't work on rvalues,
+    because it cannot be efficiently implemented for rvalues without
+    leaving dangling references.
+
+    Its main use in Qt is to prevent implicitly-shared Qt containers
+    from detaching:
+    \code
+    QString s = ...;
+    for (QChar ch : s) // detaches 's' (performs a deep-copy if 's' was shared)
+        process(ch);
+    for (QChar ch : qAsConst(s)) // ok, no detach attempt
+        process(ch);
+    \endcode
+
+    Of course, in this case, you could (and probably should) have declared
+    \c s as \c const in the first place:
+    \code
+    const QString s = ...;
+    for (QChar ch : s) // ok, no detach attempt on const objects
+        process(ch);
+    \endcode
+    but often that is not easily possible.
+
+    It is important to note that qAsConst() does not copy its argument,
+    it just performs a \c{const_cast<const T&>(t)}. This is also the reason
+    why it is designed to fail for rvalues: The returned reference would go
+    stale too soon. So while this works (but detaches the returned object):
+    \code
+    for (QChar ch : funcReturningQString())
+        process(ch); // OK, the returned object is kept alive for the loop's duration
+    \endcode
+
+    this would not:
+    \code
+    for (QChar ch : qAsConst(funcReturningQString()))
+        process(ch); // ERROR: ch is copied from deleted memory
+    \endcode
+
+    To prevent this construct from compiling (and failing at runtime), qAsConst() has
+    a second, deleted, overload which binds to rvalues.
+*/
+
+/*!
+    \fn qAsConst(const T &&t)
+    \relates <QtGlobal>
+    \since 5.7
+    \overload
+
+    This overload is deleted to prevent a dangling reference in code like
+    \code
+    for (QChar ch : qAsConst(funcReturningQString()))
+        process(ch); // ERROR: ch is copied from deleted memory
+    \endcode
 */
 
 /*!
@@ -3795,6 +3884,29 @@ int qrand()
     Example:
 
     \snippet code/src_corelib_global_qglobal.cpp 37
+
+    \sa qPrintable(), qDebug(), qInfo(), qWarning(), qCritical(), qFatal()
+*/
+
+/*!
+    \macro const wchar_t *qUtf16Printable(const QString &str)
+    \relates <QtGlobal>
+    \since 5.7
+
+    Returns \a str as a \c{const ushort *}, but cast to a \c{const wchar_t *}
+    to avoid warnings. This is equivalent to \a{str}.utf16() plus some casting.
+
+    The only useful thing you can do with the return value of this macro is to
+    pass it to QString::asprintf() for use in a \c{%ls} conversion. In particular,
+    the return value is \e{not} a valid \c{const wchar_t*}!
+
+    In general, the pointer will be invalid after the statement in which
+    qUtf16Printable() is used. This is because the pointer may have been
+    obtained from a temporary expression, which will fall out of scope.
+
+    Example:
+
+    \snippet code/src_corelib_global_qglobal.cpp qUtf16Printable
 
     \sa qPrintable(), qDebug(), qInfo(), qWarning(), qCritical(), qFatal()
 */
@@ -4209,7 +4321,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the debug message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows the message is sent to the console, if it is a
-    console application; otherwise, it is sent to the debugger. On Blackberry, the
+    console application; otherwise, it is sent to the debugger. On QNX, the
     message is sent to slogger2. This function does nothing if \c QT_NO_DEBUG_OUTPUT
     was defined during compilation.
 
@@ -4246,7 +4358,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the informational message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the console, if it is a
-    console application; otherwise, it is sent to the debugger. On Blackberry the
+    console application; otherwise, it is sent to the debugger. On QNX the
     message is sent to slogger2. This function does nothing if \c QT_NO_INFO_OUTPUT
     was defined during compilation.
 
@@ -4282,7 +4394,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the warning message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the debugger.
-    On Blackberry the message is sent to slogger2. This
+    On QNX the message is sent to slogger2. This
     function does nothing if \c QT_NO_WARNING_OUTPUT was defined
     during compilation; it exits if the environment variable \c
     QT_FATAL_WARNINGS is not empty.
@@ -4316,7 +4428,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the critical message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the debugger.
-    On Blackberry the message is sent to slogger2.
+    On QNX the message is sent to slogger2
 
     It exits if the environment variable QT_FATAL_CRITICALS is not empty.
 
@@ -4349,7 +4461,7 @@ bool QInternal::activateCallbacks(Callback cb, void **parameters)
     Calls the message handler with the fatal message \a message. If no
     message handler has been installed, the message is printed to
     stderr. Under Windows, the message is sent to the debugger.
-    On Blackberry the message is sent to slogger2.
+    On QNX the message is sent to slogger2
 
     If you are using the \b{default message handler} this function will
     abort on Unix systems to create a core dump. On Windows, for debug builds,

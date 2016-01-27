@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -48,6 +43,8 @@
 #include <qscreen.h>
 
 #include "../../../qtest-config.h"
+
+typedef QList<QGraphicsItem *> QGraphicsItemList;
 
 class EventSpy : public QObject
 {
@@ -76,12 +73,6 @@ protected:
 
 class tst_QGraphicsWidget : public QObject {
 Q_OBJECT
-
-public slots:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
 
 private slots:
     void qgraphicswidget();
@@ -261,28 +252,6 @@ protected:
         return QGraphicsWidget::event(event);
     }
 };
-
-// This will be called before the first test function is executed.
-// It is only called once.
-void tst_QGraphicsWidget::initTestCase()
-{
-}
-
-// This will be called after the last test function is executed.
-// It is only called once.
-void tst_QGraphicsWidget::cleanupTestCase()
-{
-}
-
-// This will be called before each test function is executed.
-void tst_QGraphicsWidget::init()
-{
-}
-
-// This will be called after every test function.
-void tst_QGraphicsWidget::cleanup()
-{
-}
 
 class SizeHinter : public QGraphicsWidget
 {
@@ -588,7 +557,7 @@ void tst_QGraphicsWidget::focusPolicy_data()
     QTest::addColumn<Qt::FocusPolicy>("focusPolicy2");
 
     for (int i = 0; i < 25; ++i) {
-        QTestData &data = QTest::newRow(QString("%1").arg(i).toLatin1());
+        QTestData &data = QTest::newRow(QByteArray::number(i).constData());
         switch(i % 5) {
         case 0: data << Qt::TabFocus; break;
         case 1: data << Qt::ClickFocus; break;
@@ -1108,7 +1077,7 @@ void tst_QGraphicsWidget::initStyleOption()
 
     view.setAlignment(Qt::AlignTop | Qt::AlignLeft);
     SubQGraphicsWidget *widget = new SubQGraphicsWidget;
-    widget->setAcceptsHoverEvents(true);
+    widget->setAcceptHoverEvents(true);
     QStyleOption option;
     scene.addItem(widget);
 
@@ -1464,25 +1433,35 @@ void tst_QGraphicsWidget::setTabOrder()
     }
 }
 
-static bool compareFocusChain(QGraphicsView *view, const QList<QGraphicsItem*> &order)
+template <class Iterator>
+bool compareFocusChain(QGraphicsView *view,
+                       Iterator i1, Iterator i2,
+                       QByteArray *errorMessage)
 {
     QGraphicsScene *scene = view->scene();
-    QStringList actual;
     QGraphicsItem *oldFocusItem = scene->focusItem();
-    for (int i = 0; i < order.count(); ++i) {
-        QGraphicsItem *focusItem = scene->focusItem();
-        actual << focusItem->data(0).toString();
-        //qDebug() << "i:" << i << "expected:" << QString::number(uint(order.at(i)), 16) << QString::number(uint(focusItem), 16);
-        if (focusItem != order.at(i)) {
-            qDebug() << "actual:"  << actual;
+    Iterator last = i2 - 1;
+    for (Iterator i = i1; i != i2; ++i) {
+        QGraphicsItem *actualFocusItem = scene->focusItem();
+        QGraphicsItem *expectedFocusItem = *i;
+        if (actualFocusItem != expectedFocusItem) {
+            *errorMessage = "Actual:" + actualFocusItem->data(0).toByteArray()
+                + " expected:" + expectedFocusItem->data(0).toByteArray();
             scene->setFocusItem(oldFocusItem);
             return false;
         }
-        if (i < order.count() - 1)
+        if (i != last)
             QTest::keyPress(view, Qt::Key_Tab);
     }
     scene->setFocusItem(oldFocusItem);
     return true;
+}
+
+template <class Container>
+bool compareFocusChain(QGraphicsView *view, const Container &c,
+                       QByteArray *errorMessage)
+{
+    return compareFocusChain(view, c.constBegin(), c.constEnd(), errorMessage);
 }
 
 void tst_QGraphicsWidget::setTabOrderAndReparent()
@@ -1494,78 +1473,68 @@ void tst_QGraphicsWidget::setTabOrderAndReparent()
     QVERIFY(QTest::qWaitForWindowActive(&view));
     QCOMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
-    int i;
-    QGraphicsWidget *w1, *w2, *w3, *w4;
-    for (i = 1; i < 4; ++i) {
-        QGraphicsWidget *wid = new QGraphicsWidget;
-        wid->setFocusPolicy(Qt::StrongFocus);
-        wid->setData(0, QString::fromLatin1("w%1").arg(i));
-        scene.addItem(wid);
-        if (i == 1)
-            w1 = wid;
-        else if (i == 2)
-            w2 = wid;
-        else if (i == 3)
-            w3 = wid;
+    QGraphicsWidget *w[4];
+    for (int i = 0; i < 3; ++i) {
+        w[i] = new QGraphicsWidget;
+        w[i]->setFocusPolicy(Qt::StrongFocus);
+        w[i]->setData(0, 'w' + QByteArray::number(i + 1));
+        scene.addItem(w[i]);
     }
 
-    w1->setFocus();
-    QTRY_VERIFY(w1->hasFocus());
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w1 << w2 << w3));
+    w[0]->setFocus();
+    QTRY_VERIFY(w[0]->hasFocus());
+    QByteArray errorMessage;
+    QVERIFY2(compareFocusChain(&view, w, w + 3, &errorMessage), errorMessage.constData());
 
     QGraphicsWidget *p = new QGraphicsWidget;
     p->setData(0, QLatin1String("parent"));
     p->setFocusPolicy(Qt::StrongFocus);
 
-    w1->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w1 << w2 << w3));
+    w[0]->setFocus();
+    QVERIFY2(compareFocusChain(&view, w, w + 3, &errorMessage), errorMessage.constData());
 
-    w1->setParentItem(p);
-    w2->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() <<  w2 << w3));
+    w[0]->setParentItem(p);
+    w[1]->setFocus();
+    QVERIFY2(compareFocusChain(&view, w + 1, w + 3, &errorMessage), errorMessage.constData());
 
-    w2->setParentItem(p);
-    w3->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w3));
-    w3->setParentItem(p);
+    w[1]->setParentItem(p);
+    w[2]->setFocus();
+    QVERIFY2(compareFocusChain(&view, w + 2, w + 3, &errorMessage), errorMessage.constData());
+    w[2]->setParentItem(p);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem*>(0));
 
     scene.addItem(p);
     p->setFocus();
 
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << p << w1 << w2 << w3));
+    QVERIFY2(compareFocusChain(&view, QGraphicsItemList() << p << w[0] << w[1] << w[2],
+             &errorMessage), errorMessage.constData());
     delete p;
 
-    for (i = 1; i < 5; ++i) {
-        QGraphicsWidget *wid = new QGraphicsWidget;
-        wid->setFocusPolicy(Qt::StrongFocus);
-        wid->setData(0, QString::fromLatin1("w%1").arg(i));
-        scene.addItem(wid);
-        if (i == 1)
-            w1 = wid;
-        else if (i == 2)
-            w2 = wid;
-        else if (i == 3)
-            w3 = wid;
-        else if (i == 4)
-            w4 = wid;
+    for (int i = 0; i < 4; ++i) {
+        w[i] = new QGraphicsWidget;
+        w[i]->setFocusPolicy(Qt::StrongFocus);
+        w[i]->setData(0, 'w' + QByteArray::number(i + 1));
+        scene.addItem(w[i]);
     }
-    w4->setParentItem(w1);
-    QGraphicsWidget::setTabOrder(w1, w4);
-    w1->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w1 << w4 << w2 << w3));
+
+    w[3]->setParentItem(w[0]);
+    QGraphicsWidget::setTabOrder(w[0], w[3]);
+    w[0]->setFocus();
+    QVERIFY2(compareFocusChain(&view, QGraphicsItemList() << w[0] << w[3] << w[1] << w[2],
+             &errorMessage), errorMessage.constData());
 
     p = new QGraphicsWidget;
     p->setData(0, QLatin1String("parent"));
     p->setFocusPolicy(Qt::StrongFocus);
 
-    w1->setParentItem(p);
-    w2->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w2 << w3));
+    w[0]->setParentItem(p);
+    w[1]->setFocus();
+    QVERIFY2(compareFocusChain(&view, w + 1, w + 3, &errorMessage), errorMessage.constData());
 
     scene.addItem(p);
-    w2->setFocus();
-    QVERIFY(compareFocusChain(&view, QList<QGraphicsItem*>() << w2 << w3 << p << w1 << w4));
+    w[1]->setFocus();
+    QVERIFY2(compareFocusChain(&view, QGraphicsItemList() << w[1] << w[2] << p << w[0] << w[3],
+             &errorMessage), errorMessage.constData());
 }
 
 void tst_QGraphicsWidget::topLevelWidget_data()
@@ -1756,13 +1725,15 @@ void tst_QGraphicsWidget::verifyFocusChain()
         w1_4->setGeometry(75,0,25, 25);
         scene.addItem(w1_4);
         QTRY_VERIFY(w1_3->hasFocus());
-        QTRY_VERIFY(compareFocusChain(view, QList<QGraphicsItem*>() << w1_3 << w1_4));
+        QByteArray errorMessage;
+        const QGraphicsItemList expected = QGraphicsItemList() << w1_3 << w1_4;
+        QTRY_VERIFY2(compareFocusChain(view, expected, &errorMessage), errorMessage.constData());
         QTest::keyPress(QApplication::focusWidget(), Qt::Key_Backtab);
         QTRY_VERIFY(lineEdit->hasFocus());
         // tabFocusFirst should now point to w1_3
         QTest::keyPress(QApplication::focusWidget(), Qt::Key_Tab);
         QTRY_VERIFY(w1_3->hasFocus());
-        QTRY_VERIFY(compareFocusChain(view, QList<QGraphicsItem*>() << w1_3 << w1_4));
+        QTRY_VERIFY2(compareFocusChain(view, expected, &errorMessage), errorMessage.constData());
     }
 }
 
@@ -2090,12 +2061,12 @@ void tst_QGraphicsWidget::task236127_bspTreeIndexFails()
     view.show();
     QVERIFY(QTest::qWaitForWindowExposed(&view));
 
-    QTRY_VERIFY(!scene.itemAt(25, 25));
+    QTRY_VERIFY(scene.items(QPointF(25, 25)).isEmpty());
     widget->setGeometry(0, 112, 360, 528);
-    QTRY_COMPARE(scene.itemAt(15, 120), (QGraphicsItem *)widget);
+    QTRY_COMPARE(scene.items(QPointF(15, 120)).value(0, Q_NULLPTR), (QGraphicsItem *)widget);
     widget2->setGeometry(0, 573, 360, 67);
-    QTRY_COMPARE(scene.itemAt(15, 120), (QGraphicsItem *)widget);
-    QTRY_COMPARE(scene.itemAt(50, 585), (QGraphicsItem *)widget2);
+    QTRY_COMPARE(scene.items(QPointF(15, 120)).value(0, Q_NULLPTR), (QGraphicsItem *)widget);
+    QTRY_COMPARE(scene.items(QPointF(50, 585)).value(0, Q_NULLPTR), (QGraphicsItem *)widget2);
 }
 
 void tst_QGraphicsWidget::defaultSize()

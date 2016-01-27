@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2016 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtDBus module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -207,14 +213,14 @@ static dbus_bool_t qDBusAddWatch(DBusWatch *watch, void *data)
         watcher.watch = watch;
         watcher.read = new QSocketNotifier(fd, QSocketNotifier::Read, d);
         watcher.read->setEnabled(q_dbus_watch_get_enabled(watch));
-        d->connect(watcher.read, SIGNAL(activated(int)), SLOT(socketRead(int)));
+        d->connect(watcher.read, &QSocketNotifier::activated, d, &QDBusConnectionPrivate::socketRead);
     }
     if (flags & DBUS_WATCH_WRITABLE) {
         //qDebug("addWriteWatch %d", fd);
         watcher.watch = watch;
         watcher.write = new QSocketNotifier(fd, QSocketNotifier::Write, d);
         watcher.write->setEnabled(q_dbus_watch_get_enabled(watch));
-        d->connect(watcher.write, SIGNAL(activated(int)), SLOT(socketWrite(int)));
+        d->connect(watcher.write, &QSocketNotifier::activated, d, &QDBusConnectionPrivate::socketWrite);
     }
     d->watchers.insertMulti(fd, watcher);
 
@@ -542,15 +548,14 @@ bool QDBusConnectionPrivate::handleMessage(const QDBusMessage &amsg)
 
 static void huntAndDestroy(QObject *needle, QDBusConnectionPrivate::ObjectTreeNode &haystack)
 {
-    QDBusConnectionPrivate::ObjectTreeNode::DataList::Iterator it = haystack.children.begin();
+    for (auto &node : haystack.children)
+        huntAndDestroy(needle, node);
 
-    while (it != haystack.children.end()) {
-        huntAndDestroy(needle, *it);
-        if (!it->isActive())
-            it = haystack.children.erase(it);
-        else
-            it++;
-    }
+    auto isInactive = [](QDBusConnectionPrivate::ObjectTreeNode &node) { return !node.isActive(); };
+
+    haystack.children.erase(std::remove_if(haystack.children.begin(), haystack.children.end(),
+                                           isInactive),
+                            haystack.children.end());
 
     if (needle == haystack.obj) {
         haystack.obj = 0;
@@ -907,7 +912,7 @@ void QDBusConnectionPrivate::deliverCall(QObject *object, int /*flags*/, const Q
                 *reinterpret_cast<const QDBusArgument *>(arg.constData());
             QVariant &out = auxParameters[auxParameters.count() - 1];
 
-            if (!QDBusMetaType::demarshall(in, out.userType(), out.data()))
+            if (Q_UNLIKELY(!QDBusMetaType::demarshall(in, out.userType(), out.data())))
                 qFatal("Internal error: demarshalling function for type '%s' (%d) failed!",
                        out.typeName(), out.userType());
 
@@ -1945,8 +1950,8 @@ QDBusMessage QDBusConnectionPrivate::sendWithReply(const QDBusMessage &message,
         if (sendMode == QDBus::BlockWithGui) {
             pcall->watcherHelper = new QDBusPendingCallWatcherHelper;
             QEventLoop loop;
-            loop.connect(pcall->watcherHelper, SIGNAL(reply(QDBusMessage)), SLOT(quit()));
-            loop.connect(pcall->watcherHelper, SIGNAL(error(QDBusError,QDBusMessage)), SLOT(quit()));
+            loop.connect(pcall->watcherHelper, &QDBusPendingCallWatcherHelper::reply, &loop, &QEventLoop::quit);
+            loop.connect(pcall->watcherHelper, &QDBusPendingCallWatcherHelper::error, &loop, &QEventLoop::quit);
 
             // enter the event loop and wait for a reply
             loop.exec(QEventLoop::ExcludeUserInputEvents | QEventLoop::WaitForMoreEvents);
@@ -2131,7 +2136,7 @@ void QDBusConnectionPrivate::addSignalHook(const QString &key, const SignalHook 
     }
 
     signalHooks.insertMulti(key, hook);
-    connect(hook.obj, SIGNAL(destroyed(QObject*)), SLOT(objectDestroyed(QObject*)),
+    connect(hook.obj, &QObject::destroyed, this, &QDBusConnectionPrivate::objectDestroyed,
             Qt::ConnectionType(Qt::BlockingQueuedConnection | Qt::UniqueConnection));
 
     MatchRefCountHash::iterator mit = matchRefCounts.find(hook.matchRule);
@@ -2257,7 +2262,7 @@ QDBusConnectionPrivate::removeSignalHookNoLock(SignalHookHash::Iterator it)
 
 void QDBusConnectionPrivate::registerObject(const ObjectTreeNode *node)
 {
-    connect(node->obj, SIGNAL(destroyed(QObject*)), SLOT(objectDestroyed(QObject*)),
+    connect(node->obj, &QObject::destroyed, this, &QDBusConnectionPrivate::objectDestroyed,
             Qt::ConnectionType(Qt::BlockingQueuedConnection | Qt::UniqueConnection));
 
     if (node->flags & (QDBusConnection::ExportAdaptors

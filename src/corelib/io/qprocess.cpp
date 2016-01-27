@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -744,6 +750,47 @@ void QProcessPrivate::Channel::clear()
 */
 
 /*!
+    \typedef QProcess::CreateProcessArgumentModifier
+    \note This typedef is only available on desktop Windows and Windows CE.
+
+    On Windows, QProcess uses the Win32 API function \c CreateProcess to
+    start child processes. While QProcess provides a comfortable way to start
+    processes without worrying about platform
+    details, it is in some cases desirable to fine-tune the parameters that are
+    passed to \c CreateProcess. This is done by defining a
+    \c CreateProcessArgumentModifier function and passing it to
+    \c setCreateProcessArgumentsModifier.
+
+    A \c CreateProcessArgumentModifier function takes one parameter: a pointer
+    to a \c CreateProcessArguments struct. The members of this struct will be
+    passed to \c CreateProcess after the \c CreateProcessArgumentModifier
+    function is called.
+
+    The following example demonstrates how to pass custom flags to
+    \c CreateProcess.
+    When starting a console process B from a console process A, QProcess will
+    reuse the console window of process A for process B by default. In this
+    example, a new console window with a custom color scheme is created for the
+    child process B instead.
+
+    \snippet qprocess/qprocess-createprocessargumentsmodifier.cpp 0
+
+    \sa QProcess::CreateProcessArguments
+    \sa setCreateProcessArgumentsModifier()
+*/
+
+/*!
+    \class QProcess::CreateProcessArguments
+    \note This struct is only available on the Windows platform.
+
+    This struct is a representation of all parameters of the Windows API
+    function \c CreateProcess. It is used as parameter for
+    \c CreateProcessArgumentModifier functions.
+
+    \sa QProcess::CreateProcessArgumentModifier
+*/
+
+/*!
     \fn void QProcess::error(QProcess::ProcessError error)
     \obsolete
 
@@ -833,7 +880,6 @@ QProcessPrivate::QProcessPrivate()
     childStartedPipe[0] = INVALID_Q_PIPE;
     childStartedPipe[1] = INVALID_Q_PIPE;
     forkfd = -1;
-    exitCode = 0;
     crashed = false;
     dying = false;
     emittedReadyRead = false;
@@ -1355,15 +1401,17 @@ QProcess::ProcessChannel QProcess::readChannel() const
 void QProcess::setReadChannel(ProcessChannel channel)
 {
     Q_D(QProcess);
+
+    if (d->transactionStarted) {
+        qWarning("QProcess::setReadChannel: Failed due to the active read transaction");
+        return;
+    }
+
     if (d->processChannel != channel) {
-        QByteArray buf = d->buffer.readAll();
-        if (d->processChannel == QProcess::StandardOutput) {
-            for (int i = buf.size() - 1; i >= 0; --i)
-                d->stdoutChannel.buffer.ungetChar(buf.at(i));
-        } else {
-            for (int i = buf.size() - 1; i >= 0; --i)
-                d->stderrChannel.buffer.ungetChar(buf.at(i));
-        }
+        QRingBuffer *buffer = (d->processChannel == QProcess::StandardOutput)
+                              ? &d->stdoutChannel.buffer
+                              : &d->stderrChannel.buffer;
+        d->buffer.read(buffer->reserveFront(d->buffer.size()), d->buffer.size());
     }
     d->processChannel = channel;
 }
@@ -1561,6 +1609,39 @@ void QProcess::setNativeArguments(const QString &arguments)
 {
     Q_D(QProcess);
     d->nativeArguments = arguments;
+}
+
+/*!
+    \since 5.7
+
+    Returns a previously set \c CreateProcess modifier function.
+
+    \note This function is available only on the Windows platform.
+
+    \sa setCreateProcessArgumentsModifier()
+    \sa QProcess::CreateProcessArgumentModifier
+*/
+QProcess::CreateProcessArgumentModifier QProcess::createProcessArgumentsModifier() const
+{
+    Q_D(const QProcess);
+    return d->modifyCreateProcessArgs;
+}
+
+/*!
+    \since 5.7
+
+    Sets the \a modifier for the \c CreateProcess Win32 API call.
+    Pass \c QProcess::CreateProcessArgumentModifier() to remove a previously set one.
+
+    \note This function is available only on the Windows platform and requires
+    C++11.
+
+    \sa QProcess::CreateProcessArgumentModifier
+*/
+void QProcess::setCreateProcessArgumentsModifier(CreateProcessArgumentModifier modifier)
+{
+    Q_D(QProcess);
+    d->modifyCreateProcessArgs = modifier;
 }
 
 #endif

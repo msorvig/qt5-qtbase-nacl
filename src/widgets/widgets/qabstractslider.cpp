@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWidgets module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -205,7 +211,7 @@ QT_BEGIN_NAMESPACE
 
 QAbstractSliderPrivate::QAbstractSliderPrivate()
     : minimum(0), maximum(99), pageStep(10), value(0), position(0), pressValue(-1),
-      singleStep(1), offset_accumulated(0), tracking(true),
+      singleStep(1), singleStepFromItemView(-1), viewMayChangeSingleStep(true), offset_accumulated(0), tracking(true),
       blocktracking(false), pressed(false),
       invertedAppearance(false), invertedControls(false),
       orientation(Qt::Horizontal), repeatAction(QAbstractSlider::SliderNoAction)
@@ -378,6 +384,11 @@ int QAbstractSlider::maximum() const
 void QAbstractSlider::setSingleStep(int step)
 {
     Q_D(QAbstractSlider);
+
+    d->viewMayChangeSingleStep = (step < 0);
+    if (step < 0 && d->singleStepFromItemView > 0)
+        step = d->singleStepFromItemView;
+
     if (step != d->singleStep)
         d->setSteps(step, d->pageStep);
 }
@@ -934,6 +945,18 @@ bool QAbstractSlider::event(QEvent *e)
 #endif
 
     return QWidget::event(e);
+}
+
+// This function is called from itemviews when doing scroll per pixel (on updateGeometries())
+// It will not have any effect if there has been a call to setSingleStep with
+// a 'reasonable' value (since viewMayChangeSingleStep will be set to false).
+// (If setSingleStep is called with -1 it will however allow the views to change singleStep.)
+
+void QAbstractSliderPrivate::itemviewChangeSingleStep(int step)
+{
+    singleStepFromItemView = step;
+    if (viewMayChangeSingleStep && singleStep != step)
+        setSteps(step, pageStep);
 }
 
 QT_END_NAMESPACE

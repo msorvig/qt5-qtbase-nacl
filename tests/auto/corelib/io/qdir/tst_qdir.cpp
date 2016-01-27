@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -572,7 +567,7 @@ void tst_QDir::exists_data()
     char drive = 'Z';
     QString driv;
     do {
-        driv = QString::fromLatin1("%1:/").arg(drive);
+        driv = drive + QLatin1String(":/");
         if (!driveLetters.contains(driv)) break;
         --drive;
     } while (drive >= 'A');
@@ -637,7 +632,7 @@ void tst_QDir::compare()
     dir.makeAbsolute();
     QVERIFY(dir == QDir::currentPath());
 
-    QVERIFY(QDir() == QDir(QDir::currentPath()));
+    QCOMPARE(QDir(), QDir(QDir::currentPath()));
     QVERIFY(QDir("../") == QDir(QDir::currentPath() + "/.."));
 }
 
@@ -1073,7 +1068,7 @@ void tst_QDir::current()
     if (!path.isEmpty()) {
         bool b = QDir::setCurrent(path);
         // If path is non existent, then setCurrent should be false (currentDir is empty in testData)
-        QVERIFY(b == !currentDir.isEmpty());
+        QCOMPARE(b, !currentDir.isEmpty());
     }
     if (!currentDir.isEmpty()) {
         QDir newCurrent = QDir::current();
@@ -1095,7 +1090,7 @@ void tst_QDir::cd_data()
     QTest::addColumn<bool>("successExpected");
     QTest::addColumn<QString>("newDir");
 
-    int index = m_dataPath.lastIndexOf("/");
+    int index = m_dataPath.lastIndexOf(QLatin1Char('/'));
     QTest::newRow("cdUp") << m_dataPath << ".." << true << m_dataPath.left(index==0?1:index);
     QTest::newRow("cdUp non existent (relative dir)") << "anonexistingDir" << ".."
                                                       << true << m_dataPath;
@@ -1139,11 +1134,11 @@ void tst_QDir::setNameFilters_data()
     QTest::newRow("spaces2") << m_dataPath + "/testdir/spaces" << QStringList("*.bar")
                           << QStringList("foo.bar");
     QTest::newRow("spaces3") << m_dataPath + "/testdir/spaces" << QStringList("foo.*")
-                            << QString("foo. bar,foo.bar").split(",");
-    QTest::newRow("files1")  << m_dataPath + "/testdir/dir" << QString("*r.cpp *.pro").split(" ")
-                          << QString("qdir.pro,qrc_qdir.cpp,tst_qdir.cpp").split(",");
+                            << QString("foo. bar,foo.bar").split(QLatin1Char(','));
+    QTest::newRow("files1")  << m_dataPath + "/testdir/dir" << QString("*r.cpp *.pro").split(QLatin1Char(' '))
+                          << QString("qdir.pro,qrc_qdir.cpp,tst_qdir.cpp").split(QLatin1Char(','));
     QTest::newRow("resources1") << QString(":/tst_qdir/resources/entryList") << QStringList("*.data")
-                             << QString("file1.data,file2.data,file3.data").split(',');
+                             << QString("file1.data,file2.data,file3.data").split(QLatin1Char(','));
 }
 
 void tst_QDir::setNameFilters()
@@ -1718,7 +1713,7 @@ void tst_QDir::searchPaths()
         QDir::setSearchPaths(searchPathPrefixList.at(i), searchPathsList.at(i).split(","));
     }
     for (int i = 0; i < searchPathPrefixList.count(); ++i) {
-        QVERIFY(QDir::searchPaths(searchPathPrefixList.at(i)) == searchPathsList.at(i).split(","));
+        QCOMPARE(QDir::searchPaths(searchPathPrefixList.at(i)), searchPathsList.at(i).split(","));
     }
 
     QCOMPARE(QFile(filename).exists(), exists);
@@ -1741,7 +1736,7 @@ void tst_QDir::searchPaths()
         }
     }
     for (int i = 0; i < searchPathPrefixList.count(); ++i) {
-        QVERIFY(QDir::searchPaths(searchPathPrefixList.at(i)) == searchPathsList.at(i).split(","));
+        QCOMPARE(QDir::searchPaths(searchPathPrefixList.at(i)), searchPathsList.at(i).split(","));
     }
 
     QCOMPARE(QFile(filename).exists(), exists);

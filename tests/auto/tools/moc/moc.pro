@@ -1,5 +1,4 @@
 CONFIG += testcase
-CONFIG += parallel_test
 TARGET = tst_moc
 
 #exists(/usr/include/boost/spirit.hpp) {
@@ -41,7 +40,6 @@ qtHaveModule(dbus) {
     DEFINES += WITH_DBUS
     QT += dbus
 }
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 
 # tst_Moc::specifyMetaTagsFromCmdline()
 # Ensure that plugin_metadata.h are moc-ed with some extra -M arguments:

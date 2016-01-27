@@ -1,32 +1,38 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Intel Corporation.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Intel Corporation.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -47,7 +53,7 @@
 //
 
 #include "QtCore/qglobal.h"
-
+#include <cmath>
 #include <limits>
 
 #if defined(Q_CC_MSVC) && !defined(Q_OS_WINCE)
@@ -56,153 +62,112 @@
 #  include <immintrin.h>    // for _addcarry_u<nn>
 #endif
 
-#ifndef __has_builtin
-#  define __has_builtin(x)  0
+#if defined(Q_CC_MSVC)
+#include <float.h>
+#endif
+
+#if !defined(Q_CC_MSVC) && (defined(Q_OS_QNX) || !defined(__cplusplus) || __cplusplus < 201103L)
+#include <math.h>
+QT_BEGIN_NAMESPACE
+namespace qnumeric_std_wrapper {
+// the 'using namespace std' below is cases where the stdlib already put the math.h functions in the std namespace and undefined the macros.
+static inline bool math_h_isnan(double d) { using namespace std; return isnan(d); }
+static inline bool math_h_isinf(double d) { using namespace std; return isinf(d); }
+static inline bool math_h_isfinite(double d) { using namespace std; return isfinite(d); }
+static inline bool math_h_isnan(float f) { using namespace std; return isnan(f); }
+static inline bool math_h_isinf(float f) { using namespace std; return isinf(f); }
+static inline bool math_h_isfinite(float f) { using namespace std; return isfinite(f); }
+}
+QT_END_NAMESPACE
+// These macros from math.h conflict with the real functions in the std namespace.
+#undef signbit
+#undef isnan
+#undef isinf
+#undef isfinite
 #endif
 
 QT_BEGIN_NAMESPACE
 
-#if !defined(Q_CC_MIPS)
-
-static const union { unsigned char c[8]; double d; } qt_be_inf_bytes = { { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 } };
-static const union { unsigned char c[8]; double d; } qt_le_inf_bytes = { { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f } };
-static inline double qt_inf()
-{
-    return (QSysInfo::ByteOrder == QSysInfo::BigEndian
-            ? qt_be_inf_bytes.d
-            : qt_le_inf_bytes.d);
+namespace qnumeric_std_wrapper {
+#if defined(Q_CC_MSVC) && _MSC_VER < 1800
+static inline bool isnan(double d) { return !!_isnan(d); }
+static inline bool isinf(double d) { return !_finite(d) && !_isnan(d); }
+static inline bool isfinite(double d) { return !!_finite(d); }
+static inline bool isnan(float f) { return !!_isnan(f); }
+static inline bool isinf(float f) { return !_finite(f) && !_isnan(f); }
+static inline bool isfinite(float f) { return !!_finite(f); }
+#elif !defined(Q_CC_MSVC) && (defined(Q_OS_QNX) || !defined(__cplusplus) || __cplusplus < 201103L)
+static inline bool isnan(double d) { return math_h_isnan(d); }
+static inline bool isinf(double d) { return math_h_isinf(d); }
+static inline bool isfinite(double d) { return math_h_isfinite(d); }
+static inline bool isnan(float f) { return math_h_isnan(f); }
+static inline bool isinf(float f) { return math_h_isinf(f); }
+static inline bool isfinite(float f) { return math_h_isfinite(f); }
+#else
+static inline bool isnan(double d) { return std::isnan(d); }
+static inline bool isinf(double d) { return std::isinf(d); }
+static inline bool isfinite(double d) { return std::isfinite(d); }
+static inline bool isnan(float f) { return std::isnan(f); }
+static inline bool isinf(float f) { return std::isinf(f); }
+static inline bool isfinite(float f) { return std::isfinite(f); }
+#endif
 }
 
-// Signaling NAN
-static const union { unsigned char c[8]; double d; } qt_be_snan_bytes = { { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 } };
-static const union { unsigned char c[8]; double d; } qt_le_snan_bytes = { { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f } };
-static inline double qt_snan()
+Q_DECL_CONSTEXPR static inline double qt_inf() Q_DECL_NOEXCEPT
 {
-    return (QSysInfo::ByteOrder == QSysInfo::BigEndian
-            ? qt_be_snan_bytes.d
-            : qt_le_snan_bytes.d);
+    Q_STATIC_ASSERT_X(std::numeric_limits<double>::has_infinity,
+                      "platform has no definition for infinity for type double");
+    return std::numeric_limits<double>::infinity();
 }
 
-// Quiet NAN
-static const union { unsigned char c[8]; double d; } qt_be_qnan_bytes = { { 0xff, 0xf8, 0, 0, 0, 0, 0, 0 } };
-static const union { unsigned char c[8]; double d; } qt_le_qnan_bytes = { { 0, 0, 0, 0, 0, 0, 0xf8, 0xff } };
-static inline double qt_qnan()
+// Signaling NaN
+Q_DECL_CONSTEXPR static inline double qt_snan() Q_DECL_NOEXCEPT
 {
-    return (QSysInfo::ByteOrder == QSysInfo::BigEndian
-            ? qt_be_qnan_bytes.d
-            : qt_le_qnan_bytes.d);
+    Q_STATIC_ASSERT_X(std::numeric_limits<double>::has_signaling_NaN,
+                      "platform has no definition for signaling NaN for type double");
+    return std::numeric_limits<double>::signaling_NaN();
 }
 
-#else // Q_CC_MIPS
-
-static const unsigned char qt_be_inf_bytes[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
-static const unsigned char qt_le_inf_bytes[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
-static inline double qt_inf()
+// Quiet NaN
+Q_DECL_CONSTEXPR static inline double qt_qnan() Q_DECL_NOEXCEPT
 {
-    const unsigned char *bytes;
-    bytes = (QSysInfo::ByteOrder == QSysInfo::BigEndian
-             ? qt_be_inf_bytes
-             : qt_le_inf_bytes);
-
-    union { unsigned char c[8]; double d; } returnValue;
-    memcpy(returnValue.c, bytes, sizeof(returnValue.c));
-    return returnValue.d;
+    Q_STATIC_ASSERT_X(std::numeric_limits<double>::has_quiet_NaN,
+                      "platform has no definition for quiet NaN for type double");
+    return std::numeric_limits<double>::quiet_NaN();
 }
-
-// Signaling NAN
-static const unsigned char qt_be_snan_bytes[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
-static const unsigned char qt_le_snan_bytes[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
-static inline double qt_snan()
-{
-    const unsigned char *bytes;
-    bytes = (QSysInfo::ByteOrder == QSysInfo::BigEndian
-             ? qt_be_snan_bytes
-             : qt_le_snan_bytes);
-
-    union { unsigned char c[8]; double d; } returnValue;
-    memcpy(returnValue.c, bytes, sizeof(returnValue.c));
-    return returnValue.d;
-}
-
-// Quiet NAN
-static const unsigned char qt_be_qnan_bytes[] = { 0xff, 0xf8, 0, 0, 0, 0, 0, 0 };
-static const unsigned char qt_le_qnan_bytes[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0xff };
-static inline double qt_qnan()
-{
-    const unsigned char *bytes;
-    bytes = (QSysInfo::ByteOrder == QSysInfo::BigEndian
-             ? qt_be_qnan_bytes
-             : qt_le_qnan_bytes);
-
-    union { unsigned char c[8]; double d; } returnValue;
-    memcpy(returnValue.c, bytes, sizeof(returnValue.c));
-    return returnValue.d;
-}
-
-#endif // Q_CC_MIPS
 
 static inline bool qt_is_inf(double d)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) == 0x7f && ch[1] == 0xf0;
-    } else {
-        return (ch[7] & 0x7f) == 0x7f && ch[6] == 0xf0;
-    }
+    return qnumeric_std_wrapper::isinf(d);
 }
 
 static inline bool qt_is_nan(double d)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) == 0x7f && ch[1] > 0xf0;
-    } else {
-        return (ch[7] & 0x7f) == 0x7f && ch[6] > 0xf0;
-    }
+    return qnumeric_std_wrapper::isnan(d);
 }
 
 static inline bool qt_is_finite(double d)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) != 0x7f || (ch[1] & 0xf0) != 0xf0;
-    } else {
-        return (ch[7] & 0x7f) != 0x7f || (ch[6] & 0xf0) != 0xf0;
-    }
+    return qnumeric_std_wrapper::isfinite(d);
 }
 
-static inline bool qt_is_inf(float d)
+static inline bool qt_is_inf(float f)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) == 0x7f && ch[1] == 0x80;
-    } else {
-        return (ch[3] & 0x7f) == 0x7f && ch[2] == 0x80;
-    }
+    return qnumeric_std_wrapper::isinf(f);
 }
 
-static inline bool qt_is_nan(float d)
+static inline bool qt_is_nan(float f)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) == 0x7f && ch[1] > 0x80;
-    } else {
-        return (ch[3] & 0x7f) == 0x7f && ch[2] > 0x80;
-    }
+    return qnumeric_std_wrapper::isnan(f);
 }
 
-static inline bool qt_is_finite(float d)
+static inline bool qt_is_finite(float f)
 {
-    uchar *ch = (uchar *)&d;
-    if (QSysInfo::ByteOrder == QSysInfo::BigEndian) {
-        return (ch[0] & 0x7f) != 0x7f || (ch[1] & 0x80) != 0x80;
-    } else {
-        return (ch[3] & 0x7f) != 0x7f || (ch[2] & 0x80) != 0x80;
-    }
+    return qnumeric_std_wrapper::isfinite(f);
 }
 
 //
-// Overflow math
+// Unsigned overflow math
 //
 namespace {
 template <typename T> inline typename QtPrivate::QEnableIf<QtPrivate::is_unsigned<T>::value, bool>::Type
@@ -230,28 +195,28 @@ mul_overflow(T v1, T v2, T *r)
 #endif
 
 // GCC 5 and Clang have builtins to detect overflows
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_uadd_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_uadd_overflow)
 template <> inline bool add_overflow(unsigned v1, unsigned v2, unsigned *r)
 { return __builtin_uadd_overflow(v1, v2, r); }
 #endif
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_uaddl_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_uaddl_overflow)
 template <> inline bool add_overflow(unsigned long v1, unsigned long v2, unsigned long *r)
 { return __builtin_uaddl_overflow(v1, v2, r); }
 #endif
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_uaddll_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_uaddll_overflow)
 template <> inline bool add_overflow(unsigned long long v1, unsigned long long v2, unsigned long long *r)
 { return __builtin_uaddll_overflow(v1, v2, r); }
 #endif
 
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_umul_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_umul_overflow)
 template <> inline bool mul_overflow(unsigned v1, unsigned v2, unsigned *r)
 { return __builtin_umul_overflow(v1, v2, r); }
 #endif
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_umull_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_umull_overflow)
 template <> inline bool mul_overflow(unsigned long v1, unsigned long v2, unsigned long *r)
 { return __builtin_umull_overflow(v1, v2, r); }
 #endif
-#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || __has_builtin(__builtin_umulll_overflow)
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_umulll_overflow)
 template <> inline bool mul_overflow(unsigned long long v1, unsigned long long v2, unsigned long long *r)
 { return __builtin_umulll_overflow(v1, v2, r); }
 #  define HAVE_MUL64_OVERFLOW
@@ -303,6 +268,97 @@ template <> inline bool mul_overflow(unsigned long v1, unsigned long v2, unsigne
 #else
 #  undef HAVE_MUL64_OVERFLOW
 #endif
+
+//
+// Signed overflow math
+//
+// In C++, signed overflow math is Undefined Behavior. However, many CPUs do implement some way to
+// check for overflow. Some compilers expose intrinsics to use this functionality. If the no
+// intrinsic is exposed, overflow checking can be done by widening the result type and "manually"
+// checking for overflow. Or, alternatively, by using inline assembly to use the CPU features.
+//
+// Only int overflow checking is implemented, because it's the only one used.
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_sadd_overflow)
+inline bool add_overflow(int v1, int v2, int *r)
+{ return __builtin_sadd_overflow(v1, v2, r); }
+#elif defined(Q_CC_GNU) && defined(Q_PROCESSOR_X86)
+inline bool add_overflow(int v1, int v2, int *r)
+{
+    quint8 overflow = 0;
+    int res = v1;
+
+    asm ("addl %2, %1\n"
+         "seto %0"
+         : "=q" (overflow), "=r" (res)
+         : "r" (v2), "1" (res)
+         : "cc"
+    );
+    *r = res;
+    return overflow;
+}
+#else
+inline bool add_overflow(int v1, int v2, int *r)
+{
+    qint64 t = qint64(v1) + v2;
+    *r = static_cast<int>(t);
+    return t > std::numeric_limits<int>::max() || t < std::numeric_limits<int>::min();
+}
+#endif
+
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_ssub_overflow)
+inline bool sub_overflow(int v1, int v2, int *r)
+{ return __builtin_ssub_overflow(v1, v2, r); }
+#elif defined(Q_CC_GNU) && defined(Q_PROCESSOR_X86)
+inline bool sub_overflow(int v1, int v2, int *r)
+{
+    quint8 overflow = 0;
+    int res = v1;
+
+    asm ("subl %2, %1\n"
+         "seto %0"
+         : "=q" (overflow), "=r" (res)
+         : "r" (v2), "1" (res)
+         : "cc"
+    );
+    *r = res;
+    return overflow;
+}
+#else
+inline bool sub_overflow(int v1, int v2, int *r)
+{
+    qint64 t = qint64(v1) - v2;
+    *r = static_cast<int>(t);
+    return t > std::numeric_limits<int>::max() || t < std::numeric_limits<int>::min();
+}
+#endif
+
+#if (defined(Q_CC_GNU) && !defined(Q_CC_INTEL) && Q_CC_GNU >= 500) || QT_HAS_BUILTIN(__builtin_smul_overflow)
+inline bool mul_overflow(int v1, int v2, int *r)
+{ return __builtin_smul_overflow(v1, v2, r); }
+#elif defined(Q_CC_GNU) && defined(Q_PROCESSOR_X86)
+inline bool mul_overflow(int v1, int v2, int *r)
+{
+    quint8 overflow = 0;
+    int res = v1;
+
+    asm ("imul %2, %1\n"
+         "seto %0"
+         : "=q" (overflow), "=r" (res)
+         : "r" (v2), "1" (res)
+         : "cc"
+    );
+    *r = res;
+    return overflow;
+}
+#else
+inline bool mul_overflow(int v1, int v2, int *r)
+{
+    qint64 t = qint64(v1) * v2;
+    *r = static_cast<int>(t);
+    return t > std::numeric_limits<int>::max() || t < std::numeric_limits<int>::min();
+}
+#endif
+
 }
 
 QT_END_NAMESPACE

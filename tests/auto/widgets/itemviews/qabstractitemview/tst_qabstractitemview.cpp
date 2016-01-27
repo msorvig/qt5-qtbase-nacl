@@ -1,31 +1,26 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -872,7 +867,7 @@ class DnDTestModel : public QStandardItemModel
 public:
     DnDTestModel() : QStandardItemModel(20, 20), dropAction_result(Qt::IgnoreAction) {
         for (int i = 0; i < rowCount(); ++i)
-            setData(index(i, 0), QString("%1").arg(i));
+            setData(index(i, 0), QString::number(i));
     }
     Qt::DropAction dropAction() const { return dropAction_result; }
 };
@@ -1277,9 +1272,9 @@ void tst_QAbstractItemView::task250754_fontChange()
 
     QStandardItemModel *m = new QStandardItemModel(this);
     for (int i=0; i<20; ++i) {
-        QStandardItem *item = new QStandardItem(QString("Item number %1").arg(i));
+        QStandardItem *item = new QStandardItem(QStringLiteral("Item number ") + QString::number(i));
         for (int j=0; j<5; ++j) {
-            QStandardItem *child = new QStandardItem(QString("Child Item number %1").arg(j));
+            QStandardItem *child = new QStandardItem(QStringLiteral("Child Item number ") + QString::number(j));
             item->setChild(j, 0, child);
         }
         m->setItem(i, 0, item);
@@ -1369,7 +1364,7 @@ void tst_QAbstractItemView::shiftArrowSelectionAfterScrolling()
 {
     QStandardItemModel model;
     for (int i=0; i<10; ++i) {
-        QStandardItem *item = new QStandardItem(QString("%1").arg(i));
+        QStandardItem *item = new QStandardItem(QString::number(i));
         model.setItem(i, 0, item);
     }
 
@@ -1406,7 +1401,7 @@ void tst_QAbstractItemView::shiftSelectionAfterRubberbandSelection()
 {
     QStandardItemModel model;
     for (int i=0; i<3; ++i) {
-        QStandardItem *item = new QStandardItem(QString("%1").arg(i));
+        QStandardItem *item = new QStandardItem(QString::number(i));
         model.setItem(i, 0, item);
     }
 
@@ -1483,7 +1478,7 @@ void tst_QAbstractItemView::ctrlRubberbandSelection()
 {
     QStandardItemModel model;
     for (int i=0; i<3; ++i) {
-        QStandardItem *item = new QStandardItem(QString("%1").arg(i));
+        QStandardItem *item = new QStandardItem(QString::number(i));
         model.setItem(i, 0, item);
     }
 
@@ -1609,11 +1604,6 @@ void tst_QAbstractItemView::testDelegateDestroyEditor()
 
 void tst_QAbstractItemView::testClickedSignal()
 {
-#if defined Q_OS_BLACKBERRY
-    QWidget rootWindow;
-    rootWindow.show();
-    QTest::qWaitForWindowExposed(&rootWindow);
-#endif
     QTableWidget view(5, 5);
 
     centerOnScreen(&view);

@@ -1,31 +1,37 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtSql module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -119,6 +125,35 @@ inline void qPQfreemem(void *buffer)
     PQfreemem(buffer);
 }
 
+class QPSQLResultPrivate;
+
+class QPSQLResult: public QSqlResult
+{
+    Q_DECLARE_PRIVATE(QPSQLResult)
+
+public:
+    QPSQLResult(const QPSQLDriver *db);
+    ~QPSQLResult();
+
+    QVariant handle() const Q_DECL_OVERRIDE;
+    void virtual_hook(int id, void *data) Q_DECL_OVERRIDE;
+
+protected:
+    void cleanup();
+    bool fetch(int i) Q_DECL_OVERRIDE;
+    bool fetchFirst() Q_DECL_OVERRIDE;
+    bool fetchLast() Q_DECL_OVERRIDE;
+    QVariant data(int i) Q_DECL_OVERRIDE;
+    bool isNull(int field) Q_DECL_OVERRIDE;
+    bool reset (const QString &query) Q_DECL_OVERRIDE;
+    int size() Q_DECL_OVERRIDE;
+    int numRowsAffected() Q_DECL_OVERRIDE;
+    QSqlRecord record() const Q_DECL_OVERRIDE;
+    QVariant lastInsertId() const Q_DECL_OVERRIDE;
+    bool prepare(const QString &query) Q_DECL_OVERRIDE;
+    bool exec() Q_DECL_OVERRIDE;
+};
+
 class QPSQLDriverPrivate : public QSqlDriverPrivate
 {
     Q_DECLARE_PUBLIC(QPSQLDriver)
@@ -193,8 +228,9 @@ class QPSQLResultPrivate : public QSqlResultPrivate
 {
     Q_DECLARE_PUBLIC(QPSQLResult)
 public:
-    QPSQLResultPrivate()
-      : QSqlResultPrivate(),
+    Q_DECLARE_SQLDRIVER_PRIVATE(QPSQLDriver);
+    QPSQLResultPrivate(QPSQLResult *q, const QPSQLDriver *drv)
+      : QSqlResultPrivate(q, drv),
         result(0),
         currentSize(-1),
         preparedQueriesEnabled(false)
@@ -202,11 +238,6 @@ public:
 
     QString fieldSerial(int i) const Q_DECL_OVERRIDE { return QLatin1Char('$') + QString::number(i + 1); }
     void deallocatePreparedStmt();
-    const QPSQLDriverPrivate * privDriver() const
-    {
-        Q_Q(const QPSQLResult);
-        return reinterpret_cast<const QPSQLDriver *>(q->driver())->d_func();
-    }
 
     PGresult *result;
     int currentSize;
@@ -248,7 +279,7 @@ bool QPSQLResultPrivate::processResults()
         return true;
     }
     q->setLastError(qMakeError(QCoreApplication::translate("QPSQLResult",
-                    "Unable to create query"), QSqlError::StatementError, privDriver(), result));
+                    "Unable to create query"), QSqlError::StatementError, drv_d_func(), result));
     return false;
 }
 
@@ -301,16 +332,16 @@ static QVariant::Type qDecodePSQLType(int t)
 void QPSQLResultPrivate::deallocatePreparedStmt()
 {
     const QString stmt = QLatin1String("DEALLOCATE ") + preparedStmtId;
-    PGresult *result = privDriver()->exec(stmt);
+    PGresult *result = drv_d_func()->exec(stmt);
 
     if (PQresultStatus(result) != PGRES_COMMAND_OK)
-        qWarning("Unable to free statement: %s", PQerrorMessage(privDriver()->connection));
+        qWarning("Unable to free statement: %s", PQerrorMessage(drv_d_func()->connection));
     PQclear(result);
     preparedStmtId.clear();
 }
 
 QPSQLResult::QPSQLResult(const QPSQLDriver* db)
-    : QSqlResult(*new QPSQLResultPrivate, db)
+    : QSqlResult(*new QPSQLResultPrivate(this, db))
 {
     Q_D(QPSQLResult);
     d->preparedQueriesEnabled = db->hasFeature(QSqlDriver::PreparedQueries);
@@ -384,7 +415,7 @@ QVariant QPSQLResult::data(int i)
     case QVariant::Bool:
         return QVariant((bool)(val[0] == 't'));
     case QVariant::String:
-        return d->privDriver()->isUtf8 ? QString::fromUtf8(val) : QString::fromLatin1(val);
+        return d->drv_d_func()->isUtf8 ? QString::fromUtf8(val) : QString::fromLatin1(val);
     case QVariant::LongLong:
         if (val[0] == '-')
             return QString::fromLatin1(val).toLongLong();
@@ -475,7 +506,7 @@ bool QPSQLResult::reset (const QString& query)
         return false;
     if (!driver()->isOpen() || driver()->isOpenError())
         return false;
-    d->result = d->privDriver()->exec(query);
+    d->result = d->drv_d_func()->exec(query);
     return d->processResults();
 }
 
@@ -494,7 +525,7 @@ int QPSQLResult::numRowsAffected()
 QVariant QPSQLResult::lastInsertId() const
 {
     Q_D(const QPSQLResult);
-    if (d->privDriver()->pro >= QPSQLDriver::Version81) {
+    if (d->drv_d_func()->pro >= QPSQLDriver::Version81) {
         QSqlQuery qry(driver()->createResult());
         // Most recent sequence value obtained from nextval
         if (qry.exec(QLatin1String("SELECT lastval();")) && qry.next())
@@ -517,7 +548,7 @@ QSqlRecord QPSQLResult::record() const
     int count = PQnfields(d->result);
     for (int i = 0; i < count; ++i) {
         QSqlField f;
-        if (d->privDriver()->isUtf8)
+        if (d->drv_d_func()->isUtf8)
             f.setName(QString::fromUtf8(PQfname(d->result, i)));
         else
             f.setName(QString::fromLocal8Bit(PQfname(d->result, i)));
@@ -611,11 +642,11 @@ bool QPSQLResult::prepare(const QString &query)
     const QString stmtId = qMakePreparedStmtId();
     const QString stmt = QString::fromLatin1("PREPARE %1 AS ").arg(stmtId).append(d->positionalToNamedBinding(query));
 
-    PGresult *result = d->privDriver()->exec(stmt);
+    PGresult *result = d->drv_d_func()->exec(stmt);
 
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         setLastError(qMakeError(QCoreApplication::translate("QPSQLResult",
-                                "Unable to prepare statement"), QSqlError::StatementError, d->privDriver(), result));
+                                "Unable to prepare statement"), QSqlError::StatementError, d->drv_d_func(), result));
         PQclear(result);
         d->preparedStmtId.clear();
         return false;
@@ -641,7 +672,7 @@ bool QPSQLResult::exec()
     else
         stmt = QString::fromLatin1("EXECUTE %1 (%2)").arg(d->preparedStmtId).arg(params);
 
-    d->result = d->privDriver()->exec(stmt);
+    d->result = d->drv_d_func()->exec(stmt);
 
     return d->processResults();
 }
